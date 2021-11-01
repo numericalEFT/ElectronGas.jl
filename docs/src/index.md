@@ -9,6 +9,10 @@ Documentation for [ElectronGas](https://github.com/numericalEFT/ElectronGas.jl).
 ```@index
 ```
 
-```@autodocs
-Modules = [ElectronGas]
+## Library Outline
+```@contents
+Pages = [
+    "lib/twopoint.md",
+]
+Depth = 1
 ```
