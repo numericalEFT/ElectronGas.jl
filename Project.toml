@@ -1,0 +1,13 @@
+name = "ElectronGas"
+uuid = "8c98e03e-8755-48b1-a5ef-1e2e7812a7c9"
+authors = ["Kun Chen"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
