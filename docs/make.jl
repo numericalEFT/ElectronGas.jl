@@ -20,5 +20,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/numericalEFT/ElectronGas.jl",
-    devbranch="main",
+    devbranch="master",
 )
