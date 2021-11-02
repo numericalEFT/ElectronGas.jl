@@ -3,6 +3,11 @@ uuid = "8c98e03e-8755-48b1-a5ef-1e2e7812a7c9"
 authors = ["Kun Chen"]
 version = "0.1.0"
 
+[deps]
+CompositeGrids = "b5136c89-beeb-4521-9139-60d2cac8be56"
+Cuba = "8a292aeb-7a57-582c-b821-06e4c11590b1"
+Lehmann = "95bf888a-8996-4655-9f35-1c0506bdfefe"
+
 [compat]
 julia = "1.6"
 

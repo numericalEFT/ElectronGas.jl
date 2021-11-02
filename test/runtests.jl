@@ -1,4 +1,5 @@
 using ElectronGas
+using CompositeGrids
 using Test
 
 @testset "ElectronGas.jl" begin
