@@ -29,6 +29,8 @@ using Parameters
     rs::Float64 = Rs/a0
     kF::Float64 = sqrt(2*me*EF)
 
+    # artificial parameters
+    mass2::Float64 = 0.000
 end
 
 """

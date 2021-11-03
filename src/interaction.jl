@@ -12,7 +12,7 @@ rundir = isempty(ARGS) ? "." : (pwd()*"/"*ARGS[1])
 include(rundir*"/para.jl")
 using .Para
 
-@unpack me, kF, rs, e0, β = Para.Param
+@unpack me, kF, rs, e0, β , mass2= Para.Param
 
 function inf_sum(q,n)
     a=q*q
@@ -37,6 +37,10 @@ A1=(2.0-C1-C2)/4.0/e0^2*π ;
 A2=(C2-C1)/4.0/e0^2*π ;
 B1=6*A1/(D+1.0);
 B2=2*A2/(1.0-D);
+
+function V_Bare(q)
+    4π*e0^2/(q^2+mass2)
+end
 
 function Polarization0_ZeroTemp(q, n, β=β)
     Π = 0.0
@@ -81,10 +85,10 @@ function RPA(q, n, β=β)
     if abs(q) > EPS 
         Π = Polarization0_ZeroTemp(q, n, β)
         if n == 0
-            kernel = - Π/( q^2/4/π/g  + Π )
+            kernel = - Π/( 1.0/V_Bare(q)  + Π )
         else
-            Π0 = Π / q^2
-            kernel = - Π0/( 1.0/4/π/g  + Π0 )
+            Π0 = Π * V_Bare(q)
+            kernel = - Π0/( 1.0  + Π0 )
         end
     else
         kernel = 0
@@ -103,12 +107,12 @@ function KO(q, n, β=β)
     if abs(q) > EPS 
         Π = Polarization0_ZeroTemp(q, n, β)
         if n == 0
-            Ks = - Π*(1-G_s)^2/( q^2/4/π/g  + Π*(1-G_s))
-            Ka = -Π*(-G_a)^2/(q^2/4/π/g + Π*(-G_a))
+            Ks = - Π*(1-G_s)^2/( 1.0/V_Bare(q)  + Π*(1-G_s))
+            Ka = -Π*(-G_a)^2/( 1.0/V_Bare(q) + Π*(-G_a))
         else
-            Π0 = Π / q^2
-            Ks = - Π0*(1-G_s)^2/( 1.0/4/π/g  + Π0*(1-G_s))
-            Ka = -Π0*(-G_a)^2/(1.0/4/π/g + Π0*(-G_a))
+            Π0 = Π * V_Bare(q)
+            Ks = - Π0*(1-G_s)^2/( 1.0  + Π0*(1-G_s))
+            Ka = -Π0*(-G_a)^2/(1.0 + Π0*(-G_a))
         end
     else
         Ks, Ka = 0.0, 0.0
