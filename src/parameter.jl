@@ -25,7 +25,7 @@ using Parameters
     β::Float64 = beta/EF
     n::Float64 = (dim == 3) ? (EF*2*me)^(3/2)/(6π^2)*spin : me*EF/π
     Rs::Float64 = (dim == 3) ? (3 / (4π*n))^(1 / 3) : sqrt(1/(πn))
-    a0::Float64 = 4πϵ0/(me*e0^2)
+    a0::Float64 = 4π*ϵ0/(me*e0^2)
     rs::Float64 = Rs/a0
     kF::Float64 = sqrt(2*me*EF)
 
@@ -47,7 +47,7 @@ generate Para with a complete set of parameters, no value presumed.
     β::Float64 = beta/EF
     n::Float64 = (dim == 3) ? (EF*2*me)^(3/2)/(6π^2)*spin : me*EF/π
     Rs::Float64 = (dim == 3) ? (3 / (4π*n))^(1 / 3) : sqrt(1/(πn))
-    a0::Float64 = 4πϵ0/(me*e0^2)
+    a0::Float64 = 4π*ϵ0/(me*e0^2)
     rs::Float64 = Rs/a0
     kF::Float64 = sqrt(2*me*EF)
     return Para(
@@ -102,7 +102,7 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
     EF = kF^2/(2me)
     beta = β * EF
-    return fullUnit(ϵ0, e0, me, EF, beta)
+    return fullUnit(ϵ0, e0, me, EF, beta, dim, spin)
 end
 
 end
