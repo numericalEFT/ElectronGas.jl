@@ -12,7 +12,7 @@ rundir = isempty(ARGS) ? "." : (pwd()*"/"*ARGS[1])
 include(rundir*"/para.jl")
 using .Para
 
-@unpack me, kF, rs, e0, β , mass2= Para.Param
+@unpack me, kF, rs, e0, β , mass2, ϵ0= Para.Param
 
 function inf_sum(q,n)
     a=q*q
@@ -39,7 +39,7 @@ B1=6*A1/(D+1.0);
 B2=2*A2/(1.0-D);
 
 function V_Bare(q)
-    4π*e0^2/(q^2+mass2)
+    e0^2/ϵ0/(q^2+mass2)
 end
 
 function Polarization0_ZeroTemp(q, n, β=β)
@@ -80,7 +80,6 @@ function Polarization0_ZeroTemp(q, n, β=β)
 end
 
 function RPA(q, n, β=β)
-    g = e0^2
     kernel = 0.0
     if abs(q) > EPS 
         Π = Polarization0_ZeroTemp(q, n, β)
@@ -98,7 +97,6 @@ function RPA(q, n, β=β)
 end
 
 function KO(q, n, β=β)
-    g = e0^2
     G_s=A1*q^2/(1.0+B1*q^2)+A2*q^2/(1.0+B2*q^2);
     G_a=A1*q^2/(1.0+B1*q^2)-A2*q^2/(1.0+B2*q^2);
 
@@ -121,11 +119,13 @@ function KO(q, n, β=β)
     return Ks, Ka
 end
 
-
 end
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
     println(Interaction.RPA(1.0, 1))
     println(Interaction.KO(1.0, 1))
+    println(Interaction.Polarization0_ZeroTemp(1e-5, 1)*1e10)
+    println(Interaction.Polarization0_ZeroTemp(1e-7, 1)*1e14)
+    println(Interaction.Polarization0_ZeroTemp(1e-9, 1)*1e18)
 end
