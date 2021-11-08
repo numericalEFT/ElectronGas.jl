@@ -1,18 +1,31 @@
 module Interaction
 
-using ElectronGas.Convention
 using Parameters
+
+
+srcdir = "."
+rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
+
+include(srcdir*"/parameter.jl")
+using .Parameter
+
+include(srcdir*"/convention.jl")
+using .Convention
+
+
 
 export RPA, KO
 
 srcdir = "."
-rundir = isempty(ARGS) ? "." : (pwd()*"/"*ARGS[1])
+rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
-# println("Loading parameter from:"*rundir*"/para.jl")
-include(rundir*"/para.jl")
-using .Para
+# if !@isdefined Para
+#     include(rundir*"/para.jl")
+#     using .Para
+# end
 
-@unpack me, kF, rs, e0, beta , mass2, ϵ0= Para.Param
+@unpack me, kF, rs, e0, beta , mass2, ϵ0= Parameter.Param
+#println(Parameter.Param)
 
 function inf_sum(q,n)
     a=q*q
@@ -41,20 +54,22 @@ B2=2*A2/(1.0-D);
 
 
 """
-    function V_Bare(q)
+    function V_Bare(q,param)
 
 Bare interaction in momentum space. Coulomb interaction if mass2=0, Yukawa otherwise.
 
 #Arguments:
  - q: momentum
+ - param: other system parameters
 """
-function V_Bare(q)
+function V_Bare(q, param=Parameter.Param)
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
     e0^2/ϵ0/(q^2+mass2)
 end
 
 
 """
-    function Polarization0_ZeroTemp(q, n, beta=beta)
+    function Polarization0_ZeroTemp(q, n, param)
 
 Zero temperature Π0 function for matsubara frequency and momentum. For low temperature the finite temperature
 polarization could be approximated with this function.
@@ -62,9 +77,10 @@ polarization could be approximated with this function.
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
- - beta: inverse temperature
+ - param: other system parameters
 """
-function Polarization0_ZeroTemp(q, n, beta=beta)
+function Polarization0_ZeroTemp(q, n, param=Parameter.Param)
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
     Π = 0.0
     x = q/2/kF
     ω_n = 2*π*n/beta
@@ -102,23 +118,24 @@ function Polarization0_ZeroTemp(q, n, beta=beta)
 end
 
 """
-    function RPA(q, n, beta=beta)
+    function RPA(q, n, param)
 
 Dynamic part of RPA interaction, with polarization approximated by zero temperature Π0.
 
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
- - beta: inverse temperature
+ - param: other system parameters
 """
-function RPA(q, n, beta=beta)
+function RPA(q, n, param=Parameter.Param)
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
     kernel = 0.0
     if abs(q) > EPS 
-        Π = Polarization0_ZeroTemp(q, n, beta)
+        Π = Polarization0_ZeroTemp(q, n, param)
         if n == 0
-            kernel = - Π/( 1.0/V_Bare(q)  + Π )
+            kernel = - Π/( 1.0/V_Bare(q,param)  + Π )
         else
-            Π0 = Π * V_Bare(q)
+            Π0 = Π * V_Bare(q,param)
             kernel = - Π0/( 1.0  + Π0 )
         end
     else
@@ -129,7 +146,7 @@ function RPA(q, n, beta=beta)
 end
 
 """
-    function KO(q, n, beta=beta)
+    function KO(q, n, param)
 
 Dynamic part of KO interaction, with polarization approximated by zero temperature Π0.
 Returns the spin symmetric part and asymmetric part separately.
@@ -137,21 +154,22 @@ Returns the spin symmetric part and asymmetric part separately.
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
- - beta: inverse temperature
+ - param: other system parameters
 """
-function KO(q, n, beta=beta)
+function KO(q, n, param=Parameter.Param)
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
     G_s=A1*q^2/(1.0+B1*q^2)+A2*q^2/(1.0+B2*q^2);
     G_a=A1*q^2/(1.0+B1*q^2)-A2*q^2/(1.0+B2*q^2);
 
     Ks, Ka = 0.0, 0.0
 
     if abs(q) > EPS 
-        Π = Polarization0_ZeroTemp(q, n, beta)
+        Π = Polarization0_ZeroTemp(q, n, param)
         if n == 0
-            Ks = - Π*(1-G_s)^2/( 1.0/V_Bare(q)  + Π*(1-G_s))
-            Ka = -Π*(-G_a)^2/( 1.0/V_Bare(q) + Π*(-G_a))
+            Ks = - Π*(1-G_s)^2/( 1.0/V_Bare(q, param)  + Π*(1-G_s))
+            Ka = -Π*(-G_a)^2/( 1.0/V_Bare(q,param) + Π*(-G_a))
         else
-            Π0 = Π * V_Bare(q)
+            Π0 = Π * V_Bare(q,param)
             Ks = - Π0*(1-G_s)^2/( 1.0  + Π0*(1-G_s))
             Ka = -Π0*(-G_a)^2/(1.0 + Π0*(-G_a))
         end

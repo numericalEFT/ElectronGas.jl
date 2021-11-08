@@ -107,4 +107,20 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     return fullUnit(ϵ0, e0, me, EF, beta, dim, spin)
 end
 
+srcdir = "."
+rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
+
+if !@isdefined Param
+    try
+        include(rundir*"/para.jl")
+    catch ee
+        if isa(ee, LoadError)
+            println("Load failed. Generating default parameters instead.")
+            Param = defaultUnit(100, 1)
+        end
+    end
+end
+
+export Para, Param
+
 end
