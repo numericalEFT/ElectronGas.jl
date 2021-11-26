@@ -9,6 +9,7 @@ Cuba = "8a292aeb-7a57-582c-b821-06e4c11590b1"
 Lehmann = "95bf888a-8996-4655-9f35-1c0506bdfefe"
 
 [compat]
+CompositeGrids = "0.0.1"
 Cuba = "2"
 julia = "1.6"
 
