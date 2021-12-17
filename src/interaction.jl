@@ -12,8 +12,6 @@ using .Parameter
 include(srcdir*"/convention.jl")
 using .Convention
 
-
-
 export RPA, KO
 
 srcdir = "."
@@ -24,8 +22,8 @@ rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 #     using .Para
 # end
 
+# println(Parameter.Param)
 @unpack me, kF, rs, e0, beta , mass2, ϵ0= Parameter.Param
-#println(Parameter.Param)
 
 function inf_sum(q,n)
     a=q*q

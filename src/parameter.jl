@@ -22,15 +22,27 @@ using Parameters
     beta::Float64 = 200
 
     # derived parameters
-    β::Float64 = beta/EF
-    n::Float64 = (dim == 3) ? (EF*2*me)^(3/2)/(6π^2)*spin : me*EF/π
-    Rs::Float64 = (dim == 3) ? (3 / (4π*n))^(1 / 3) : sqrt(1/(πn))
-    a0::Float64 = 4π*ϵ0/(me*e0^2)
-    rs::Float64 = Rs/a0
-    kF::Float64 = sqrt(2*me*EF)
 
     # artificial parameters
     mass2::Float64 = 0.000
+end
+
+function Base.getproperty(obj::Para, sym::Symbol)
+    if sym === :β
+        return obj.beta/obj.EF
+    elseif sym == :n
+        return (obj.dim == 3) ? (obj.EF*2*obj.me)^(3/2)/(6π^2)*obj.spin : obj.me*obj.EF/π
+    elseif sym == :Rs
+        return (obj.dim == 3) ? (3 / (4π*obj.n))^(1 / 3) : sqrt(1/(πobj.n))
+    elseif sym == :a0
+        return 4π*obj.ϵ0/(obj.me*obj.e0^2)
+    elseif sym == :rs
+        return obj.Rs/obj.a0
+    elseif sym == :kF
+        return sqrt(2*obj.me*obj.EF)
+    else # fallback to getfield
+        return getfield(obj, sym)
+    end
 end
 
 """
@@ -46,12 +58,6 @@ generate Para with a complete set of parameters, no value presumed.
  - beta: inverse temperature
 """
 @inline function fullUnit(ϵ0, e0, me, EF, beta, dim = 3, spin = 2)
-    β::Float64 = beta/EF
-    n::Float64 = (dim == 3) ? (EF*2*me)^(3/2)/(6π^2)*spin : me*EF/π
-    Rs::Float64 = (dim == 3) ? (3 / (4π*n))^(1 / 3) : sqrt(1/(πn))
-    a0::Float64 = 4π*ϵ0/(me*e0^2)
-    rs::Float64 = Rs/a0
-    kF::Float64 = sqrt(2*me*EF)
     return Para(
         dim=dim,
         spin=spin,
@@ -60,12 +66,6 @@ generate Para with a complete set of parameters, no value presumed.
         me=me,
         EF=EF,
         beta=beta,
-        β=β,
-        n=n,
-        Rs=Rs,
-        a0=a0,
-        rs=rs,
-        kF=kF
     )
 end
 
@@ -114,12 +114,18 @@ if !@isdefined Param
     try
         include(rundir*"/para.jl")
     catch ee
-        if isa(ee, LoadError)
+        if isa(ee, LoadError) || isa(ee, SystemError)
             println("Load failed. Generating default parameters instead.")
-            Param = defaultUnit(100, 1)
+            global Param = defaultUnit(100, 1)
+        else
+            throw(ee)
         end
     end
 end
+
+fullUnit!(ϵ0, e0, me, EF, beta, dim = 3, spin = 2) = (global Param = fullUnit(ϵ0, e0, me, EF, beta, dim, spin))
+defaultUnit!(β, rs, dim = 3, spin = 2) = (global Param = defaultUnit(β, rs, dim, spin))
+rydbergUnit!(β, rs, dim = 3, spin = 2) = (global Param = rydbergUnit(β, rs, dim, spin))
 
 export Para, Param
 
