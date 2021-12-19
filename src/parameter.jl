@@ -20,6 +20,7 @@ using Parameters
     me::Float64 = 0.5  # electron mass
     EF::Float64 = 1.0     #kF^2 / (2me)
     beta::Float64 = 200
+    μ::Float64 = 1.0
 
     # derived parameters
 
@@ -66,6 +67,7 @@ generate Para with a complete set of parameters, no value presumed.
         me=me,
         EF=EF,
         beta=beta,
+        μ=EF
     )
 end
 
