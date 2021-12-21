@@ -90,6 +90,31 @@ function RPA(q, n, param)
 end
 
 """
+    function GFactorTakada(q, n, param)
+
+G factor with Takada's anzats.
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+ - param: other system parameters
+"""
+function GFactorTakada(q, n, param)
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
+    r_s_dl=sqrt(4*0.521*rs/ π );
+    C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
+    C2=1-r_s_dl*r_s_dl/4.0*(1+r_s_dl*r_s_dl/8.0*(log(r_s_dl*r_s_dl/(r_s_dl*r_s_dl+0.990))-(1.122+1.222*r_s_dl*r_s_dl)/(1+0.533*r_s_dl*r_s_dl+0.184*r_s_dl*r_s_dl*r_s_dl*r_s_dl)));
+    D=inf_sum(r_s_dl,100);
+    A1=(2.0-C1-C2)/4.0/e0^2*π ;
+    A2=(C2-C1)/4.0/e0^2*π ;
+    B1=6*A1/(D+1.0);
+    B2=2*A2/(1.0-D);
+    G_s=A1*q^2/(1.0+B1*q^2)+A2*q^2/(1.0+B2*q^2);
+    G_a=A1*q^2/(1.0+B1*q^2)-A2*q^2/(1.0+B2*q^2);
+    return G_s, G_a
+end
+
+"""
     function KO(q, n, param)
 
 Dynamic part of KO interaction, with polarization approximated by zero temperature Π0.
@@ -102,17 +127,8 @@ Returns the spin symmetric part and asymmetric part separately.
 """
 function KO(q, n, param)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
-    r_s_dl=sqrt(4*0.521*rs/ π );
-    C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
-    C2=1-r_s_dl*r_s_dl/4.0*(1+r_s_dl*r_s_dl/8.0*(log(r_s_dl*r_s_dl/(r_s_dl*r_s_dl+0.990))-(1.122+1.222*r_s_dl*r_s_dl)/(1+0.533*r_s_dl*r_s_dl+0.184*r_s_dl*r_s_dl*r_s_dl*r_s_dl)));
-    D=inf_sum(r_s_dl,100);
-    A1=(2.0-C1-C2)/4.0/e0^2*π ;
-    A2=(C2-C1)/4.0/e0^2*π ;
-    B1=6*A1/(D+1.0);
-    B2=2*A2/(1.0-D);
-    G_s=A1*q^2/(1.0+B1*q^2)+A2*q^2/(1.0+B2*q^2);
-    G_a=A1*q^2/(1.0+B1*q^2)-A2*q^2/(1.0+B2*q^2);
 
+    G_s, G_a = GFactorTakada(q, n, param)
     Ks, Ka = 0.0, 0.0
 
     if abs(q) > EPS 

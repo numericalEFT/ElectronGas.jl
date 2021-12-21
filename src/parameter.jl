@@ -31,15 +31,15 @@ end
 function Base.getproperty(obj::Para, sym::Symbol)
     if sym === :β
         return obj.beta/obj.EF
-    elseif sym == :n
+    elseif sym === :n
         return (obj.dim == 3) ? (obj.EF*2*obj.me)^(3/2)/(6π^2)*obj.spin : obj.me*obj.EF/π
-    elseif sym == :Rs
+    elseif sym === :Rs
         return (obj.dim == 3) ? (3 / (4π*obj.n))^(1 / 3) : sqrt(1/(πobj.n))
-    elseif sym == :a0
+    elseif sym === :a0
         return 4π*obj.ϵ0/(obj.me*obj.e0^2)
-    elseif sym == :rs
+    elseif sym === :rs
         return obj.Rs/obj.a0
-    elseif sym == :kF
+    elseif sym === :kF
         return sqrt(2*obj.me*obj.EF)
     else # fallback to getfield
         return getfield(obj, sym)

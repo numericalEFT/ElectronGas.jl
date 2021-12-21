@@ -1,6 +1,6 @@
 module Polarization
 
-using Parameters, GreenFunc
+using Parameters, GreenFunc, CompositeGrids
 
 export Polarization0_ZeroTemp
 
@@ -12,6 +12,30 @@ using .Parameter
 
 include(srcdir*"/convention.jl")
 using .Convention
+
+function ΠT_integrand(k, q, ω, param)
+    @unpack me, beta, μ, kF = param
+     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    # if ω==0 && abs(q*(k*2-q)*beta)<1e-16
+    #     return 0.0
+    # elseif ω!=0 && k^2*q^2/4/me^2<ω^2*1e-9
+    #     2*q^2*k^2/(π^2*ω^2)/(exp(beta*(k^2/2/me-μ))+1)/(8*me)
+    # else
+        # return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log((4*me^2*ω^2+(q^2+2*k*q)^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+        # return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    # end
+end
+
+function Polarization0_FiniteTemp(q, n, param)
+    @unpack me, kF, beta = param
+    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 20*kF], [0.5*q, kF], 20, 1e-6*min(q,kF), 10)
+    integrand = zeros(Float64, kgrid.size)
+    for (ki, k) in enumerate(kgrid.grid)
+        integrand[ki] = ΠT_integrand(k, q, 2π*n/beta, param)
+    end
+
+    return Interp.integrate1D(integrand, kgrid)
+end
 
 """
     function Polarization0_ZeroTemp(q, n, param)
@@ -92,8 +116,19 @@ end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    println(Polarization.Polarization0_ZeroTemp(1e-5, 1, Polarization.Parameter.Param)*1e10)
-    println(Polarization.Polarization0_ZeroTemp(1e-7, 1, Polarization.Parameter.Param)*1e14)
-    println(Polarization.Polarization0_ZeroTemp(1e-9, 1, Polarization.Parameter.Param)*1e18)
+    beta = 1e8
+    param = Polarization.Parameter.defaultUnit(beta,1.0)
+    println(Polarization.Polarization0_ZeroTemp(1e-8, 0, param))
+    println(Polarization.Polarization0_FiniteTemp(1e-8, 0, param))
+    println(Polarization.Polarization0_ZeroTemp(1.0, 0, param))
+    println(Polarization.Polarization0_FiniteTemp(1.0, 0, param))
+    println(Polarization.Polarization0_ZeroTemp(2.0, 0, param))
+    println(Polarization.Polarization0_FiniteTemp(2.0, 0, param))
+    println(Polarization.Polarization0_ZeroTemp(1e-8, 1, param))
+    println(Polarization.Polarization0_FiniteTemp(1e-8, 1, param))
+    println(Polarization.Polarization0_ZeroTemp(1.0, 1, param))
+    println(Polarization.Polarization0_FiniteTemp(1.0, 1, param))
+    println(Polarization.Polarization0_ZeroTemp(2.0, 1, param))
+    println(Polarization.Polarization0_FiniteTemp(2.0, 1, param))
 end
 
