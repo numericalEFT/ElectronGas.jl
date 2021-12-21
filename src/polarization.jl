@@ -13,25 +13,56 @@ using .Parameter
 include(srcdir*"/convention.jl")
 using .Convention
 
-function ΠT_integrand(k, q, ω, param)
-    @unpack me, beta, μ, kF = param
-     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+@inline function _ΠT_integrand(k, q, ω, param)
+    @unpack me, beta, EF, kF = param
+    # ω only appears as ω^2 so no need to check sign of ω
+
+    # if q is too small, use safe form
+    if q < 1e-16 && ω==0
+        if abs(q-2*k)^2<1e-16
+            return 0.0
+        else
+            return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k)/((q-2*k)^2))
+        end
+    elseif q < 1e-16 && ω!=0
+        return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k*q^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    else
+        return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-EF))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    end
     # if ω==0 && abs(q*(k*2-q)*beta)<1e-16
     #     return 0.0
-    # elseif ω!=0 && k^2*q^2/4/me^2<ω^2*1e-9
+    # elseif ω!=0 && k^2*q^2/4/me^2<ω^2*1e-16
     #     2*q^2*k^2/(π^2*ω^2)/(exp(beta*(k^2/2/me-μ))+1)/(8*me)
     # else
-        # return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log((4*me^2*ω^2+(q^2+2*k*q)^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
-        # return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    #     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log((4*me^2*ω^2+(q^2+2*k*q)^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    #     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     # end
 end
 
-function Polarization0_FiniteTemp(q, n, param)
+"""
+    function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+
+Finite temperature Π0 function for matsubara frequency and momentum. Analytically sum over transfer frequency and angular
+dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+ - param: other system parameters
+"""
+function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     @unpack me, kF, beta = param
-    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 20*kF], [0.5*q, kF], 20, 1e-6*min(q,kF), 10)
+    # check sign of q, use -q if negative
+    if q<0
+        q = -q
+    end
+    mink = (q<1e-16/minterval) ? minterval*kF : minterval*min(q,kF)
+    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk*kF], [0.5*q, kF], scaleN, mink, gaussN)
     integrand = zeros(Float64, kgrid.size)
     for (ki, k) in enumerate(kgrid.grid)
-        integrand[ki] = ΠT_integrand(k, q, 2π*n/beta, param)
+        integrand[ki] = _ΠT_integrand(k, q, 2π*n/beta, param)
+        @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
     end
 
     return Interp.integrate1D(integrand, kgrid)
@@ -50,8 +81,17 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - param: other system parameters
 """
 function Polarization0_ZeroTemp(q, n, param)
-    
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+    # check sign of q, use -q if negative
+    if q<0
+        q = -q
+    end
+
+    # if q is too small, set to 1000eps
+    if q < eps(0.0)*1e6
+        q = eps(0.0)*1e6
+    end
+
     Π = 0.0
     x = q/2/kF
     ω_n = 2*π*n/beta
@@ -118,12 +158,22 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     beta = 1e8
     param = Polarization.Parameter.defaultUnit(beta,1.0)
+    println("n=0")
+    println(Polarization.Polarization0_ZeroTemp(0.0, 0, param))
+    println(Polarization.Polarization0_FiniteTemp(0.0, 0, param))
+    println(Polarization.Polarization0_ZeroTemp(1e-160, 0, param))
+    println(Polarization.Polarization0_FiniteTemp(1e-160, 0, param))
     println(Polarization.Polarization0_ZeroTemp(1e-8, 0, param))
     println(Polarization.Polarization0_FiniteTemp(1e-8, 0, param))
     println(Polarization.Polarization0_ZeroTemp(1.0, 0, param))
     println(Polarization.Polarization0_FiniteTemp(1.0, 0, param))
     println(Polarization.Polarization0_ZeroTemp(2.0, 0, param))
     println(Polarization.Polarization0_FiniteTemp(2.0, 0, param))
+    println("n=1")
+    println(Polarization.Polarization0_ZeroTemp(0.0, 1, param))
+    println(Polarization.Polarization0_FiniteTemp(0.0, 1, param))
+    println(Polarization.Polarization0_ZeroTemp(1e-160, 1, param))
+    println(Polarization.Polarization0_FiniteTemp(1e-160, 1, param))
     println(Polarization.Polarization0_ZeroTemp(1e-8, 1, param))
     println(Polarization.Polarization0_FiniteTemp(1e-8, 1, param))
     println(Polarization.Polarization0_ZeroTemp(1.0, 1, param))
