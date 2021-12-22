@@ -13,6 +13,7 @@ using .Parameter
 include(srcdir*"/convention.jl")
 using .Convention
 
+# Analytical calculated integrand of Π0.
 @inline function _ΠT_integrand(k, q, ω, param)
     @unpack me, beta, EF, kF = param
     # ω only appears as ω^2 so no need to check sign of ω

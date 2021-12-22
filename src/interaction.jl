@@ -29,6 +29,8 @@ rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 # @unpack me, kF, rs, e0, beta , mass2, ϵ0= Parameter.Param
 
 function inf_sum(q,n)
+    # Calculate a series sum for Takada anzats
+    # See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.16).
     a=q*q
     sum=1.0
     i=0
@@ -37,8 +39,8 @@ function inf_sum(q,n)
     for i in 1:n
         sum = sum+a/j/k
         a=a*q*q
-        j=j*(i+2.0)
-        k=k*(i+3.0)
+        j=j*(i+1.0)
+        k=k*(i+2.0)
     end
     return 1.0/sum/sum
 end
@@ -86,7 +88,7 @@ function RPA(q, n, param, pifunc=Polarization0_ZeroTemp)
     return kernel
 end
 
-function RPA_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
+function RPAwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
 
     green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph)
@@ -101,16 +103,16 @@ function RPA_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) 
 end
 
 """
-    function GFactorTakada(q, n, param)
+    function localFieldFactorTakada(q, n, param)
 
-G factor with Takada's anzats.
+G factor with Takada's anzats. See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.13-2.16).
 
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function GFactorTakada(q, n, param)
+function localFieldFactorTakada(q, n, param)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
     r_s_dl=sqrt(4*0.521*rs/ π );
     C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
@@ -136,7 +138,7 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=GFactorTakada)
+function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
 
     G_s, G_a = gfactorfunc(q, n, param)
@@ -159,7 +161,7 @@ function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=GFactorTakad
     return Ks, Ka
 end
 
-function KO_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=GFactorTakada) where{SGT}
+function KOwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada) where{SGT}
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
 
     green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph, color=[-0.5,0.5])
@@ -184,16 +186,17 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     beta = 1e4
-    param = Interaction.Parameter.defaultUnit(beta,1.0)
+    rs = 2.0
+    param = Interaction.Parameter.defaultUnit(beta,rs)
     println(Interaction.RPA(1.0, 1, param))
     println(Interaction.KO(1.0, 1, param))
     println(Interaction.RPA(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
     println(Interaction.KO(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
 
-    RPA = Interaction.RPA_Green(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    println(RPA.dynamic)
-    println(RPA.instant)
-    KO = Interaction.KO_Green(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    println(KO.dynamic)
-    println(KO.instant)
+    # RPA = Interaction.RPAwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    # println(RPA.dynamic)
+    # println(RPA.instant)
+    # KO = Interaction.KOwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    # println(KO.dynamic)
+    # println(KO.instant)
 end
