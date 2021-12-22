@@ -2,7 +2,7 @@ module Polarization
 
 using Parameters, GreenFunc, CompositeGrids
 
-export Polarization0_ZeroTemp
+export Polarization0_ZeroTemp, Polarization0_FiniteTemp
 
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
@@ -50,6 +50,10 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
+ - maxk: optional, upper limit of integral -> maxk*kF
+ - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - minterval: optional, actual minterval of grid is this value times min(q,kF)
+ - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
 function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     @unpack me, kF, beta = param
@@ -129,24 +133,27 @@ function Polarization0_ZeroTemp(q, n, param)
 end
 
 """
-    function Polarization0_ZeroTemp(T, tgrid, sgrid, param)
+    function Polarization0_Green(Euv, rtol, sgrid::SGT, param, polatype=:zerotemp) where{TGT, SGT}
 
-Zero temperature Π0 function for matsubara frequency and momentum. For low temperature the finite temperature
-polarization could be approximated with this function.
+Π0 function for matsubara frequency and momentum. Use Polarization0_ZeroTemp by default,
+Polarization0_FiniteTemp when pifunc is specified.
 Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
-Return full polarization0 function stored in GreenFunc.GreenBasic.Green2.
+Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
 
 #Arguments:
- - T: type of data stored
- - tgrid: matsubara frequency grid
+ - Euv: Euv of DLRGrid
+ - rtol: rtol of DLRGrid
  - sgrid: momentum grid
  - param: other system parameters
+ - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
 """
-function Polarization0_ZeroTemp(T, tgrid::TGT, sgrid::SGT, param) where{TGT, SGT}
-    green = GreenFunc.GreenBasic.Green2{T}(:freq, :mom, :bose, [0.0,], tgrid, sgrid)
-    for (k, ki) in enumerate(sgrid)
-        for (n, ni) in enumerate(tgrid)
-            green.value[ni, ki, 1] = Polarization0_ZeroTemp(k, n, param)
+function Polarization0_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
+    @unpack beta = param
+
+    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph)
+    for (ki, k) in enumerate(sgrid)
+        for (ni, n) in enumerate(green.dlrGrid.n)
+            green.dynamic[1,1,ki,ni] = pifunc(k, n, param)
         end
     end
 
@@ -156,29 +163,32 @@ end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    beta = 1e8
+    beta = 1e4
     param = Polarization.Parameter.defaultUnit(beta,1.0)
-    println("n=0")
-    println(Polarization.Polarization0_ZeroTemp(0.0, 0, param))
-    println(Polarization.Polarization0_FiniteTemp(0.0, 0, param))
-    println(Polarization.Polarization0_ZeroTemp(1e-160, 0, param))
-    println(Polarization.Polarization0_FiniteTemp(1e-160, 0, param))
-    println(Polarization.Polarization0_ZeroTemp(1e-8, 0, param))
-    println(Polarization.Polarization0_FiniteTemp(1e-8, 0, param))
-    println(Polarization.Polarization0_ZeroTemp(1.0, 0, param))
-    println(Polarization.Polarization0_FiniteTemp(1.0, 0, param))
-    println(Polarization.Polarization0_ZeroTemp(2.0, 0, param))
-    println(Polarization.Polarization0_FiniteTemp(2.0, 0, param))
-    println("n=1")
-    println(Polarization.Polarization0_ZeroTemp(0.0, 1, param))
-    println(Polarization.Polarization0_FiniteTemp(0.0, 1, param))
-    println(Polarization.Polarization0_ZeroTemp(1e-160, 1, param))
-    println(Polarization.Polarization0_FiniteTemp(1e-160, 1, param))
-    println(Polarization.Polarization0_ZeroTemp(1e-8, 1, param))
-    println(Polarization.Polarization0_FiniteTemp(1e-8, 1, param))
-    println(Polarization.Polarization0_ZeroTemp(1.0, 1, param))
-    println(Polarization.Polarization0_FiniteTemp(1.0, 1, param))
-    println(Polarization.Polarization0_ZeroTemp(2.0, 1, param))
-    println(Polarization.Polarization0_FiniteTemp(2.0, 1, param))
+    # println("n=0")
+    # println(Polarization.Polarization0_ZeroTemp(0.0, 0, param))
+    # println(Polarization.Polarization0_FiniteTemp(0.0, 0, param))
+    # println(Polarization.Polarization0_ZeroTemp(1e-160, 0, param))
+    # println(Polarization.Polarization0_FiniteTemp(1e-160, 0, param))
+    # println(Polarization.Polarization0_ZeroTemp(1e-8, 0, param))
+    # println(Polarization.Polarization0_FiniteTemp(1e-8, 0, param))
+    # println(Polarization.Polarization0_ZeroTemp(1.0, 0, param))
+    # println(Polarization.Polarization0_FiniteTemp(1.0, 0, param))
+    # println(Polarization.Polarization0_ZeroTemp(2.0, 0, param))
+    # println(Polarization.Polarization0_FiniteTemp(2.0, 0, param))
+    # println("n=1")
+    # println(Polarization.Polarization0_ZeroTemp(0.0, 1, param))
+    # println(Polarization.Polarization0_FiniteTemp(0.0, 1, param))
+    # println(Polarization.Polarization0_ZeroTemp(1e-160, 1, param))
+    # println(Polarization.Polarization0_FiniteTemp(1e-160, 1, param))
+    # println(Polarization.Polarization0_ZeroTemp(1e-8, 1, param))
+    # println(Polarization.Polarization0_FiniteTemp(1e-8, 1, param))
+    # println(Polarization.Polarization0_ZeroTemp(1.0, 1, param))
+    # println(Polarization.Polarization0_FiniteTemp(1.0, 1, param))
+    # println(Polarization.Polarization0_ZeroTemp(2.0, 1, param))
+    # println(Polarization.Polarization0_FiniteTemp(2.0, 1, param))
+    Π = Polarization.Polarization0_Green(100*param.EF,1e-4,[0.0,0.5,1.0,2.0,10.0],param)
+    println(Π.dynamic)
+    println(Π.dlrGrid.n)
 end
 

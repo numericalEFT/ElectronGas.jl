@@ -1,6 +1,6 @@
 module Interaction
 
-using Parameters
+using Parameters, GreenFunc
 
 
 srcdir = "."
@@ -43,9 +43,6 @@ function inf_sum(q,n)
     return 1.0/sum/sum
 end
 
-
-
-
 """
     function V_Bare(q,param)
 
@@ -57,7 +54,7 @@ Bare interaction in momentum space. Coulomb interaction if mass2=0, Yukawa other
 """
 function V_Bare(q, param)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
-    e0^2/ϵ0/(q^2+mass2)
+    return e0^2/ϵ0/(q^2+mass2)
 end
 
 
@@ -71,11 +68,11 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function RPA(q, n, param)
+function RPA(q, n, param, pifunc=Polarization0_ZeroTemp)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
     kernel = 0.0
     if abs(q) > EPS 
-        Π = Polarization0_ZeroTemp(q, n, param)
+        Π = pifunc(q, n, param)
         if n == 0
             kernel = - Π/( 1.0/V_Bare(q,param)  + Π )
         else
@@ -87,6 +84,20 @@ function RPA(q, n, param)
     end
 
     return kernel
+end
+
+function RPA_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+
+    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph)
+    for (ki, k) in enumerate(sgrid)
+        for (ni, n) in enumerate(green.dlrGrid.n)
+            green.dynamic[1,1,ki,ni] = RPA(k, n, param, pifunc)
+        end
+        green.instant[1,1,ki] = V_Bare(k, param)
+    end
+
+    return green
 end
 
 """
@@ -125,14 +136,14 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param)
+function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=GFactorTakada)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
 
-    G_s, G_a = GFactorTakada(q, n, param)
+    G_s, G_a = gfactorfunc(q, n, param)
     Ks, Ka = 0.0, 0.0
 
     if abs(q) > EPS 
-        Π = Polarization0_ZeroTemp(q, n, param)
+        Π = pifunc(q, n, param)
         if n == 0
             Ks = - Π*(1-G_s)^2/( 1.0/V_Bare(q, param)  + Π*(1-G_s))
             Ka = -Π*(-G_a)^2/( 1.0/V_Bare(q,param) + Π*(-G_a))
@@ -148,10 +159,41 @@ function KO(q, n, param)
     return Ks, Ka
 end
 
+function KO_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=GFactorTakada) where{SGT}
+    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+
+    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph, color=[-0.5,0.5])
+    for (ki, k) in enumerate(sgrid)
+        for (ni, n) in enumerate(green.dlrGrid.n)
+            ks, ka = KO(k, n, param, pifunc, gfactorfunc)
+            green.dynamic[1,1,ki,ni] = ks
+            green.dynamic[2,2,ki,ni] = ks
+            green.dynamic[1,2,ki,ni] = ka
+            green.dynamic[2,1,ki,ni] = ka
+        end
+        green.instant[1,1,ki] = V_Bare(k, param)
+        green.instant[2,2,ki] = V_Bare(k, param)
+    end
+
+    return green
+end
+
+
 end
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    println(Interaction.RPA(1.0, 1, Interaction.Parameter.Param))
-    println(Interaction.KO(1.0, 1, Interaction.Parameter.Param))
+    beta = 1e4
+    param = Interaction.Parameter.defaultUnit(beta,1.0)
+    println(Interaction.RPA(1.0, 1, param))
+    println(Interaction.KO(1.0, 1, param))
+    println(Interaction.RPA(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
+    println(Interaction.KO(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
+
+    RPA = Interaction.RPA_Green(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    println(RPA.dynamic)
+    println(RPA.instant)
+    KO = Interaction.KO_Green(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    println(KO.dynamic)
+    println(KO.instant)
 end
