@@ -2,7 +2,6 @@ module Interaction
 
 using Parameters, GreenFunc
 
-
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
@@ -15,10 +14,7 @@ using .Convention
 include(srcdir*"/polarization.jl")
 using .Polarization
 
-export RPA, KO
-
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
+export RPA, KO, RPAwrapped, KOwrapped, V_Bare
 
 # if !@isdefined Para
 #     include(rundir*"/para.jl")

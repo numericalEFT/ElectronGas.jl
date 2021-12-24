@@ -109,26 +109,6 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     return fullUnit(ϵ0, e0, me, EF, beta, dim, spin)
 end
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
-
-if !@isdefined Param
-    try
-        include(rundir*"/para.jl")
-    catch ee
-        if isa(ee, LoadError) || isa(ee, SystemError)
-            println("Load failed. Generating default parameters instead.")
-            global Param = defaultUnit(100, 1)
-        else
-            throw(ee)
-        end
-    end
-end
-
-fullUnit!(ϵ0, e0, me, EF, beta, dim = 3, spin = 2) = (global Param = fullUnit(ϵ0, e0, me, EF, beta, dim, spin))
-defaultUnit!(β, rs, dim = 3, spin = 2) = (global Param = defaultUnit(β, rs, dim, spin))
-rydbergUnit!(β, rs, dim = 3, spin = 2) = (global Param = rydbergUnit(β, rs, dim, spin))
-
 export Para, Param
 
 end
