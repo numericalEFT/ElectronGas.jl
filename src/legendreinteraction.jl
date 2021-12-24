@@ -29,7 +29,15 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
         return RPA(q, n, param)
     elseif int_type == :ko
         ks, ka = KO(q, n, param)
-        spin_factor = (spin_state==:singlet) ? (1.0) : (-3.0)
+        if spin_state==:singlet
+            spin_factor = 1.0
+        elseif spin_state==:triplet
+            spin_factor = -3.0
+        elseif spin_state==:sigma
+            spin_factor = 3.0
+        else
+            throw(UndefVarError(spin_state))
+        end
         return ks + spin_factor * ka
     else
         throw(UndefVarError(int_type))
@@ -68,9 +76,17 @@ struct DCKernel
     kernel_bare::Array{Float64,2}
     kernel::Array{Float64,3}
 
-    function DCKernel(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state, channel)
+    function DCKernel(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto)
         @unpack kF, beta = param
         EPS = 1e-16
+
+        if spin_state==:sigma
+            # for self-energy, always use ℓ=0
+            channel = 0
+        elseif spin_state==:auto
+            # automatically assign spin_state, triplet for even, singlet for odd channel
+            spin_state = (channel%2==0) ? (:triplet) : (:singlet)
+        end
 
         bdlr = DLRGrid(Euv, beta, rtol, false, :ph)
         kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order )
@@ -155,20 +171,20 @@ end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    using Plots
+    # using Plots
 
     param = LegendreInteraction.Parameter.defaultUnit(1000.0, 1.0)
 
-    kernel = LegendreInteraction.DCKernel(param, 100*param.EF, 1e-8, 10, 10*param.kF, 1e-7*param.kF, 4, :rpa, :singlet, 0)
+    kernel = LegendreInteraction.DCKernel(param, 100*param.EF, 1e-8, 5, 10*param.kF, 1e-7*param.kF, 4, :rpa,0,:sigma)
     # kernel2 = LegendreInteraction.DCKernel(kernel, 500.0)
     kF_label = searchsortedfirst(kernel.kgrid.grid, kernel.param.kF)
     qF_label = searchsortedfirst(kernel.qgrids[kF_label].grid, kernel.param.kF)
     println(kernel.kernel[kF_label,qF_label,:])
     # println(kernel2.kernel[kF_label,qF_label,:])
 
-    p = plot(kernel.dlr.ωn[1:8], kernel.kernel[kF_label,qF_label,1:8])
+    # p = plot(kernel.dlr.ωn[1:8], kernel.kernel[kF_label,qF_label,1:8])
     # plot!(p, kernel2.dlr.ωn[1:8], kernel2.kernel[kF_label,qF_label,1:8])
-    display(p)
-    readline()
+    # display(p)
+    # readline()
 
 end
