@@ -11,7 +11,7 @@ Lehmann = "95bf888a-8996-4655-9f35-1c0506bdfefe"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 
 [compat]
-CompositeGrids = "0.0.1, 0.0.2"
+CompositeGrids = "0.0.1, 0.0.2, 0.0.3"
 Cuba = "2"
 Lehmann = "0.1, 0.2"
 Parameters = "0.12"
