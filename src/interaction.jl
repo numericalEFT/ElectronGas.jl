@@ -87,14 +87,17 @@ end
 function RPAwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
 
-    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph)
+    green = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
+    green_ins = zeros(Float64, (green.color, green.color, green.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green.dynamic[1,1,ki,ni] = RPA(k, n, param, pifunc)
+            green_dyn[1,1,ki,ni] = RPA(k, n, param, pifunc)
         end
-        green.instant[1,1,ki] = V_Bare(k, param)
+        green_ins[1,1,ki] = V_Bare(k, param)
     end
-
+    green.dynamic=green_dyn
+    green.instant=green_ins
     return green
 end
 
@@ -160,19 +163,23 @@ end
 function KOwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada) where{SGT}
     @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
 
-    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph, color=[-0.5,0.5])
+    green = GreenFunc.Green2DLR{Float64}(:ko,GreenFunc.IMFREQ,beta,false,Euv,sgrid,2; timeSymmetry=:ph,rtol=rtol)
+    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
+    green_ins = zeros(Float64, (green.color, green.color, green.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
             ks, ka = KO(k, n, param, pifunc, gfactorfunc)
-            green.dynamic[1,1,ki,ni] = ks
-            green.dynamic[2,2,ki,ni] = ks
-            green.dynamic[1,2,ki,ni] = ka
-            green.dynamic[2,1,ki,ni] = ka
+            green_dyn[1,1,ki,ni] = ks
+            green_dyn[2,2,ki,ni] = ks
+            green_dyn[1,2,ki,ni] = ka
+            green_dyn[2,1,ki,ni] = ka
         end
-        green.instant[1,1,ki] = V_Bare(k, param)
-        green.instant[2,2,ki] = V_Bare(k, param)
+        green_ins[1,1,ki] = V_Bare(k, param)
+        green_ins[2,2,ki] = V_Bare(k, param)
     end
 
+    green.dynamic=green_dyn
+    green.instant=green_ins
     return green
 end
 
@@ -184,15 +191,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     beta = 1e4
     rs = 2.0
     param = Interaction.Parameter.defaultUnit(beta,rs)
-    println(Interaction.RPA(1.0, 1, param))
-    println(Interaction.KO(1.0, 1, param))
+    println(Interaction.RPA(0.01, 1, param))
+    println(Interaction.KO(0.01, 1, param))
     println(Interaction.RPA(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
     println(Interaction.KO(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
 
-    # RPA = Interaction.RPAwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    # println(RPA.dynamic)
-    # println(RPA.instant)
-    # KO = Interaction.KOwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    # println(KO.dynamic)
-    # println(KO.instant)
+    RPA = Interaction.RPAwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    println(RPA.dynamic)
+    println(RPA.instant)
+    KO = Interaction.KOwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
+    println(KO.dynamic)
+    println(KO.instant)
 end

@@ -45,6 +45,7 @@ end
 
 Finite temperature Π0 function for matsubara frequency and momentum. Analytically sum over transfer frequency and angular
 dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Slower(~200μs) than Polarization0_ZeroTemp.
 Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
 
 #Arguments:
@@ -77,8 +78,9 @@ end
     function Polarization0_ZeroTemp(q, n, param)
 
 Zero temperature Π0 function for matsubara frequency and momentum. For low temperature the finite temperature
-polarization could be approximated with this function.
-Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
+polarization could be approximated with this function to run faster(~200ns).
+Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
+
 
 #Arguments:
  - q: momentum
@@ -134,7 +136,7 @@ function Polarization0_ZeroTemp(q, n, param)
 end
 
 """
-    function Polarization0_Green(Euv, rtol, sgrid::SGT, param, polatype=:zerotemp) where{TGT, SGT}
+    function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, polatype=:zerotemp) where{TGT, SGT}
 
 Π0 function for matsubara frequency and momentum. Use Polarization0_ZeroTemp by default,
 Polarization0_FiniteTemp when pifunc is specified.
@@ -148,16 +150,17 @@ Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
  - param: other system parameters
  - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
 """
-function Polarization0_Green(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
+function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
     @unpack beta = param
 
-    green = GreenFunc.GreenBasic.Green2DLR{Float64}(false,Euv,rtol,:k,sgrid,beta,:n; timeSymmetry=:ph)
+    green = GreenFunc.Green2DLR{Float64}(:polarization,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green.dynamic[1,1,ki,ni] = pifunc(k, n, param)
+            green_dyn[1,1,ki,ni] = pifunc(k, n, param)
         end
     end
-
+    green.dynamic=green_dyn
     return green
 end
 
@@ -188,7 +191,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # println(Polarization.Polarization0_FiniteTemp(1.0, 1, param))
     # println(Polarization.Polarization0_ZeroTemp(2.0, 1, param))
     # println(Polarization.Polarization0_FiniteTemp(2.0, 1, param))
-    Π = Polarization.Polarization0_Green(100*param.EF,1e-4,[0.0,0.5,1.0,2.0,10.0],param)
+    Π = Polarization.Polarization0wrapped(100*param.EF,1e-4,[0.0,0.5,1.0,2.0,10.0],param)
     println(Π.dynamic)
     println(Π.dlrGrid.n)
 end
