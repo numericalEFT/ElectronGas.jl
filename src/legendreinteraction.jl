@@ -6,6 +6,8 @@ module LegendreInteraction
 
 using Parameters, GreenFunc, Lehmann, LegendrePolynomials, CompositeGrids
 
+export DCKernel
+
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
@@ -71,7 +73,7 @@ struct DCKernel
 
     kgrid::CompositeGrid.Composite
     qgrids::Vector{CompositeGrid.Composite}
-    dlr::DLRGrid
+    dlrGrid::DLRGrid
 
     kernel_bare::Array{Float64,2}
     kernel::Array{Float64,3}
