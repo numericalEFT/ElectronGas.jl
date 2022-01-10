@@ -4,25 +4,11 @@ Calculate self-energy
 
 module SelfEnergy
 
-using Parameters, GreenFunc, Lehmann, LegendrePolynomials, CompositeGrids
+using ..Parameter, ..Convention, ..Polarization, ..Interaction, ..LegendreInteraction
+using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
-
-include(srcdir*"/parameter.jl")
-using .Parameter
-
-include(srcdir*"/convention.jl")
-using .Convention
-
-include(srcdir*"/polarization.jl")
-using .Polarization
-
-include(srcdir*"/interaction.jl")
-using .Interaction
-
-include(srcdir*"/legendreinteraction.jl")
-using .LegendreInteraction
 
 function G0wrapped(Euv,rtol,sgrid,param)
     @unpack me, kF, rs, e0, beta , mass2, ϵ0, EF = param

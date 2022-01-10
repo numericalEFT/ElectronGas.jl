@@ -1,12 +1,13 @@
 """
-Template of parameter.
+Template of parameter. A submodule of ElectronGas.
 
     Use the convention where ħ=1, k_B=1.
     Only stores parameters that might change for purposes.
 """
 module Parameter
 
-using Parameters
+# using Parameters
+using ..Parameters
 
 @with_kw struct Para
     WID::Int = 1
@@ -25,7 +26,9 @@ using Parameters
     # derived parameters
 
     # artificial parameters
-    mass2::Float64 = 0.000
+    Λs::Float64 = 0.0
+    Λa::Float64 = 0.0
+    espin::Float64 = 0.0
 end
 
 function Base.getproperty(obj::Para, sym::Symbol)
@@ -41,6 +44,10 @@ function Base.getproperty(obj::Para, sym::Symbol)
         return obj.Rs/obj.a0
     elseif sym === :kF
         return sqrt(2*obj.me*obj.EF)
+    elseif sym === :e0s
+        return obj.e0
+    elseif sym === :e0a
+        return obj.espin
     else # fallback to getfield
         return getfield(obj, sym)
     end
@@ -67,7 +74,7 @@ generate Para with a complete set of parameters, no value presumed.
         me=me,
         EF=EF,
         beta=beta,
-        μ=EF
+        μ=EF,
     )
 end
 
