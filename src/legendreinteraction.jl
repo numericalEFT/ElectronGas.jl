@@ -37,8 +37,8 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
         throw(UndefVarError(spin_state))
     end
     if int_type == :rpa
-        ks, ka = RPA(q, n, param)
-        return ks + spin_factor * ka
+        ks = RPA(q, n, param)
+        return ks
     elseif int_type == :ko
         ks, ka = KO(q, n, param)
         return ks + spin_factor * ka
@@ -52,7 +52,7 @@ end
     if(abs(abs(legendre_x)-1)<1e-12)
         legendre_x = sign(legendre_x)*1
     end
-    return q*Pl(legendre_x, channel)*V_Bare(q, param)[1]*interaction_dynamic(q, n, param, int_type, spin_state)
+    return q*Pl(legendre_x, channel)*V_Bare(q, param)*interaction_dynamic(q, n, param, int_type, spin_state)
 end
 
 @inline function kernel0_integrand(k, p, q, channel, param)
@@ -61,7 +61,7 @@ end
         legendre_x = sign(legendre_x)*1
     end
     @assert -1<=legendre_x<=1 "k=$k,p=$p,q=$q"
-    return q*Pl(legendre_x, channel)*V_Bare(q, param)[1]
+    return q*Pl(legendre_x, channel)*V_Bare(q, param)
 end
 
 

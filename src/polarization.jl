@@ -61,7 +61,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
 function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
-    @unpack me, kF, beta = param
+    @unpack me, kF, beta, spin = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -74,7 +74,7 @@ function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-
         @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
     end
 
-    return Interp.integrate1D(integrand, kgrid)
+    return Interp.integrate1D(integrand, kgrid)/2*spin
 end
 
 """
@@ -88,10 +88,10 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
- - param: other system parameters
+  - param: other system parameters
 """
 function Polarization0_ZeroTemp(q, n, param)
-    @unpack me, kF, beta = param
+    @unpack me, kF, beta, spin = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -135,7 +135,7 @@ function Polarization0_ZeroTemp(q, n, param)
         end
     end
 
-    return Π
+    return Π/2*spin
 end
 
 """
