@@ -17,6 +17,7 @@ using Parameters
     # prime parameters
     ϵ0::Float64 = 1/(4π)
     e0::Float64 = sqrt(2) # electron charge
+    es::Float64 = 1.0  # spin charge
     me::Float64 = 0.5  # electron mass
     EF::Float64 = 1.0     #kF^2 / (2me)
     beta::Float64 = 200
@@ -25,7 +26,8 @@ using Parameters
     # derived parameters
 
     # artificial parameters
-    mass2::Float64 = 0.000
+    lambda1::Float64 = 0.0
+    lambda2::Float64 = 0.0
 end
 
 function Base.getproperty(obj::Para, sym::Symbol)

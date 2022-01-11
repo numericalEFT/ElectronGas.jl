@@ -25,7 +25,7 @@ include(srcdir*"/legendreinteraction.jl")
 using .LegendreInteraction
 
 function G0wrapped(Euv,rtol,sgrid,param)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0, EF = param
+    @unpack me, kF, rs, e0, beta , lambda1, ϵ0, EF = param
 
     green = GreenFunc.Green2DLR{ComplexF64}(:g0,GreenFunc.IMFREQ,beta,true,Euv,sgrid,1)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
@@ -41,7 +41,7 @@ end
 
 # function calcΣ(kernal, kernal_bare, fdlr, kgrid, qgrids)
 function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = W.param
+    @unpack me, kF, rs, e0, beta , lambda1, ϵ0 = W.param
 
     kgrid = W.kgrid
     qgrids = W.qgrids

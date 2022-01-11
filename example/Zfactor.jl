@@ -22,7 +22,7 @@ addprocs(Ncpu)
         τgrid = Grid.tau(β, EF / 25, 128) # for rs=1
         # TODO: τgrid halflife works very strange
 
-        vqinv = [(q^2 + mass2) / (4π * e0^2) for q in qgrid.grid]
+        vqinv = [(q^2 + lambda1) / (4π * e0^2) for q in qgrid.grid]
         dW0 = dWRPA(vqinv, qgrid.grid, τgrid.grid, kF, β, spin, me) # dynamic part of the effective interaction
         return new{typeof(qgrid),typeof(τgrid)}(dW0, qgrid, τgrid)
     end

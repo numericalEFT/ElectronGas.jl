@@ -15,7 +15,7 @@ using .Convention
 
 # Analytical calculated integrand of Π0.
 @inline function _ΠT_integrand(k, q, ω, param)
-    @unpack me, beta, EF, kF = param
+    @unpack spin, me, beta, EF, kF = param
     # ω only appears as ω^2 so no need to check sign of ω
 
     # if q is too small, use safe form
@@ -23,12 +23,12 @@ using .Convention
         if abs(q-2*k)^2<1e-16
             return 0.0
         else
-            return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k)/((q-2*k)^2))
+            return spin*k*me/(4*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k)/((q-2*k)^2))
         end
     elseif q < 1e-16 && ω!=0
-        return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k*q^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+        return spin*k*me/(4*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k*q^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     else
-        return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-EF))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+        return spin*k*me/(4*π^2*q)/(exp(beta*(k^2/2/me-EF))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     end
     # if ω==0 && abs(q*(k*2-q)*beta)<1e-16
     #     return 0.0
@@ -88,7 +88,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
  - param: other system parameters
 """
 function Polarization0_ZeroTemp(q, n, param)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+    @unpack spin, me, kF, beta = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -106,9 +106,9 @@ function Polarization0_ZeroTemp(q, n, param)
 
     if n == 0
         if abs(q - 2*kF) > EPS
-            Π = me*kF/2/π^2*(1 + (1 -x^2)*log1p(4*x/((1-x)^2))/4/x)
+            Π = spin*me*kF/4/π^2*(1 + (1 -x^2)*log1p(4*x/((1-x)^2))/4/x)
         else
-            Π = me*kF/2/π^2
+            Π = spin*me*kF/4/π^2
         end
     else
         if abs(q - 2*kF) > EPS
@@ -118,9 +118,9 @@ function Polarization0_ZeroTemp(q, n, param)
                     theta = theta + π
                 end
                 @assert theta >= 0 && theta<= π
-                Π = me*kF/2/π^2 * (1 + (1 -x^2 + y^2)*log1p(4*x/((1-x)^2+y^2))/4/x - y*theta)
+                Π = spin*me*kF/4/π^2 * (1 + (1 -x^2 + y^2)*log1p(4*x/((1-x)^2+y^2))/4/x - y*theta)
             else
-                Π = me*kF/2/π^2 * (2.0/3.0/y^2  - 2.0/5.0/y^4) #+ (6.0 - 14.0*(ω_n/4.0)^2)/21.0/y^6)
+                Π = spin*me*kF/4/π^2 * (2.0/3.0/y^2  - 2.0/5.0/y^4) #+ (6.0 - 14.0*(ω_n/4.0)^2)/21.0/y^6)
             end
         else
             theta = atan( 2/y )
@@ -128,7 +128,7 @@ function Polarization0_ZeroTemp(q, n, param)
                 theta = theta + π
             end
             @assert theta >= 0 && theta<= π
-            Π = me*kF/2/π^2*(1 + y^2*log1p(4/(y^2))/4 - y*theta)
+            Π = spin*me*kF/4/π^2*(1 + y^2*log1p(4/(y^2))/4 - y*theta)
         end
     end
 

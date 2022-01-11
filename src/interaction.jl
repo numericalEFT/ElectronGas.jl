@@ -22,7 +22,7 @@ export RPA, KO, RPAwrapped, KOwrapped, V_Bare
 # end
 
 # println(Parameter.Param)
-# @unpack me, kF, rs, e0, beta , mass2, ϵ0= Parameter.Param
+# @unpack me, kF, rs, e0, beta , lambda1, ϵ0= Parameter.Param
 
 function inf_sum(q,n)
     # Calculate a series sum for Takada anzats
@@ -44,15 +44,15 @@ end
 """
     function V_Bare(q,param)
 
-Bare interaction in momentum space. Coulomb interaction if mass2=0, Yukawa otherwise.
+Bare interaction in momentum space. Coulomb interaction if lambda1=0, Yukawa otherwise.
 
 #Arguments:
  - q: momentum
  - param: other system parameters
 """
 function V_Bare(q, param)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
-    return e0^2/ϵ0/(q^2+mass2)
+    @unpack me, kF, rs, e0, es, beta , lambda1, lambda2, ϵ0 = param
+    return e0^2/ϵ0/(q^2+lambda1), es^2/(q^2+lambda2)
 end
 
 
@@ -67,25 +67,29 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - param: other system parameters
 """
 function RPA(q, n, param, pifunc=Polarization0_ZeroTemp)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
-    kernel = 0.0
-    if abs(q) > EPS 
-        Π = pifunc(q, n, param)
-        if n == 0
-            kernel = - Π/( 1.0/V_Bare(q,param)  + Π )
-        else
-            Π0 = Π * V_Bare(q,param)
-            kernel = - Π0/( 1.0  + Π0 )
-        end
+#    @unpack me, kF, rs, e0, es, beta, lambda1, lambda2, ϵ0= param
+    kernel1 = 0.0
+    kernel2 = 0.0
+#    if abs(q) > EPS 
+    Π = pifunc(q, n, param)
+    if n == 0
+        kernel1 = - Π/( 1.0/V_Bare(q,param)[1]  + Π )
+        kernel2 = - Π/( 1.0/V_Bare(q,param)[2]  + Π )
     else
-        kernel = 0
+        Π0 = Π * V_Bare(q,param)[1]
+        kernel1 = - Π0/( 1.0  + Π0 )
+        Π0 = Π * V_Bare(q,param)[2]
+        kernel2 = - Π0/( 1.0  + Π0 )
     end
+#    else
+#        kernel = 0
+#    end
 
-    return kernel
+    return kernel1, kernel2
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+    @unpack beta = param
 
     green = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
@@ -112,7 +116,7 @@ G factor with Takada's anzats. See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.13-
  - param: other system parameters
 """
 function localFieldFactorTakada(q, n, param)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
+    @unpack me, kF, rs, e0, beta , lambda1, ϵ0= param
     r_s_dl=sqrt(4*0.521*rs/ π );
     C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
     C2=1-r_s_dl*r_s_dl/4.0*(1+r_s_dl*r_s_dl/8.0*(log(r_s_dl*r_s_dl/(r_s_dl*r_s_dl+0.990))-(1.122+1.222*r_s_dl*r_s_dl)/(1+0.533*r_s_dl*r_s_dl+0.184*r_s_dl*r_s_dl*r_s_dl*r_s_dl)));
@@ -138,7 +142,7 @@ Returns the spin symmetric part and asymmetric part separately.
  - param: other system parameters
 """
 function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0= param
+    @unpack me, kF, rs, e0, beta , lambda1, ϵ0= param
 
     G_s, G_a = gfactorfunc(q, n, param)
     Ks, Ka = 0.0, 0.0
@@ -161,7 +165,7 @@ function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFa
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada) where{SGT}
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = param
+    @unpack me, kF, rs, e0, beta , lambda1, ϵ0 = param
 
     green = GreenFunc.Green2DLR{Float64}(:ko,GreenFunc.IMFREQ,beta,false,Euv,sgrid,2; timeSymmetry=:ph,rtol=rtol)
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
