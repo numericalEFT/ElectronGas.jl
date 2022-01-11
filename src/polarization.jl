@@ -1,17 +1,20 @@
 module Polarization
 
-using Parameters, GreenFunc, CompositeGrids
+using ..GreenFunc, ..CompositeGrids
+using ..Parameter
+using ..Parameters
+using ..Convention
 
 export Polarization0_ZeroTemp, Polarization0_FiniteTemp
 
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
-include(srcdir*"/parameter.jl")
-using .Parameter
-
-include(srcdir*"/convention.jl")
-using .Convention
+# using Parameters, GreenFunc, CompositeGrids
+# include(srcdir*"/parameter.jl")
+# using .Parameter
+# include(srcdir*"/convention.jl")
+# using .Convention
 
 # Analytical calculated integrand of Π0.
 @inline function _ΠT_integrand(k, q, ω, param)
@@ -58,7 +61,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
 function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
-    @unpack me, kF, beta = param
+    @unpack spin, me, kF, beta = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -71,7 +74,7 @@ function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-
         @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
     end
 
-    return Interp.integrate1D(integrand, kgrid)
+    return Interp.integrate1D(integrand, kgrid)/2.0*spin
 end
 
 """
@@ -165,34 +168,3 @@ function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0
 end
 
 end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    beta = 1e4
-    param = Polarization.Parameter.defaultUnit(beta,1.0)
-    # println("n=0")
-    # println(Polarization.Polarization0_ZeroTemp(0.0, 0, param))
-    # println(Polarization.Polarization0_FiniteTemp(0.0, 0, param))
-    # println(Polarization.Polarization0_ZeroTemp(1e-160, 0, param))
-    # println(Polarization.Polarization0_FiniteTemp(1e-160, 0, param))
-    # println(Polarization.Polarization0_ZeroTemp(1e-8, 0, param))
-    # println(Polarization.Polarization0_FiniteTemp(1e-8, 0, param))
-    # println(Polarization.Polarization0_ZeroTemp(1.0, 0, param))
-    # println(Polarization.Polarization0_FiniteTemp(1.0, 0, param))
-    # println(Polarization.Polarization0_ZeroTemp(2.0, 0, param))
-    # println(Polarization.Polarization0_FiniteTemp(2.0, 0, param))
-    # println("n=1")
-    # println(Polarization.Polarization0_ZeroTemp(0.0, 1, param))
-    # println(Polarization.Polarization0_FiniteTemp(0.0, 1, param))
-    # println(Polarization.Polarization0_ZeroTemp(1e-160, 1, param))
-    # println(Polarization.Polarization0_FiniteTemp(1e-160, 1, param))
-    # println(Polarization.Polarization0_ZeroTemp(1e-8, 1, param))
-    # println(Polarization.Polarization0_FiniteTemp(1e-8, 1, param))
-    # println(Polarization.Polarization0_ZeroTemp(1.0, 1, param))
-    # println(Polarization.Polarization0_FiniteTemp(1.0, 1, param))
-    # println(Polarization.Polarization0_ZeroTemp(2.0, 1, param))
-    # println(Polarization.Polarization0_FiniteTemp(2.0, 1, param))
-    Π = Polarization.Polarization0wrapped(100*param.EF,1e-4,[0.0,0.5,1.0,2.0,10.0],param)
-    println(Π.dynamic)
-    println(Π.dlrGrid.n)
-end
-

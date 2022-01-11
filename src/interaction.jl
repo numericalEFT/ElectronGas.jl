@@ -1,18 +1,18 @@
 module Interaction
 
-using Parameters, GreenFunc
+# using Parameters, GreenFunc
+# include(srcdir*"/parameter.jl")
+# using .Parameter
+# include(srcdir*"/convention.jl")
+# using .Convention
+# include(srcdir*"/polarization.jl")
+# using .Polarization
+
+using ..Parameter, ..Convention, ..Polarization
+using ..Parameters, ..CompositeGrids, ..GreenFunc
 
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
-
-include(srcdir*"/parameter.jl")
-using .Parameter
-
-include(srcdir*"/convention.jl")
-using .Convention
-
-include(srcdir*"/polarization.jl")
-using .Polarization
 
 export RPA, KO, RPAwrapped, KOwrapped, V_Bare
 
