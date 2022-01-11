@@ -187,7 +187,7 @@ function interactionDynamic(config, qd, τIn, τOut)
     dτ = abs(τOut - τIn)
 
     kDiQ = sqrt(dot(qd, qd))
-    vd = 4π * e0^2 / (kDiQ^2 + lambda1)
+    vd = 4π * e0^2 / (kDiQ^2 + mass2)
         if kDiQ <= para.qgrid.grid[1]
         q = para.qgrid.grid[1] + 1.0e-6
         wd = vd * Grid.linear2D(para.dW0, para.qgrid, para.τgrid, q, dτ)

@@ -1,5 +1,7 @@
 module ElectronGas
 
+using Parameters, GreenFunc, CompositeGrids, Lehmann, LegendrePolynomials
+
 # Write your package code here.
 include("twopoint.jl")
 export TwoPoint
@@ -15,5 +17,11 @@ export Polarization
 
 include("interaction.jl")
 export Interaction
+
+include("legendreinteraction.jl")
+export LegendreInteraction
+
+include("selfenergy.jl")
+export SelfEnergy
 
 end

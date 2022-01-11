@@ -4,42 +4,43 @@ equation of superconductivity problems.
 """
 module LegendreInteraction
 
-using Parameters, GreenFunc, Lehmann, LegendrePolynomials, CompositeGrids
+# using Parameters, GreenFunc, Lehmann, LegendrePolynomials, CompositeGrids
+# include(srcdir*"/parameter.jl")
+# using .Parameter
+# include(srcdir*"/convention.jl")
+# using .Convention
+# include(srcdir*"/polarization.jl")
+# using .Polarization
+# include(srcdir*"/interaction.jl")
+# using .Interaction
+
+using ..Parameter, ..Convention, ..Polarization, ..Interaction
+using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
 export DCKernel
 
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
-include(srcdir*"/parameter.jl")
-using .Parameter
-
-include(srcdir*"/convention.jl")
-using .Convention
-
-include(srcdir*"/polarization.jl")
-using .Polarization
-
-include(srcdir*"/interaction.jl")
-using .Interaction
 
 function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
+    if spin_state==:singlet
+        spin_factor = 1.0
+    elseif spin_state==:triplet
+        spin_factor = -3.0
+    elseif spin_state==:sigma
+        spin_factor = 3.0
+    else
+        throw(UndefVarError(spin_state))
+    end
     if int_type == :rpa
-        return RPA(q, n, param)
+        ks, ka = RPA(q, n, param)
+        return ks + spin_factor * ka
     elseif int_type == :ko
         ks, ka = KO(q, n, param)
-        if spin_state==:singlet
-            spin_factor = 1.0
-        elseif spin_state==:triplet
-            spin_factor = -3.0
-        elseif spin_state==:sigma
-            spin_factor = 3.0
-        else
-            throw(UndefVarError(spin_state))
-        end
         return ks + spin_factor * ka
     else
         throw(UndefVarError(int_type))
@@ -169,24 +170,5 @@ struct DCKernel
     # end
 
 end
-
-end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    # using Plots
-
-    param = LegendreInteraction.Parameter.defaultUnit(1000.0, 1.0)
-
-    kernel = LegendreInteraction.DCKernel(param, 100*param.EF, 1e-8, 5, 10*param.kF, 1e-7*param.kF, 4, :rpa,0,:sigma)
-    # kernel2 = LegendreInteraction.DCKernel(kernel, 500.0)
-    kF_label = searchsortedfirst(kernel.kgrid.grid, kernel.param.kF)
-    qF_label = searchsortedfirst(kernel.qgrids[kF_label].grid, kernel.param.kF)
-    println(kernel.kernel[kF_label,qF_label,:])
-    # println(kernel2.kernel[kF_label,qF_label,:])
-
-    # p = plot(kernel.dlr.ωn[1:8], kernel.kernel[kF_label,qF_label,1:8])
-    # plot!(p, kernel2.dlr.ωn[1:8], kernel2.kernel[kF_label,qF_label,1:8])
-    # display(p)
-    # readline()
 
 end

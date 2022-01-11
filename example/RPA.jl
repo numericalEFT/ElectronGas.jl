@@ -53,7 +53,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     τgrid = Grid.tau(β, EF / 20, 128)
     # println("qGrid: ", qgrid.grid)
     println("τGrid: ", τgrid.grid)
-    vqinv = [(q^2 + lambda1) / (4π * e0^2) for q in qgrid.grid] # instantaneous interaction (Coulomb interaction)
+    vqinv = [(q^2 + mass2) / (4π * e0^2) for q in qgrid.grid] # instantaneous interaction (Coulomb interaction)
 
 
     dW0norm = dWRPA(vqinv, qgrid.grid, τgrid.grid, kF, β, spin, me)

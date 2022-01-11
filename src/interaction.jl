@@ -22,7 +22,7 @@ export RPA, KO, RPAwrapped, KOwrapped, V_Bare
 # end
 
 # println(Parameter.Param)
-# @unpack me, kF, rs, e0, beta , lambda1, ϵ0= Parameter.Param
+# @unpack me, kF, rs, e0, beta , mass2, ϵ0= Parameter.Param
 
 function inf_sum(q,n)
     # Calculate a series sum for Takada anzats
@@ -44,15 +44,15 @@ end
 """
     function V_Bare(q,param)
 
-Bare interaction in momentum space. Coulomb interaction if lambda1=0, Yukawa otherwise.
+Bare interaction in momentum space. Coulomb interaction if mass2=0, Yukawa otherwise.
 
 #Arguments:
  - q: momentum
  - param: other system parameters
 """
 function V_Bare(q, param)
-    @unpack me, kF, rs, e0, es, beta , lambda1, lambda2, ϵ0 = param
-    return e0^2/ϵ0/(q^2+lambda1), es^2/(q^2+lambda2)
+    @unpack e0, espin, λs, λa, ϵ0 = param
+    return e0^2/ϵ0/(q^2+λs), espin^2/(q^2+λa)
 end
 
 
@@ -66,57 +66,56 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function RPA(q, n, param, pifunc=Polarization0_ZeroTemp)
-#    @unpack me, kF, rs, e0, es, beta, lambda1, lambda2, ϵ0= param
-    kernel1 = 0.0
-    kernel2 = 0.0
-#    if abs(q) > EPS 
+function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, V_Bare=V_Bare)
+    ks::Float64, ka::Float64 = 0.0, 0.0
+    Vs, Va = V_Bare(q, param)
     Π = pifunc(q, n, param)
+#    if abs(q) > EPS 
     if n == 0
-        kernel1 = - Π/( 1.0/V_Bare(q,param)[1]  + Π )
-        kernel2 = - Π/( 1.0/V_Bare(q,param)[2]  + Π )
+        ks = - Π/( 1.0/Vs  + Π )
+        ka = - Π/( 1.0/Va  + Π )
     else
-        Π0 = Π * V_Bare(q,param)[1]
-        kernel1 = - Π0/( 1.0  + Π0 )
-        Π0 = Π * V_Bare(q,param)[2]
-        kernel2 = - Π0/( 1.0  + Π0 )
+        ks = - (Π*Vs)/( 1.0  + Π*Vs )
+        ka = - (Π*Va)/( 1.0  + Π*Va )
     end
 #    else
 #        kernel = 0
 #    end
-
-    return kernel1, kernel2
+    return ks, ka
 end
 
-function RPAwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
+function RPAwrapped(Euv, rtol, sgrid::SGT, param; pifunc=Polarization0_ZeroTemp, V_Bare=V_Bare) where{SGT}
     @unpack beta = param
 
-    green = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
-    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    green_ins = zeros(Float64, (green.color, green.color, green.spaceGrid.size))
+    gs = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    ga = similar(gs)
+    green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
+    green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
+    green_dyn_a = similar(green_dyn_s)
+    green_ins_a = similar(green_ins_s)
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1,1,ki,ni] = RPA(k, n, param, pifunc)
+        for (ni, n) in enumerate(gs.dlrGrid.n)
+            green_dyn_s[1,1,ki,ni], green_dyn_a[1,1,ki,ni] = RPA(k, n, param; pifunc=pifunc,V_Bare=V_Bare)
         end
-        green_ins[1,1,ki] = V_Bare(k, param)
+        green_ins_s[1,1,ki], green_ins_a[1,1,ki] = V_Bare(k, param)
     end
-    green.dynamic=green_dyn
-    green.instant=green_ins
-    return green
+    gs.dynamic=green_dyn_s
+    gs.instant=green_ins_s
+    ga.dynamic=green_dyn_a
+    ga.instant=green_ins_a
+    return gs, ga
 end
 
 """
     function localFieldFactorTakada(q, n, param)
-
 G factor with Takada's anzats. See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.13-2.16).
-
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
 function localFieldFactorTakada(q, n, param)
-    @unpack me, kF, rs, e0, beta , lambda1, ϵ0= param
+    @unpack rs, e0, beta = param
     r_s_dl=sqrt(4*0.521*rs/ π );
     C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
     C2=1-r_s_dl*r_s_dl/4.0*(1+r_s_dl*r_s_dl/8.0*(log(r_s_dl*r_s_dl/(r_s_dl*r_s_dl+0.990))-(1.122+1.222*r_s_dl*r_s_dl)/(1+0.533*r_s_dl*r_s_dl+0.184*r_s_dl*r_s_dl*r_s_dl*r_s_dl)));
@@ -132,30 +131,26 @@ end
 
 """
     function KO(q, n, param)
-
 Dynamic part of KO interaction, with polarization approximated by zero temperature Π0.
 Returns the spin symmetric part and asymmetric part separately.
-
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada)
-    @unpack me, kF, rs, e0, beta , lambda1, ϵ0= param
+function KO(q, n, param; pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada, V_Bare=V_Bare)
 
-    G_s, G_a = gfactorfunc(q, n, param)
-    Ks, Ka = 0.0, 0.0
-
+    G_s::Float64, G_a::Float64 = gfactorfunc(q, n, param)
+    Ks::Float64, Ka::Float64 = 0.0, 0.0
+    Vs::Float64 = V_Bare(q, param)[1]
     if abs(q) > EPS 
-        Π = pifunc(q, n, param)
+        Π::Float64 = pifunc(q, n, param)
         if n == 0
-            Ks = - Π*(1-G_s)^2/( 1.0/V_Bare(q, param)  + Π*(1-G_s))
-            Ka = -Π*(-G_a)^2/( 1.0/V_Bare(q,param) + Π*(-G_a))
+            Ks = - Π*(1-G_s)^2/( 1.0/Vs  + Π*(1-G_s))
+            Ka = -Π*(-G_a)^2/( 1.0/Vs + Π*(-G_a))
         else
-            Π0 = Π * V_Bare(q,param)
-            Ks = - Π0*(1-G_s)^2/( 1.0  + Π0*(1-G_s))
-            Ka = -Π0*(-G_a)^2/(1.0 + Π0*(-G_a))
+            Ks = - (Π*Vs)*(1-G_s)^2/( 1.0  + (Π*Vs)*(1-G_s))
+            Ka = -(Π*Vs)*(-G_a)^2/(1.0 + (Π*Vs)*(-G_a))
         end
     else
         Ks, Ka = 0.0, 0.0
@@ -164,46 +159,26 @@ function KO(q, n, param, pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFa
     return Ks, Ka
 end
 
-function KOwrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada) where{SGT}
-    @unpack me, kF, rs, e0, beta , lambda1, ϵ0 = param
-
-    green = GreenFunc.Green2DLR{Float64}(:ko,GreenFunc.IMFREQ,beta,false,Euv,sgrid,2; timeSymmetry=:ph,rtol=rtol)
-    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    green_ins = zeros(Float64, (green.color, green.color, green.spaceGrid.size))
+function KOwrapped(Euv, rtol, sgrid::SGT, param;
+                   pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada, V_Bare=V_Bare) where{SGT}
+    @unpack rs, beta = param
+    gs = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    ga = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
+    green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
+    green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
+    green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            ks, ka = KO(k, n, param, pifunc, gfactorfunc)
-            green_dyn[1,1,ki,ni] = ks
-            green_dyn[2,2,ki,ni] = ks
-            green_dyn[1,2,ki,ni] = ka
-            green_dyn[2,1,ki,ni] = ka
+        for (ni, n) in enumerate(gs.dlrGrid.n)
+            green_dyn_s[1,1,ki,ni], green_dyn_a[1,1,ki,ni] = KO(k, n, param; pifunc=pifunc, gfactorfunc=gfactorfunc,V_Bare=V_Bare)
         end
-        green_ins[1,1,ki] = V_Bare(k, param)
-        green_ins[2,2,ki] = V_Bare(k, param)
+        green_ins_s[1,1,ki], green_ins_a[1,1,ki] = V_Bare(k, param)[1], V_Bare(k, param)[1]
     end
-
-    green.dynamic=green_dyn
-    green.instant=green_ins
-    return green
+    gs.dynamic=green_dyn_s
+    gs.instant=green_ins_s
+    ga.dynamic=green_dyn_a
+    ga.instant=green_ins_a
+    return gs, ga
 end
 
-
-end
-
-
-if abspath(PROGRAM_FILE) == @__FILE__
-    beta = 1e4
-    rs = 2.0
-    param = Interaction.Parameter.defaultUnit(beta,rs)
-    println(Interaction.RPA(0.01, 1, param))
-    println(Interaction.KO(0.01, 1, param))
-    println(Interaction.RPA(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
-    println(Interaction.KO(1.0, 1, param, Interaction.Polarization.Polarization0_FiniteTemp))
-
-    RPA = Interaction.RPAwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    println(RPA.dynamic)
-    println(RPA.instant)
-    KO = Interaction.KOwrapped(100*param.EF,1e-4,[1e-8,0.5,1.0,2.0,10.0],param)
-    println(KO.dynamic)
-    println(KO.instant)
 end
