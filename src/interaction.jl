@@ -87,12 +87,12 @@ end
 function RPAwrapped(Euv, rtol, sgrid::SGT, param; pifunc=Polarization0_ZeroTemp, V_Bare=V_Bare) where{SGT}
     @unpack beta = param
 
-    gs = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
-    ga = similar(gs)
+    gs = GreenFunc.Green2DLR{Float64,ImFreq}(:rpa,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    ga = GreenFunc.Green2DLR{Float64,ImFreq}(:rpa,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
-    green_dyn_a = similar(green_dyn_s)
-    green_ins_a = similar(green_ins_s)
+    green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
+    green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
             green_dyn_s[1,1,ki,ni], green_dyn_a[1,1,ki,ni] = RPA(k, n, param; pifunc=pifunc,V_Bare=V_Bare)
@@ -162,8 +162,8 @@ end
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
                    pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada, V_Bare=V_Bare) where{SGT}
     @unpack rs, beta = param
-    gs = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.ImFreq,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    gs = GreenFunc.Green2DLR{Float64,ImFreq}(:rpa,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    ga = GreenFunc.Green2DLR{Float64,ImFreq}(:rpa,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
     green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
