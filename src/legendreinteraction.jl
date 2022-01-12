@@ -22,29 +22,31 @@ export DCKernel
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
+@inline function spin_factor(spin_state)
+    if spin_state==:singlet
+        factor = 1.0
+    elseif spin_state==:triplet
+        factor = -3.0
+    elseif spin_state==:sigma
+        factor = 3.0
+    else
+        throw(UndefVarError(spin_state))
+    end
+    return factor
+end
 
 function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
-    if spin_state==:singlet
-        spin_factor = 1.0
-    elseif spin_state==:triplet
-        spin_factor = -3.0
-    elseif spin_state==:sigma
-        spin_factor = 3.0
-    else
-        throw(UndefVarError(spin_state))
-    end
     if int_type == :rpa
-        ks = RPA(q, n, param)
-        return ks
+        ks, ka = RPA(q, n, param)
     elseif int_type == :ko
         ks, ka = KO(q, n, param)
-        return ks + spin_factor * ka
     else
         throw(UndefVarError(int_type))
     end
+    return ks + spin_factor(spin_state) * ka
 end
 
 @inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state)
@@ -52,18 +54,19 @@ end
     if(abs(abs(legendre_x)-1)<1e-12)
         legendre_x = sign(legendre_x)*1
     end
-    return q*Pl(legendre_x, channel)*coulomb(q, param)[1]*interaction_dynamic(q, n, param, int_type, spin_state)
+    # convention changed, now interaction_dynamic already included the V_Bare
+    return q*Pl(legendre_x, channel)*interaction_dynamic(q, n, param, int_type, spin_state)
 end
 
-@inline function kernel0_integrand(k, p, q, channel, param)
+@inline function kernel0_integrand(k, p, q, channel, param, spin_state)
     legendre_x = (k^2 + p^2 - q^2)/2/k/p
     if(abs(abs(legendre_x)-1)<1e-12)
         legendre_x = sign(legendre_x)*1
     end
     @assert -1<=legendre_x<=1 "k=$k,p=$p,q=$q"
-    return q*Pl(legendre_x, channel)*coulomb(q, param)[1]
+    Vs, Va = coulomb(q, param)
+    return q*Pl(legendre_x, channel)*(Vs + spin_factor(spin_state)*Va)
 end
-
 
 struct DCKernel
     int_type::Symbol
@@ -129,7 +132,7 @@ struct DCKernel
                     
                     int_grid=CompositeGrid.Composite{Float64,SimpleGrid.Arbitrary{Float64},SubGridType}(int_panel,subgrids)
 
-                    data = [kernel0_integrand(k, p, q, channel, param) for q in int_grid.grid]
+                    data = [kernel0_integrand(k, p, q, channel, param, spin_state) for q in int_grid.grid]
                     kernel_bare[ki, pi] = Interp.integrate1D(data, int_grid)
 
                     for (ni, n) in enumerate(bdlr.n)

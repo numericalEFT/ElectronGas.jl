@@ -9,9 +9,9 @@
         println(Interaction.RPA(1.0, 1, param; pifunc=Interaction.Polarization.Polarization0_FiniteTemp))
         println(Interaction.KO(1.0, 1, param; pifunc=Interaction.Polarization.Polarization0_FiniteTemp))
 
-        RPA = Interaction.RPAwrapped(100*param.EF,1e-8,[1e-8,0.5,1.0,2.0,10.0],param)
-        println(RPA.dynamic)
-        println(RPA.instant)
+        RPAs, RPAa = Interaction.RPAwrapped(100*param.EF,1e-8,[1e-8,0.5,1.0,2.0,10.0],param)
+        println(RPAs.dynamic)
+        println(RPAs.instant)
         KOs, KOa = Interaction.KOwrapped(100*param.EF,1e-8,[1e-8,0.5,1.0,2.0,10.0],param)
         println(KOs.dynamic)
         println(KOs.instant)
