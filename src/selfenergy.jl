@@ -11,7 +11,7 @@ srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
 function G0wrapped(Euv,rtol,sgrid,param)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0, EF = param
+    @unpack me, kF, beta, EF = param
 
     green = GreenFunc.Green2DLR{ComplexF64}(:g0,GreenFunc.IMFREQ,beta,true,Euv,sgrid,1)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
@@ -27,7 +27,7 @@ end
 
 # function calcΣ(kernal, kernal_bare, fdlr, kgrid, qgrids)
 function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
-    @unpack me, kF, rs, e0, beta , mass2, ϵ0 = W.param
+    @unpack beta= W.param
 
     kgrid = W.kgrid
     qgrids = W.qgrids
@@ -58,7 +58,7 @@ function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
 
             if τi == 1
                 Gq = CompositeGrids.Interp.interp1DGrid(G_ins,kgrid,qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
+                 integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
                 Σ_ins[1,1,ki] += CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
                 @assert isfinite(Σ_ins[1,1,ki]) "fail Δ0 at $ki"
             end
@@ -70,18 +70,19 @@ function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     return Σ
 end
 
+function zfactor(Σ::GreenFunc.Green2DLR)
+    kgrid = Σ.spaceGrid
+    kF = kgrid.panel[3]
+    beta = Σ.dlrGrid.β
+
+    println("kF=$kF")
+    kF_label = searchsortedfirst(kgrid.grid, kF)
+    Σ_freq = GreenFunc.toMatFreq(Σ, [0,1])
+
+    ΣI = imag(Σ_freq.dynamic[1,1,kF_label,:])
+
+    Z0 = 1/(1 + (ΣI[2]-ΣI[1])/2/π*beta)
+    return Z0
 end
-
-if abspath(PROGRAM_FILE) == @__FILE__
-
-    param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(1000.0, 1.0)
-    Euv, rtol = 100*param.EF, 1e-8
-    kernel = SelfEnergy.LegendreInteraction.DCKernel(param, Euv, rtol, 5, 10*param.kF, 1e-7*param.kF, 4, :rpa,0,:sigma)
-
-    G0 = SelfEnergy.G0wrapped(Euv, rtol, kernel.kgrid, param)
-
-    Σ = SelfEnergy.calcΣ(G0, kernel)
-
-    println(Σ.dynamic)
 
 end
