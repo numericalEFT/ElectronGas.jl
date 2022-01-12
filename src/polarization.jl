@@ -61,7 +61,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
 function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
-    @unpack me, kF, beta, spin = param
+    @unpack me, kF, beta = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -73,8 +73,8 @@ function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-
         integrand[ki] = _ΠT_integrand(k, q, 2π*n/beta, param)
         @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
     end
-
-    return Interp.integrate1D(integrand, kgrid)/2*spin
+    # initially derived for spin=1/2
+    return Interp.integrate1D(integrand, kgrid)/2
 end
 
 """
@@ -91,7 +91,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
   - param: other system parameters
 """
 function Polarization0_ZeroTemp(q, n, param)
-    @unpack me, kF, beta, spin = param
+    @unpack me, kF, beta = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -134,8 +134,8 @@ function Polarization0_ZeroTemp(q, n, param)
             Π = me*kF/2/π^2*(1 + y^2*log1p(4/(y^2))/4 - y*theta)
         end
     end
-
-    return Π/2*spin
+    # initially derived for spin=1/2
+    return Π/2
 end
 
 """
