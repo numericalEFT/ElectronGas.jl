@@ -1,12 +1,13 @@
 """
-Template of parameter.
+Template of parameter. A submodule of ElectronGas.
 
     Use the convention where ħ=1, k_B=1.
     Only stores parameters that might change for purposes.
 """
 module Parameter
 
-using Parameters
+# using Parameters
+using ..Parameters
 
 @with_kw struct Para
     WID::Int = 1
@@ -25,7 +26,9 @@ using Parameters
     # derived parameters
 
     # artificial parameters
-    mass2::Float64 = 0.000
+    Λs::Float64 = 0.0
+    Λa::Float64 = 0.0
+    espin::Float64 = 0.0
 end
 
 function Base.getproperty(obj::Para, sym::Symbol)
@@ -41,6 +44,10 @@ function Base.getproperty(obj::Para, sym::Symbol)
         return obj.Rs/obj.a0
     elseif sym === :kF
         return sqrt(2*obj.me*obj.EF)
+    elseif sym === :e0s
+        return obj.e0
+    elseif sym === :e0a
+        return obj.espin
     else # fallback to getfield
         return getfield(obj, sym)
     end
@@ -67,7 +74,7 @@ generate Para with a complete set of parameters, no value presumed.
         me=me,
         EF=EF,
         beta=beta,
-        μ=EF
+        μ=EF,
     )
 end
 
@@ -108,26 +115,6 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     beta = β * EF
     return fullUnit(ϵ0, e0, me, EF, beta, dim, spin)
 end
-
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
-
-if !@isdefined Param
-    try
-        include(rundir*"/para.jl")
-    catch ee
-        if isa(ee, LoadError) || isa(ee, SystemError)
-            println("Load failed. Generating default parameters instead.")
-            global Param = defaultUnit(100, 1)
-        else
-            throw(ee)
-        end
-    end
-end
-
-fullUnit!(ϵ0, e0, me, EF, beta, dim = 3, spin = 2) = (global Param = fullUnit(ϵ0, e0, me, EF, beta, dim, spin))
-defaultUnit!(β, rs, dim = 3, spin = 2) = (global Param = defaultUnit(β, rs, dim, spin))
-rydbergUnit!(β, rs, dim = 3, spin = 2) = (global Param = rydbergUnit(β, rs, dim, spin))
 
 export Para, Param
 
