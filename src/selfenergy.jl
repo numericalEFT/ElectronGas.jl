@@ -87,7 +87,7 @@ function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
 end
 
 function G0W0(param, Euv, rtol, Nk, maxk, mink, order, int_type)
-    kernel = SelfEnergy.LegendreInteraction.DCKernel(param, Euv, rtol, Nk, maxk, mink, order, int_type, 0, :sigma)
+    kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param, Euv, rtol, Nk, maxk, mink, order, int_type, 0, :sigma)
     G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
     Σ = calcΣ(G0, kernel)
 
