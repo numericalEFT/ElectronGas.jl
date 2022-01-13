@@ -55,7 +55,7 @@ function coulomb(q, param)
     return e0s^2/ϵ0/(q^2+Λs), e0a^2/ϵ0/(q^2+Λa)
 end
 
-function bubbledyson(V, V0, G, Π, n)
+function bubbledyson(V, F, Π, n)
     # V:bare interaction
     # V0:symmetric bare interaction
     # G:G^{+-} is local field factor,0 for RPA
@@ -64,23 +64,27 @@ function bubbledyson(V, V0, G, Π, n)
     # comparing to previous convention, an additional V is multiplied
     K = 0
     if n == 0
-        K = - V0*Π*(V/V0-G)^2/( 1.0/V0  + Π*(V/V0-G))
+        if F == 0
+            K = - V*Π*(1)^2/( 1.0/V  + Π*(1))
+        else
+            K = - V*Π*(1-F/V)^2/( 1.0/V  + Π*(1-F/V))
+        end
     else
-        K = - (Π)*(V-V0*G)^2/( 1.0  + (Π)*(V-V0*G))
+        K = - (Π)*(V-F)^2/( 1.0  + (Π)*(V-F))
     end
+    @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
     return K
 end
 
 function bubblecorrection(q, n, param;
-            pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada, V_Bare=coulomb, type=:s)
-    Gs::Float64, Ga::Float64 = gfactorfunc(q, n, param)
+            pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, V_Bare=coulomb)
+    Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vs::Float64, Va::Float64 = V_Bare(q, param)
-    V0 = (type==:s) ? Vs : Va
     if abs(q) > EPS 
         Π::Float64 = 2*pifunc(q, n, param)
-        Ks = bubbledyson(Vs,V0,Gs,Π,n)
-        Ka = bubbledyson(Va,V0,Ga,Π,n)
+        Ks = bubbledyson(Vs,Fs,Π,n)
+        Ka = bubbledyson(Va,Fa,Π,n)
     else
         Ks, Ka = 0.0, 0.0
     end
@@ -99,11 +103,11 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - param: other system parameters
 """
 function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, V_Bare=coulomb)
-    return bubblecorrection(q,n,param;pifunc=pifunc,gfactorfunc=localFieldFactor0,V_Bare=V_Bare)
+    return bubblecorrection(q,n,param;pifunc=pifunc,landaufunc=landauParameter0,V_Bare=V_Bare)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-                   pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada, V_Bare=coulomb) where{SGT}
+                   pifunc=Polarization0_ZeroTemp,landaufunc=landauParameterTakada, V_Bare=coulomb) where{SGT}
     @unpack me, kF, rs, e0, beta , Λs, ϵ0 = param
     gs = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     ga = GreenFunc.Green2DLR{Float64}(:rpa,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
@@ -125,17 +129,18 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
 end
 
 """
-    function localFieldFactorTakada(q, n, param)
+TODO    function landauParameterTakada(q, n, param)->exchange correlation kernel/Landau parameter
 
 G factor with Takada's anzats. See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.13-2.16).
+Now Landau parameter F. F(+-)=G(+-)*V
 
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function localFieldFactorTakada(q, n, param)
-    @unpack me, kF, rs, e0, beta , Λs, ϵ0= param
+function landauParameterTakada(q, n, param)
+    @unpack me, kF, rs, e0s, e0, e0a, beta, Λs, Λa, ϵ0 = param
     r_s_dl=sqrt(4*0.521*rs/ π );
     C1=1-r_s_dl*r_s_dl/4.0*(1+0.07671*r_s_dl*r_s_dl*((1+12.05*r_s_dl)*(1+12.05*r_s_dl)+4.0*4.254/3.0*r_s_dl*r_s_dl*(1+7.0/8.0*12.05*r_s_dl)+1.5*1.363*r_s_dl*r_s_dl*r_s_dl*(1+8.0/9.0*12.05*r_s_dl))/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl)/(1+12.05*r_s_dl+4.254*r_s_dl*r_s_dl+1.363*r_s_dl*r_s_dl*r_s_dl));
     C2=1-r_s_dl*r_s_dl/4.0*(1+r_s_dl*r_s_dl/8.0*(log(r_s_dl*r_s_dl/(r_s_dl*r_s_dl+0.990))-(1.122+1.222*r_s_dl*r_s_dl)/(1+0.533*r_s_dl*r_s_dl+0.184*r_s_dl*r_s_dl*r_s_dl*r_s_dl)));
@@ -144,12 +149,12 @@ function localFieldFactorTakada(q, n, param)
     A2=(C2-C1)/4.0/e0^2*π ;
     B1=6*A1/(D+1.0);
     B2=2*A2/(1.0-D);
-    G_s=A1*q^2/(1.0+B1*q^2)+A2*q^2/(1.0+B2*q^2);
-    G_a=A1*q^2/(1.0+B1*q^2)-A2*q^2/(1.0+B2*q^2);
-    return G_s, G_a
+    F_s=A1*e0s^2/ϵ0/(1.0+B1*q^2)+A2*e0s^2/ϵ0/(1.0+B2*q^2);
+    F_a=A1*e0s^2/ϵ0/(1.0+B1*q^2)-A2*e0s^2/ϵ0/(1.0+B2*q^2);
+    return F_s, F_a
 end
 
-@inline function localFieldFactor0(q, n, param)
+@inline function landauParameter0(q, n, param)
     return 0.0, 0.0
 end
 
@@ -164,12 +169,12 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param; pifunc=Polarization0_ZeroTemp, gfactorfunc=localFieldFactorTakada, V_Bare=coulomb)
-    return bubblecorrection(q,n,param;pifunc=pifunc,gfactorfunc=gfactorfunc,V_Bare=coulomb)
+function KO(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, V_Bare=coulomb)
+    return bubblecorrection(q,n,param;pifunc=pifunc,landaufunc=landaufunc,V_Bare=coulomb)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
-                   pifunc=Polarization0_ZeroTemp,gfactorfunc=localFieldFactorTakada, V_Bare=coulomb) where{SGT}
+                   pifunc=Polarization0_ZeroTemp,landaufunc=landauParameterTakada, V_Bare=coulomb) where{SGT}
     @unpack me, kF, rs, e0, beta , Λs, ϵ0 = param
     gs = GreenFunc.Green2DLR{Float64}(:ko,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     ga = GreenFunc.Green2DLR{Float64}(:ko,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
@@ -179,7 +184,7 @@ function KOwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1,1,ki,ni],green_dyn_a[1,1,ki,ni] = KO(k, n, param; pifunc=pifunc, gfactorfunc=gfactorfunc,V_Bare=V_Bare)
+            green_dyn_s[1,1,ki,ni],green_dyn_a[1,1,ki,ni] = KO(k, n, param; pifunc=pifunc, landaufunc=landaufunc,V_Bare=V_Bare)
         end
         green_ins_s[1,1,ki],green_ins_a[1,1,ki] = V_Bare(k, param)
     end
