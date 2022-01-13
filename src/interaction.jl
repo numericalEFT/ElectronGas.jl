@@ -50,14 +50,13 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
  - q: momentum
  - param: other system parameters
 """
-function coulomb(q, param)
-    @unpack me, kF, rs, e0s, e0a, beta, Λs, Λa, ϵ0 = param
+function coulomb(q::Float64, param)
+    @unpack e0s, e0a, Λs, Λa, ϵ0 = param
     return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
 end
 
-function bubbledyson(V, F, Π, n)
+function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     # V:bare interaction
-    # V0:symmetric bare interaction
     # G:G^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
@@ -79,13 +78,15 @@ function bubbledyson(V, F, Π, n)
     return K
 end
 
-function bubblecorrection(q, n, param;
+function bubblecorrection(q::Float64, n::Int, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vs::Float64, Va::Float64 = V_Bare(q, param)
+    @unpack spin = param
+
     if abs(q) > EPS
-        Π::Float64 = 2 * pifunc(q, n, param)
+        Π::Float64 = spin * pifunc(q, n, param)
         Ks = bubbledyson(Vs, Fs, Π, n)
         Ka = bubbledyson(Va, Fa, Π, n)
     else
@@ -110,8 +111,8 @@ function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, V_Bare = coulomb)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, beta, Λs, ϵ0 = param
+    pifunc = Polarization0_ZeroTemp, V_Bare = coulomb) where {SGT}
+    @unpack beta = param
     gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
@@ -143,10 +144,10 @@ Now Landau parameter F. F(+-)=G(+-)*V
  - param: other system parameters
 """
 function landauParameterTakada(q, n, param)
+    @unpack rs, e0, ϵ0 = param
     if e0 ≈ 0.0
         return 0.0, 0.0
     end
-    @unpack me, kF, rs, e0s, e0, e0a, beta, Λs, Λa, ϵ0 = param
     r_s_dl = sqrt(4 * 0.521 * rs / π)
     C1 = 1 - r_s_dl * r_s_dl / 4.0 * (1 + 0.07671 * r_s_dl * r_s_dl * ((1 + 12.05 * r_s_dl) * (1 + 12.05 * r_s_dl) + 4.0 * 4.254 / 3.0 * r_s_dl * r_s_dl * (1 + 7.0 / 8.0 * 12.05 * r_s_dl) + 1.5 * 1.363 * r_s_dl * r_s_dl * r_s_dl * (1 + 8.0 / 9.0 * 12.05 * r_s_dl)) / (1 + 12.05 * r_s_dl + 4.254 * r_s_dl * r_s_dl + 1.363 * r_s_dl * r_s_dl * r_s_dl) / (1 + 12.05 * r_s_dl + 4.254 * r_s_dl * r_s_dl + 1.363 * r_s_dl * r_s_dl * r_s_dl))
     C2 = 1 - r_s_dl * r_s_dl / 4.0 * (1 + r_s_dl * r_s_dl / 8.0 * (log(r_s_dl * r_s_dl / (r_s_dl * r_s_dl + 0.990)) - (1.122 + 1.222 * r_s_dl * r_s_dl) / (1 + 0.533 * r_s_dl * r_s_dl + 0.184 * r_s_dl * r_s_dl * r_s_dl * r_s_dl)))
@@ -155,8 +156,8 @@ function landauParameterTakada(q, n, param)
     A2 = (C2 - C1) / 4.0 / e0^2 * π
     B1 = 6 * A1 / (D + 1.0)
     B2 = 2 * A2 / (1.0 - D)
-    F_s = A1 * e0s^2 / ϵ0 / (1.0 + B1 * q^2) + A2 * e0s^2 / ϵ0 / (1.0 + B2 * q^2)
-    F_a = A1 * e0s^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0s^2 / ϵ0 / (1.0 + B2 * q^2)
+    F_s = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) + A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
+    F_a = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
     return F_s, F_a
 end
 
@@ -181,7 +182,7 @@ end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, beta, Λs, ϵ0 = param
+    @unpack beta = param
     gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
