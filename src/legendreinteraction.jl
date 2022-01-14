@@ -73,11 +73,11 @@ end
     return q*Pl(legendre_x, channel)*interaction_instant(q, param, spin_state)
 end
 
-function helper_function(y::Float64, n::Int, W, param; Nk::Int=40, mink::Float64=1e-12*param.kF, order::Int=6 )
+function helper_function(y::Float64, n::Int, W, param; Nk::Int=40, minK::Float64=1e-12*param.kF, order::Int=6 )
     # return the helper function
     @unpack kF, beta = param
     # generate a new grid for every calculation
-    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, y], [0.0,min(y,2kF)], Nk, mink, order)
+    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, y], [0.0,min(y,2kF)], Nk, minK, order)
 
     integrand = zeros(Float64, kgrid.size)
     for (ki, k) in enumerate(kgrid)
@@ -87,6 +87,33 @@ function helper_function(y::Float64, n::Int, W, param; Nk::Int=40, mink::Float64
     H = Interp.integrate1D(integrand, kgrid)
     return H
 end
+
+function helper_function_grid(ygrid, intgrid, n::Int, W, param)
+    # return the helper function
+    @unpack kF, beta = param
+    # generate a new grid for every calculation
+    #kgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, grid[end]], [0.0,min(grid[end],2kF)], Nk, minK, order)
+    kgrid = intgrid
+    grid = ygrid
+    helper = zeros(Float64, length(grid))
+
+    integrand = zeros(Float64, kgrid.size)
+    for (ki, k) in enumerate(kgrid)
+        integrand[ki] = k^n*W(k)
+    end
+
+    for i in 1:length(grid)
+        if i==1
+            x1, x2 = 0.0, grid[1]
+        else
+            x1, x2 = grid[i-1], grid[i]
+        end
+        helper[i] = Interp.integrate1DRange(integrand, kgrid, [x1,x2])
+    end
+
+    return helper
+end
+
 
 struct DCKernel
     int_type::Symbol
@@ -209,14 +236,15 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
 
     helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 2Nk, 0.01minK, 2order)
+    intgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, helper_grid[end]], [0.0,2kF], 2Nk, 0.01minK, 2order)
 
     # dynamic
     for (ni, n) in enumerate(bdlr.n)
-        helper = zeros(Float64, helper_grid.size)
-        for (yi, y) in enumerate(helper_grid)
-            helper[yi] = helper_function(y, 1, u->interaction_dynamic(u,n,param,int_type,spin_state),param)
-        end
-
+        # helper = zeros(Float64, helper_grid.size)
+        # for (yi, y) in enumerate(helper_grid)
+        #     helper[yi] = helper_function(y, 1, u->interaction_dynamic(u,n,param,int_type,spin_state),param)
+        # end
+        helper = helper_function_grid(helper_grid,intgrid, 1, u->interaction_dynamic(u,n,param,int_type,spin_state),param)
         for (ki, k) in enumerate(kgrid.grid)
             for (pi, p) in enumerate(qgrids[ki].grid)
                 Hp, Hm = Interp.interp1D(helper, helper_grid, k+p), Interp.interp1D(helper, helper_grid, abs(k-p))
@@ -226,11 +254,12 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     end
 
     # instant
-    helper = zeros(Float64, helper_grid.size)
-    for (yi, y) in enumerate(helper_grid)
-        helper[yi] = helper_function(y, 1, u->interaction_instant(u,param,spin_state),param)
-    end
+    # helper = zeros(Float64, helper_grid.size)
+    # for (yi, y) in enumerate(helper_grid)
+    #     helper[yi] = helper_function(y, 1, u->interaction_instant(u,param,spin_state),param)
+    # end
 
+    helper = helper_function_grid(helper_grid,intgrid, 1, u->interaction_instant(u,param,spin_state),param)
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
             Hp, Hm = Interp.interp1D(helper, helper_grid, k+p), Interp.interp1D(helper, helper_grid, abs(k-p))

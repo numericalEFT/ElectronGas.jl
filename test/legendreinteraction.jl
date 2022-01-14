@@ -9,14 +9,14 @@
         kF_label = searchsortedfirst(kernel.kgrid.grid, kernel.param.kF)
         qF_label = searchsortedfirst(kernel.qgrids[kF_label].grid, kernel.param.kF)
         println(kernel.kernel[kF_label,qF_label,:])
-        Nk, mink, order = 16, 1e-8, 6
+        Nk, minK, order = 16, 1e-8, 6
         H1=LegendreInteraction.helper_function(
             1.0, 1, u->LegendreInteraction.interaction_instant(u,param,:sigma), param;
-            Nk=Nk,mink=mink,order=order
+            Nk=Nk,minK=minK,order=order
         )
         H2=LegendreInteraction.helper_function(
             2.0, 1, u->LegendreInteraction.interaction_instant(u,param,:sigma), param;
-            Nk=Nk,mink=mink,order=order
+            Nk=Nk,minK=minK,order=order
         )
         println("$(H2-H1) == $(4*π*param.e0^2*log(2))")
     end
