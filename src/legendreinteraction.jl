@@ -103,12 +103,14 @@ function helper_function_grid(ygrid, intgrid, n::Int, W, param)
     end
 
     for i in 1:length(grid)
-        if i==1
-            x1, x2 = 0.0, grid[1]
-        else
-            x1, x2 = grid[i-1], grid[i]
-        end
-        helper[i] = Interp.integrate1DRange(integrand, kgrid, [x1,x2])
+        # if i==1
+        #     x1, x2 = 0.0, grid[1]
+        # else
+        #     x1, x2 = grid[i-1], grid[i]
+        # end
+        # helper[i] = Interp.integrate1DRange(integrand, kgrid, [x1,x2])
+        helper[i] = Interp.integrate1DRange(integrand, kgrid, [EPS,grid[i]])
+        # @assert isfinite(helper[i]) "fail at $(grid[i])"
     end
 
     return helper
@@ -235,8 +237,8 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
 
-    helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 2Nk, 0.01minK, 2order)
-    intgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, helper_grid[end]], [0.0,2kF], 2Nk, 0.01minK, 2order)
+    helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 4Nk, 0.01minK, 4order)
+    intgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, helper_grid[end]], [0.0,2kF], 4Nk, 0.01minK, 4order)
 
     # dynamic
     for (ni, n) in enumerate(bdlr.n)

@@ -52,7 +52,11 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
 """
 function coulomb(q, param)
     @unpack me, kF, rs, e0s, e0a, beta, Λs, Λa, ϵ0 = param
-    return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
+    if (q^2+Λs)*(q^2+Λa) ≈ 0.0
+        return 0.0, 0.0
+    else
+        return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
+    end
 end
 
 function bubbledyson(V, F, Π, n)
