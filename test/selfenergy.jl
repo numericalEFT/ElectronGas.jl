@@ -19,7 +19,9 @@
     println(Σ.instant[1,1,:])
     println(ΣR[1,1,kF_label,:])
     println(ΣI[1,1,kF_label,:])
-    println(SelfEnergy.zfactor(Σ))
+    Z0 = (SelfEnergy.zfactor(Σ))
+    @test isapprox(Z0, 0.862, rtol=1e-3)
+    println("z-factor = $Z0")
     G = SelfEnergy.Gwrapped(Σ,param)
     println(G.dynamic[1,1,kF_label,:])
 end

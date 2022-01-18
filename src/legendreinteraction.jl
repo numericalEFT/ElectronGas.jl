@@ -103,13 +103,13 @@ function helper_function_grid(ygrid, intgrid, n::Int, W, param)
     end
 
     for i in 1:length(grid)
-        # if i==1
-        #     x1, x2 = 0.0, grid[1]
-        # else
-        #     x1, x2 = grid[i-1], grid[i]
-        # end
-        # helper[i] = Interp.integrate1DRange(integrand, kgrid, [x1,x2])
-        helper[i] = Interp.integrate1DRange(integrand, kgrid, [EPS,grid[i]])
+        if i==1
+            x1, x2, hprev = 0.0, grid[1], 0.0
+        else
+            x1, x2, hprev = grid[i-1], grid[i], helper[i-1]
+        end
+        helper[i] = Interp.integrate1DRange(integrand, kgrid, [x1,x2]) + hprev
+        # helper[i] = Interp.integrate1DRange(integrand, kgrid, [EPS,grid[i]])
         # @assert isfinite(helper[i]) "fail at $(grid[i])"
     end
 
