@@ -81,40 +81,40 @@ generate Para with a complete set of parameters, no value presumed.
 end
 
 """
-    function defaultUnit(beta, rs)
+    function defaultUnit(Θ, rs)
 
 assume 4πϵ0=1, me=0.5, EF=1
 
 #Arguments:
- - beta: dimensionless inverse temperature. Since EF=1 we have β=beta
+ - Θ: dimensionless temperature. Since EF=1 we have β=beta
  - rs: Wigner-Seitz radius over Bohr radius.
 """
-@inline function defaultUnit(beta, rs, dim = 3, spin = 2)
+@inline function defaultUnit(Θ, rs, dim = 3, spin = 2)
     ϵ0 = 1/(4π)
     e0 = (dim == 3) ? sqrt(2*rs / (9π / (2spin))^(1 / 3) ) : sqrt(sqrt(2)*rs)
     me = 0.5
     EF = 1
-    β = beta/EF
+    β = 1/Θ/EF
     return fullUnit(ϵ0, e0, me, EF, β, dim, spin)
 end
 
 
 """
-    function rydbergUnit(beta, rs)
+    function rydbergUnit(Θ, rs)
 
 assume 4πϵ0=1, me=0.5, e0=sqrt(2)
 
 #Arguments:
- - beta: dimensionless inverse temperature. beta could be different from β
+ - Θ: dimensionless temperature. beta could be different from β
  - rs: Wigner-Seitz radius over Bohr radius.
 """
-@inline function rydbergUnit(beta, rs, dim = 3, spin = 2)
+@inline function rydbergUnit(Θ, rs, dim = 3, spin = 2)
     ϵ0 = 1/(4π)
     e0 = sqrt(2)
     me = 0.5
     kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
     EF = kF^2/(2me)
-    β = beta / EF
+    β = 1/Θ/EF
     return fullUnit(ϵ0, e0, me, EF, β, dim, spin)
 end
 

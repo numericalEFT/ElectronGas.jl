@@ -1,6 +1,6 @@
 @testset "Self Energy" begin
     @testset "default unit" begin
-        param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(1000.0, 1.0)
+        param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(1/1000.0, 1.0)
         Euv, rtol = 100*param.EF, 1e-10
         Nk, order = 8, 4
 
@@ -28,7 +28,7 @@
     end
     @testset "default unit" begin
         # make sure everything works for different unit sets
-        param = SelfEnergy.LegendreInteraction.Parameter.rydbergUnit(1000.0, 1.0)
+        param = SelfEnergy.LegendreInteraction.Parameter.rydbergUnit(1/1000.0, 1.0)
         Euv, rtol = 100*param.EF, 1e-10
         Nk, order = 8, 4
 

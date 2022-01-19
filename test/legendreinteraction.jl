@@ -1,7 +1,7 @@
 @testset "LegendreInteraction" begin
 
     # set parameters
-    param = LegendreInteraction.Parameter.defaultUnit(1000.0, 1.0)
+    param = LegendreInteraction.Parameter.defaultUnit(1/1000.0, 1.0)
     kF = param.kF
     Nk, minK, order, maxK = 16, 1e-8, 6, 10.0
     print(param)
