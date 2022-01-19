@@ -237,8 +237,8 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
 
-    helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 4Nk, 0.01minK, 4order)
-    intgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, helper_grid[end]], [0.0,2kF], 4Nk, 0.01minK, 4order)
+    helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 2Nk, 0.01minK, 2order)
+    intgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, helper_grid[end]], [0.0,2kF], 16Nk, 0.01minK, 8order)
 
     # dynamic
     for (ni, n) in enumerate(bdlr.n)
