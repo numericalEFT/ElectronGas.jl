@@ -75,7 +75,7 @@ end
 
 function helper_function(y::Float64, n::Int, W, param; Nk::Int=40, minK::Float64=1e-12*param.kF, order::Int=6 )
     # return the helper function
-    @unpack kF, beta = param
+    @unpack kF, β = param
     # generate a new grid for every calculation
     kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, y], [0.0,min(y,2kF)], Nk, minK, order)
 
@@ -90,7 +90,7 @@ end
 
 function helper_function_grid(ygrid, intgrid, n::Int, W, param)
     # return the helper function
-    @unpack kF, beta = param
+    @unpack kF, β = param
     # generate a new grid for every calculation
     #kgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, grid[end]], [0.0,min(grid[end],2kF)], Nk, minK, order)
     kgrid = intgrid
@@ -138,7 +138,7 @@ struct DCKernel
 end
 
 function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto)
-    @unpack kF, beta = param
+    @unpack kF, β = param
 
     if spin_state==:sigma
         # for self-energy, always use ℓ=0
@@ -148,7 +148,7 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
         spin_state = (channel%2==0) ? (:triplet) : (:singlet)
     end
 
-    bdlr = DLRGrid(Euv, beta, rtol, false, :ph)
+    bdlr = DLRGrid(Euv, β, rtol, false, :ph)
     kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order )
     #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
@@ -217,7 +217,7 @@ end
 
 function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto)
     # use helper function
-    @unpack kF, beta = param
+    @unpack kF, β = param
 
     if spin_state==:sigma
         # for self-energy, always use ℓ=0
@@ -227,7 +227,7 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
         spin_state = (channel%2==0) ? (:triplet) : (:singlet)
     end
 
-    bdlr = DLRGrid(Euv, beta, rtol, false, :ph)
+    bdlr = DLRGrid(Euv, β, rtol, false, :ph)
     kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order )
     #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]

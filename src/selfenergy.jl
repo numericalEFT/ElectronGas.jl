@@ -11,13 +11,13 @@ srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
 function G0wrapped(Euv,rtol,sgrid,param)
-    @unpack me, kF, beta, EF = param
+    @unpack me, kF, β, EF = param
 
-    green = GreenFunc.Green2DLR{ComplexF64}(:g0,GreenFunc.IMFREQ,beta,true,Euv,sgrid,1)
+    green = GreenFunc.Green2DLR{ComplexF64}(:g0,GreenFunc.IMFREQ,β,true,Euv,sgrid,1)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1,1,ki,ni] = 1/(im*(π/beta*(2n+1)) - (k^2/2/me-EF) )
+            green_dyn[1,1,ki,ni] = 1/(im*(π/β*(2n+1)) - (k^2/2/me-EF) )
         end
     end
     green.dynamic=green_dyn
@@ -25,7 +25,7 @@ function G0wrapped(Euv,rtol,sgrid,param)
 end
 
 function Gwrapped(Σ::GreenFunc.Green2DLR, param)
-    @unpack me, kF, beta, EF = param
+    @unpack me, kF, β, EF = param
     Σ_freq = GreenFunc.toMatFreq(Σ)
     green =  Green2DLR{ComplexF64}(
         :G, GreenFunc.IMFREQ,Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
@@ -34,7 +34,7 @@ function Gwrapped(Σ::GreenFunc.Green2DLR, param)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(green.spaceGrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1,1,ki,ni] = 1/(im*(π/beta*(2n+1)) - (k^2/2/me-EF) + Σ.dynamic[1,1,ki,ni] + Σ.instant[1,1,ki])
+            green_dyn[1,1,ki,ni] = 1/(im*(π/β*(2n+1)) - (k^2/2/me-EF) + Σ.dynamic[1,1,ki,ni] + Σ.instant[1,1,ki])
         end
     end
     green.dynamic=green_dyn
@@ -43,7 +43,7 @@ end
 
 # function calcΣ(kernal, kernal_bare, fdlr, kgrid, qgrids)
 function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
-    @unpack beta= W.param
+    @unpack β= W.param
 
     kgrid = W.kgrid
     qgrids = W.qgrids
@@ -57,12 +57,12 @@ function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis = 3)
 
     # container of Σ
-    Σ = GreenFunc.Green2DLR{ComplexF64}(:sigma, GreenFunc.IMTIME,beta,true,fdlr.Euv,kgrid,1)
+    Σ = GreenFunc.Green2DLR{ComplexF64}(:sigma, GreenFunc.IMTIME,β,true,fdlr.Euv,kgrid,1)
     Σ_ins = zeros(ComplexF64, (1,1,length(kgrid.grid)))
     Σ_dyn = zeros(ComplexF64, (1,1,length(kgrid.grid), fdlr.size))
 
     # tbc
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [beta, ], G.timeGrid.grid; axis = 4)[1,1,:,1]
+    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β, ], G.timeGrid.grid; axis = 4)[1,1,:,1]
 
     for (ki, k) in enumerate(kgrid.grid)
 
@@ -98,7 +98,7 @@ end
 function zfactor(Σ::GreenFunc.Green2DLR)
     kgrid = Σ.spaceGrid
     kF = kgrid.panel[3]
-    beta = Σ.dlrGrid.β
+    β = Σ.dlrGrid.β
 
     println("kF=$kF")
     kF_label = searchsortedfirst(kgrid.grid, kF)
@@ -106,8 +106,8 @@ function zfactor(Σ::GreenFunc.Green2DLR)
 
     ΣI = imag(Σ_freq.dynamic[1,1,kF_label,:])
 
-    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*beta)
-    Z0 = 1/(1 + (ΣI[2]-ΣI[1])/2/π*beta)
+    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*β)
+    Z0 = 1/(1 + (ΣI[2]-ΣI[1])/2/π*β)
     return Z0
 end
 
