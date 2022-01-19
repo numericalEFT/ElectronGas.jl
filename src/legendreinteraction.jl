@@ -20,14 +20,14 @@ using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGr
 export DCKernel
 
 srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
+rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
 
 @inline function spin_factor(spin_state)
-    if spin_state==:singlet
+    if spin_state == :singlet
         factor = 1.0
-    elseif spin_state==:triplet
+    elseif spin_state == :triplet
         factor = -3.0
-    elseif spin_state==:sigma
+    elseif spin_state == :sigma
         factor = 3.0
     else
         throw(UndefVarError(spin_state))
@@ -49,23 +49,28 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
     return ks + spin_factor(spin_state) * ka
 end
 
+function interaction_instant(q, param, spin_state)
+    Vs, Va = coulomb(q, param)
+    return (Vs + spin_factor(spin_state) * Va)
+end
+
 @inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state)
-    legendre_x = (k^2 + p^2 - q^2)/2/k/p
-    if(abs(abs(legendre_x)-1)<1e-12)
-        legendre_x = sign(legendre_x)*1
+    legendre_x = (k^2 + p^2 - q^2) / 2 / k / p
+    if (abs(abs(legendre_x) - 1) < 1e-12)
+        legendre_x = sign(legendre_x) * 1
     end
     # convention changed, now interaction_dynamic already included the V_Bare
-    return q*Pl(legendre_x, channel)*interaction_dynamic(q, n, param, int_type, spin_state)
+    return q * Pl(legendre_x, channel) * interaction_dynamic(q, n, param, int_type, spin_state)
 end
 
 @inline function kernel0_integrand(k, p, q, channel, param, spin_state)
-    legendre_x = (k^2 + p^2 - q^2)/2/k/p
-    if(abs(abs(legendre_x)-1)<1e-12)
-        legendre_x = sign(legendre_x)*1
+    legendre_x = (k^2 + p^2 - q^2) / 2 / k / p
+    if (abs(abs(legendre_x) - 1) < 1e-12)
+        legendre_x = sign(legendre_x) * 1
     end
-    @assert -1<=legendre_x<=1 "k=$k,p=$p,q=$q"
-    Vs, Va = coulomb(q, param)
-    return q*Pl(legendre_x, channel)*(Vs + spin_factor(spin_state)*Va)
+    @assert -1 <= legendre_x <= 1 "k=$k,p=$p,q=$q"
+
+    return q * Pl(legendre_x, channel) * interaction_instant(q, param, spin_state)
 end
 
 struct DCKernel
@@ -82,20 +87,19 @@ struct DCKernel
     kernel_bare::Array{Float64,2}
     kernel::Array{Float64,3}
 
-    function DCKernel(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto)
-        @unpack kF, beta = param
-        EPS = 1e-16
+    function DCKernel(param; Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state = :auto)
+        @unpack kF, β = param
 
-        if spin_state==:sigma
+        if spin_state == :sigma
             # for self-energy, always use ℓ=0
             channel = 0
-        elseif spin_state==:auto
+        elseif spin_state == :auto
             # automatically assign spin_state, triplet for even, singlet for odd channel
-            spin_state = (channel%2==0) ? (:triplet) : (:singlet)
+            spin_state = (channel % 2 == 0) ? (:triplet) : (:singlet)
         end
 
-        bdlr = DLRGrid(Euv, beta, rtol, false, :ph)
-        kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order )
+        bdlr = DLRGrid(Euv, β, rtol, false, :ph)
+        kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
         #println(kgrid.grid)
         qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
         qgridmax = maximum([qg.size for qg in qgrids])
@@ -104,18 +108,18 @@ struct DCKernel
         kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
         kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
 
-        int_grid_base = CompositeGrid.LogDensedGrid(:uniform, [0.0, 2.1*maxK], [0.0, 2kF], 2Nk, 0.01minK, 2)
+        int_grid_base = CompositeGrid.LogDensedGrid(:uniform, [0.0, 2.1 * maxK], [0.0, 2kF], 2Nk, 0.01minK, 2)
         for (ki, k) in enumerate(kgrid.grid)
             for (pi, p) in enumerate(qgrids[ki].grid)
                 if abs(k - p) > EPS
 
-                    kmp = abs(k-p)<EPS ? EPS : abs(k-p)
+                    kmp = abs(k - p) < EPS ? EPS : abs(k - p)
                     kpp = k + p
                     im, ip = floor(int_grid_base, kmp), floor(int_grid_base, kpp)
                     int_panel = Float64[]
 
                     push!(int_panel, kmp)
-                    if im<ip
+                    if im < ip
                         for i in im+1:ip
                             push!(int_panel, int_grid_base[i])
                         end
@@ -126,30 +130,30 @@ struct DCKernel
                     SubGridType = SimpleGrid.GaussLegendre{Float64}
                     subgrids = subgrids = Vector{SubGridType}([])
                     for i in 1:int_panel.size-1
-                        _bound = [int_panel[i],int_panel[i+1]]
-                        push!(subgrids, SubGridType(_bound,order))
+                        _bound = [int_panel[i], int_panel[i+1]]
+                        push!(subgrids, SubGridType(_bound, order))
                     end
-                    
-                    int_grid=CompositeGrid.Composite{Float64,SimpleGrid.Arbitrary{Float64},SubGridType}(int_panel,subgrids)
+
+                    int_grid = CompositeGrid.Composite{Float64,SimpleGrid.Arbitrary{Float64},SubGridType}(int_panel, subgrids)
 
                     data = [kernel0_integrand(k, p, q, channel, param, spin_state) for q in int_grid.grid]
                     kernel_bare[ki, pi] = Interp.integrate1D(data, int_grid)
 
                     for (ni, n) in enumerate(bdlr.n)
-                        data = [kernel_integrand(k,p,q,n,channel,param,int_type,spin_state) for q in int_grid.grid]
+                        data = [kernel_integrand(k, p, q, n, channel, param, int_type, spin_state) for q in int_grid.grid]
                         kernel[ki, pi, ni] = Interp.integrate1D(data, int_grid)
-                        @assert isfinite(kernel[ki,pi,ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
+                        @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
                     end
 
                 else
-                    kernel_bare[ki,pi] = 0
+                    kernel_bare[ki, pi] = 0
                     for (ni, n) in enumerate(bdlr.n)
-                        kernel[ki,pi,ni] = 0
+                        kernel[ki, pi, ni] = 0
                     end
                 end
             end
         end
-        
+
         return new(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
     end
 

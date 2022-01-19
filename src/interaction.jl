@@ -67,12 +67,12 @@ function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     end
     if n == 0
         if F == 0
-            K = -V * Π * (1)^2 / (1.0 / V + Π * (1))
+            K = V * Π * (1)^2 / (1.0 / V - Π * (1))
         else
-            K = -V * Π * (1 - F / V)^2 / (1.0 / V + Π * (1 - F / V))
+            K = V * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
         end
     else
-        K = -(Π) * (V - F)^2 / (1.0 + (Π) * (V - F))
+        K = Π * (V - F)^2 / (1.0 - (Π) * (V - F))
     end
     @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
     return K
@@ -112,9 +112,9 @@ end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, V_Bare = coulomb) where {SGT}
-    @unpack beta = param
-    gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    @unpack β = param
+    gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
     green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
@@ -182,9 +182,9 @@ end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack beta = param
-    gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    @unpack β = param
+    gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
     green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
