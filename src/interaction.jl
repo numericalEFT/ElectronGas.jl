@@ -59,9 +59,8 @@ function coulomb(q, param)
     end
 end
 
-function bubbledyson(V, F, Π, n)
+function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     # V:bare interaction
-    # V0:symmetric bare interaction
     # G:G^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
@@ -83,13 +82,15 @@ function bubbledyson(V, F, Π, n)
     return K
 end
 
-function bubblecorrection(q, n, param;
+function bubblecorrection(q::Float64, n::Int, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vs::Float64, Va::Float64 = V_Bare(q, param)
+    @unpack spin = param
+
     if abs(q) > EPS
-        Π::Float64 = 2 * pifunc(q, n, param)
+        Π::Float64 = spin * pifunc(q, n, param)
         Ks = bubbledyson(Vs, Fs, Π, n)
         Ka = bubbledyson(Va, Fa, Π, n)
     else
@@ -159,8 +160,8 @@ function landauParameterTakada(q, n, param)
     A2 = (C2 - C1) / 4.0 / e0^2 * π
     B1 = 6 * A1 / (D + 1.0)
     B2 = 2 * A2 / (1.0 - D)
-    F_s = A1 * e0s^2 / ϵ0 / (1.0 + B1 * q^2) + A2 * e0s^2 / ϵ0 / (1.0 + B2 * q^2)
-    F_a = A1 * e0s^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0s^2 / ϵ0 / (1.0 + B2 * q^2)
+    F_s = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) + A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
+    F_a = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
     return F_s, F_a
 end
 
