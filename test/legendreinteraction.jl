@@ -21,16 +21,16 @@
         @test isapprox(H2-H1, 4*π*param.e0^2*log(2), rtol = 1e-4)
 
         helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1*maxK], [0.0, 2kF], 4, 0.001, 4)
-        intgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, helper_grid[end]], [0.0,2kF], 16Nk, 0.01minK, 8order)
+        intgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, helper_grid[end]], [0.0,2kF], 2Nk, 0.01minK, 2order)
         helper = LegendreInteraction.helper_function_grid(helper_grid,intgrid, 1, u->LegendreInteraction.interaction_instant(u,param,:sigma),param)
         helper_analytic = (4*π*param.e0^2) .* log.(helper_grid.grid)
         helper_old = zeros(Float64, helper_grid.size)
         for (yi, y) in enumerate(helper_grid)
             helper_old[yi] = LegendreInteraction.helper_function(y, 1, u->LegendreInteraction.interaction_instant(u,param,:sigma),param)
         end
-        # println(helper .- helper[1])
-        # println(helper_old .- helper_old[1])
-        # println(helper_analytic .- helper_analytic[1])
+        println(helper .- helper[1])
+        println(helper_old .- helper_old[1])
+        println(helper_analytic .- helper_analytic[1])
         rtol = 1e-6
         for (yi, y) in enumerate(helper_grid)
             @test isapprox(helper[yi]-helper[1], helper_analytic[yi]-helper_analytic[1], rtol=rtol)
