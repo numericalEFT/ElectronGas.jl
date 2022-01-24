@@ -85,9 +85,11 @@ function calcΣ(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     return Σ
 end
 
-function G0W0(param, Euv, rtol, Nk, maxk, mink, order, int_type)
-    kernel = SelfEnergy.LegendreInteraction.DCKernel(param;
-        Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxk, minK = mink, order = order, int_type = int_type, channel = 0, spin_state = :sigma)
+function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+    kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
+        Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+    # kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+    #                                                   Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma)
     G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
     Σ = calcΣ(G0, kernel)
     # Σ = calcΣ_new(G0, kernel)
@@ -106,7 +108,7 @@ function zfactor(Σ::GreenFunc.Green2DLR)
 
     ΣI = imag(Σ_freq.dynamic[1, 1, kF_label, :])
 
-    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*beta)
+    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*β)
     Z0 = 1 / (1 + (ΣI[2] - ΣI[1]) / 2 / π * β)
     return Z0
 end

@@ -3,7 +3,7 @@
     @testset "Single Point Polarization" begin
         beta = 1e8
         # for low temp, Π from zero temp and finite temp should be close
-        param = Parameter.defaultUnit(beta, 1.0)
+        param = Parameter.defaultUnit(1/beta, 1.0)
         testq = [-1.0, 0.0, 1e-160, 1e-8, 0.5, 1.0, 2.0, 10.0]
         testn = [0, 1, 100]
 

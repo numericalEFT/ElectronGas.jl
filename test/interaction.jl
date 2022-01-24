@@ -3,8 +3,7 @@
     @testset "RPA and KO" begin
         beta = 1e4
         rs = 2.0
-        param = Interaction.Parameter.defaultUnit(beta, rs)
-        # param = Parameter.Para(param, e0 = 0.0, espin = 1.0)
+        param = Interaction.Parameter.defaultUnit(1/beta,rs)
         println(Interaction.RPA(0.01, 1, param))
         println(Interaction.KO(0.01, 1, param))
         println(Interaction.RPA(1.0, 1, param; pifunc = Interaction.Polarization.Polarization0_FiniteTemp))
