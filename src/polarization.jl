@@ -18,7 +18,7 @@ rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
 
 # Analytical calculated integrand of Π0.
 @inline function _ΠT_integrand(k, q, ω, param)
-    @unpack me, beta, EF, kF = param
+    @unpack me, β, EF, kF = param
     # ω only appears as ω^2 so no need to check sign of ω
 
     # if q is too small, use safe form
@@ -26,20 +26,20 @@ rundir = isempty(ARGS) ? pwd() : (pwd()*"/"*ARGS[1])
         if abs(q-2*k)^2<1e-16
             return 0.0
         else
-            return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k)/((q-2*k)^2))
+            return k*me/(2*π^2)/(exp(β*(k^2/2/me-EF))+1)*((8*k)/((q-2*k)^2))
         end
     elseif q < 1e-16 && ω!=0
-        return k*me/(2*π^2)/(exp(beta*(k^2/2/me-EF))+1)*((8*k*q^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+        return k*me/(2*π^2)/(exp(β*(k^2/2/me-EF))+1)*((8*k*q^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     else
-        return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-EF))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+        return k*me/(2*π^2*q)/(exp(β*(k^2/2/me-EF))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     end
-    # if ω==0 && abs(q*(k*2-q)*beta)<1e-16
+    # if ω==0 && abs(q*(k*2-q)*β)<1e-16
     #     return 0.0
     # elseif ω!=0 && k^2*q^2/4/me^2<ω^2*1e-16
-    #     2*q^2*k^2/(π^2*ω^2)/(exp(beta*(k^2/2/me-μ))+1)/(8*me)
+    #     2*q^2*k^2/(π^2*ω^2)/(exp(β*(k^2/2/me-μ))+1)/(8*me)
     # else
-    #     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log((4*me^2*ω^2+(q^2+2*k*q)^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
-    #     return k*me/(2*π^2*q)/(exp(beta*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    #     return k*me/(2*π^2*q)/(exp(β*(k^2/2/me-μ))+1)*log((4*me^2*ω^2+(q^2+2*k*q)^2)/(4*me^2*ω^2+(q^2-2*k*q)^2))
+    #     return k*me/(2*π^2*q)/(exp(β*(k^2/2/me-μ))+1)*log1p((8*k*q^3)/(4*me^2*ω^2+(q^2-2*k*q)^2))
     # end
 end
 
@@ -61,7 +61,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
 function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
-    @unpack me, kF, beta = param
+    @unpack me, kF, β = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -70,7 +70,7 @@ function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-
     kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk*kF], [0.5*q, kF], scaleN, mink, gaussN)
     integrand = zeros(Float64, kgrid.size)
     for (ki, k) in enumerate(kgrid.grid)
-        integrand[ki] = _ΠT_integrand(k, q, 2π*n/beta, param)
+        integrand[ki] = _ΠT_integrand(k, q, 2π*n/β, param)
         @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
     end
     # initially derived for spin=1/2
@@ -91,7 +91,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
   - param: other system parameters
 """
 function Polarization0_ZeroTemp(q, n, param)
-    @unpack me, kF, beta = param
+    @unpack me, kF, β = param
     # check sign of q, use -q if negative
     if q<0
         q = -q
@@ -104,7 +104,7 @@ function Polarization0_ZeroTemp(q, n, param)
 
     Π = 0.0
     x = q/2/kF
-    ω_n = 2*π*n/beta
+    ω_n = 2*π*n/β
     y = me*ω_n/q/kF
 
     if n == 0
@@ -154,9 +154,9 @@ Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
  - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
 """
 function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc=Polarization0_ZeroTemp) where{SGT}
-    @unpack beta = param
+    @unpack β = param
 
-    green = GreenFunc.Green2DLR{Float64}(:polarization,GreenFunc.IMFREQ,beta,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
+    green = GreenFunc.Green2DLR{Float64}(:polarization,GreenFunc.IMFREQ,β,false,Euv,sgrid,1; timeSymmetry=:ph,rtol=rtol)
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)

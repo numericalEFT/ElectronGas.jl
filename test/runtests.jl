@@ -6,6 +6,9 @@ using Test
     # Write your tests here.
     if isempty(ARGS)
         include("polarization.jl")
+        include("interaction.jl")
+        include("legendreinteraction.jl")
+        include("selfenergy.jl")
     else
         include(ARGS[1])
     end

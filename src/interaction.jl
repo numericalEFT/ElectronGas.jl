@@ -22,7 +22,7 @@ export RPA, KO, RPAwrapped, KOwrapped, coulomb
 # end
 
 # println(Parameter.Param)
-# @unpack me, kF, rs, e0, beta , Λs, ϵ0= Parameter.Param
+# @unpack me, kF, rs, e0, β , Λs, ϵ0= Parameter.Param
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -50,9 +50,13 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
  - q: momentum
  - param: other system parameters
 """
-function coulomb(q::Float64, param)
-    @unpack e0s, e0a, Λs, Λa, ϵ0 = param
-    return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
+function coulomb(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if (q^2+Λs)*(q^2+Λa) ≈ 0.0
+        return 0.0, 0.0
+    else
+        return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
+    end
 end
 
 function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
@@ -111,10 +115,10 @@ function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, V_Bare = coulomb)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, V_Bare = coulomb) where {SGT}
-    @unpack beta = param
-    gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
+    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+    gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
     green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
@@ -144,7 +148,7 @@ Now Landau parameter F. F(+-)=G(+-)*V
  - param: other system parameters
 """
 function landauParameterTakada(q, n, param)
-    @unpack rs, e0, ϵ0 = param
+    @unpack me, kF, rs, e0s, e0, e0a, β, Λs, Λa, ϵ0 = param
     if e0 ≈ 0.0
         return 0.0, 0.0
     end
@@ -182,9 +186,9 @@ end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack beta = param
-    gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, beta, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+    gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
     green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
     green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
