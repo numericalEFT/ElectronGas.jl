@@ -52,7 +52,7 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
 """
 function coulomb(q, param)
     @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if (q^2+Λs)*(q^2+Λa) ≈ 0.0
+    if (q^2 + Λs) * (q^2 + Λa) ≈ 0.0
         return 0.0, 0.0
     else
         return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
@@ -61,7 +61,7 @@ end
 
 function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     # V:bare interaction
-    # G:G^{+-} is local field factor,0 for RPA
+    # F:F^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
     # comparing to previous convention, an additional V is multiplied
