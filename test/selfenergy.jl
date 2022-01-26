@@ -1,12 +1,13 @@
 @testset "Self Energy" begin
     @testset "default unit" begin
         dim = 2
-        θ, rs = 1e-3, 1.0
+        θ, rs = 1e-5, 1.0
         param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(θ, rs, dim)
 
         Euv, rtol = 100 * param.EF, 1e-10
         # set Nk, minK = 8, 1e-7 for β<1e6;  11, 1e-8 for β<1e7
-        Nk, order, minK = 11, 4, 1e-8
+        # Nk, order, minK = 11, 4, 1e-8
+        Nk, order, minK = 8, 4, 1e-7
 
         Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
         Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
@@ -22,6 +23,8 @@
         println(ΣI[1, 1, kF_label, :])
         Z0 = (SelfEnergy.zfactor(Σ))
         # @test isapprox(Z0, 0.862, rtol = 5e-3)
+
+        println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")
         G = SelfEnergy.Gwrapped(Σ, param)
         println(G.dynamic[1, 1, kF_label, :])

@@ -137,6 +137,44 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN =
 end
 
 
+# @inline function Polarization0_2dZeroTemp(q, n, param)
+#     @unpack me, kF, β = param
+#     density = me / 2π
+#     # check sign of q, use -q if negative
+#     if q < 0
+#         q = -q
+#     end
+#     # if q is too small, set to 1000eps
+#     if q < eps(0.0) * 1e6
+#         q = eps(0.0) * 1e6
+#     end
+
+#     Π = 0.0
+#     x = q / 2 / kF
+#     ω_n = 2 * π * n / β
+#     y = me * ω_n / q / kF
+
+#     if abs(y - x) <= 1 && abs(y + x) <= 1
+#         Π = 1.0
+#     elseif abs(y - x) <= 1 && abs(y + x) > 1
+#         Π = 1.0 - sign(y + x) * √((y + x)^2 - 1) / 2x
+#     elseif abs(y - x) > 1 && abs(y + x) <= 1
+#         Π = 1.0 + sign(y - x) * √((y - x)^2 - 1) / 2x
+#     else
+#         z = q / (me * ω_n)
+#         a = 1.0 / (me * ω_n)
+#         if z < 3.8e-4
+#             a = 1.0 / (me * ω_n)
+#             Π = -z^2 / 2 - 3 * z^4 / 8 - (5 + 8 * a^2) * z^6 / 16
+#         else
+#             Π = 1.0 + (sign(y - x) * √((y - x)^2 - 1) - sign(y + x) * √((y + x)^2 - 1)) / 2x
+#         end
+#     end
+
+#     return -density * Π
+# end
+
+
 @inline function Polarization0_2dZeroTemp(q, n, param)
     @unpack me, kF, β = param
     density = me / 2π
@@ -150,25 +188,15 @@ end
     end
 
     Π = 0.0
-    x = q / 2 / kF
     ω_n = 2 * π * n / β
-    y = me * ω_n / q / kF
+    v = me * ω_n / q / kF * im + q / 2 / kF
+    # v2 = me * ω_n / q / kF * im - q / 2 / kF
 
-    if abs(y - x) <= 1 && abs(y + x) <= 1
-        Π = 1.0
-    elseif abs(y - x) <= 1 && abs(y + x) > 1
-        Π = 1.0 - sign(y + x) * √((y + x)^2 - 1) / 2x
-    elseif abs(y - x) > 1 && abs(y + x) <= 1
-        Π = 1.0 + sign(y - x) * √((y - x)^2 - 1) / 2x
+    if q < EPS && n != 0
+        Π = 0.0
     else
-        z = q / (me * ω_n)
-        a = 1.0 / (me * ω_n)
-        if z < 3.8e-4
-            a = 1.0 / (me * ω_n)
-            Π = -z^2 / 2 - 3 * z^4 / 8 - (5 + 8 * a^2) * z^6 / 16
-        else
-            Π = 1.0 + (sign(y - x) * √((y - x)^2 - 1) - sign(y + x) * √((y + x)^2 - 1)) / 2x
-        end
+        Π = 1.0 - real(√(v^2 - 1)) * 2kF / q
+        # Π = 1.0 - real(√(v^2 - 1) + √(v2^2 - 1)) * kF / q
     end
 
     return -density * Π
