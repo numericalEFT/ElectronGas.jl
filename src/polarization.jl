@@ -45,19 +45,7 @@ rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
     density = me / 2π
     nk = 1.0 / (exp(β * (k^2 / 2 / me - EF)) + 1)
 
-    # if q is too small, use safe form
-    if q < EPS && ω == 0
-        if abs(q - 2 * k)^2 < EPS
-            return 0.0
-        else
-            return -density / 2 * nk * nk * ((8 * k) / ((q - 2 * k)^2))
-        end
-    elseif q < EPS && ω != 0
-        return -density / 2 * nk * ((8 * k * q^2) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
-    else
-        return -density / 2q * nk * log1p((8 * k * q^3) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
-    end
-
+    return nothing
 end
 
 # Analytical calculated integrand of Π0 in 3D.

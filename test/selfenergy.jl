@@ -1,7 +1,7 @@
 @testset "Self Energy" begin
     @testset "default unit" begin
         dim = 2
-        θ, rs = 1e-5, 1.0
+        θ, rs = 1e-4, 1.0
         param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(θ, rs, dim)
 
         Euv, rtol = 100 * param.EF, 1e-10
