@@ -52,7 +52,7 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
 """
 function coulomb(q, param)
     @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if (q^2+Λs)*(q^2+Λa) ≈ 0.0
+    if (q^2 + Λs) * (q^2 + Λa) ≈ 0.0
         return 0.0, 0.0
     else
         return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
@@ -71,12 +71,12 @@ function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     end
     if n == 0
         if F == 0
-            K = -V * Π * (1)^2 / (1.0 / V + Π * (1))
+            K = V * Π * (1)^2 / (1.0 / V - Π * (1))
         else
-            K = -V * Π * (1 - F / V)^2 / (1.0 / V + Π * (1 - F / V))
+            K = V * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
         end
     else
-        K = -(Π) * (V - F)^2 / (1.0 + (Π) * (V - F))
+        K = Π * (V - F)^2 / (1.0 - (Π) * (V - F))
     end
     @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
     return K
@@ -116,7 +116,8 @@ end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+
+    @unpack β = param
     gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
@@ -186,7 +187,8 @@ end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+
+    @unpack β = param
     gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
