@@ -17,29 +17,6 @@ rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
 # using .Convention
 
 # Analytical calculated integrand of Π0 in 2D.
-# @inline function _ΠT2d_integrand(k, q, ω, param)
-#     @unpack me, β, EF = param
-#     density = me / 2π
-
-#     v1 = me * ω - q^2 / 2
-#     v2 = me * ω + q^2 / 2
-#     nk = 1.0 / (exp(β * (k^2 / 2 / me - EF)) + 1)
-
-#     theta1, theta2 = abs(v1) - k * q, abs(v2) - k * q
-#     if theta1 <= 0 && theta2 <= 0
-#         integrand = 0.0
-#     elseif theta1 <= 0 && theta2 > 0
-#         integrand = k * nk * (-sign(v2) / √(v2^2 - k^2 * q^2))
-#     elseif theta1 > 0 && theta2 <= 0
-#         integrand = k * nk * sign(v1) / √(v1^2 - k^2 * q^2)
-#     else
-#         integrand = k * nk * (sign(v1) / √(v1^2 - k^2 * q^2) - sign(v2) / √(v2^2 - k^2 * q^2))
-#     end
-
-#     return density * integrand
-# end
-
-# Analytical calculated integrand of Π0 in 2D.
 @inline function _ΠT2d_integrand(k, q, ω, param)
     @unpack me, β, μ = param
     density = me / 2π
@@ -82,7 +59,7 @@ end
 Finite temperature one-spin Π0 function for matsubara frequency and momentum. Analytically sum over transfer frequency and angular
 dependence of momentum, and numerically calculate integration of magnitude of momentum.
 Slower(~200μs) than Polarization0_ZeroTemp.
-Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F)
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
 
 #Arguments:
  - q: momentum
@@ -120,44 +97,6 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN =
 
     return Interp.integrate1D(integrand, kgrid)
 end
-
-
-# @inline function Polarization0_2dZeroTemp(q, n, param)
-#     @unpack me, kF, β = param
-#     density = me / 2π
-#     # check sign of q, use -q if negative
-#     if q < 0
-#         q = -q
-#     end
-#     # if q is too small, set to 1000eps
-#     if q < eps(0.0) * 1e6
-#         q = eps(0.0) * 1e6
-#     end
-
-#     Π = 0.0
-#     x = q / 2 / kF
-#     ω_n = 2 * π * n / β
-#     y = me * ω_n / q / kF
-
-#     if abs(y - x) <= 1 && abs(y + x) <= 1
-#         Π = 1.0
-#     elseif abs(y - x) <= 1 && abs(y + x) > 1
-#         Π = 1.0 - sign(y + x) * √((y + x)^2 - 1) / 2x
-#     elseif abs(y - x) > 1 && abs(y + x) <= 1
-#         Π = 1.0 + sign(y - x) * √((y - x)^2 - 1) / 2x
-#     else
-#         z = q / (me * ω_n)
-#         a = 1.0 / (me * ω_n)
-#         if z < 3.8e-4
-#             a = 1.0 / (me * ω_n)
-#             Π = -z^2 / 2 - 3 * z^4 / 8 - (5 + 8 * a^2) * z^6 / 16
-#         else
-#             Π = 1.0 + (sign(y - x) * √((y - x)^2 - 1) - sign(y + x) * √((y + x)^2 - 1)) / 2x
-#         end
-#     end
-
-#     return -density * Π
-# end
 
 
 @inline function Polarization0_2dZeroTemp(q, n, param)
