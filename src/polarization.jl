@@ -41,27 +41,27 @@ rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
 
 # Analytical calculated integrand of Π0 in 2D.
 @inline function _ΠT2d_integrand(k, q, ω, param)
-    @unpack me, β, EF = param
+    @unpack me, β, μ = param
     density = me / 2π
-    nk = 1.0 / (exp(β * (k^2 / 2 / me - EF)) + 1)
+    nk = 1.0 / (exp(β * (k^2 / 2 / me - μ)) + 1)
 
     return nothing
 end
 
 # Analytical calculated integrand of Π0 in 3D.
 @inline function _ΠT3d_integrand(k, q, ω, param)
-    @unpack me, β, EF = param
+    @unpack me, β, μ = param
     # ω only appears as ω^2 so no need to check sign of ω
-    nk = 1.0 / (exp(β * (k^2 / 2 / me - EF)) + 1)
+    nk = 1.0 / (exp(β * (k^2 / 2 / me - μ)) + 1)
 
     # if q is too small, use safe form
-    if q < 1e-16 && ω == 0
+    if q < 1e-16 && ω ≈ 0
         if abs(q - 2 * k)^2 < 1e-16
             return 0.0
         else
             return -k * me / (4 * π^2) * nk * ((8 * k) / ((q - 2 * k)^2))
         end
-    elseif q < 1e-16 && ω != 0
+    elseif q < 1e-16 && !(ω ≈ 0)
         return -k * me / (4 * π^2) * nk * ((8 * k * q^2) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
     else
         return -k * me / (4 * π^2 * q) * nk * log1p((8 * k * q^3) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
@@ -103,18 +103,15 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN =
         q = -q
     end
 
+    mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    integrand = zeros(Float64, kgrid.size)
     if dim == 2
-        mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
-        integrand = zeros(Float64, kgrid.size)
         for (ki, k) in enumerate(kgrid.grid)
             integrand[ki] = _ΠT2d_integrand(k, q, 2π * n / β, param)
             @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
         end
     elseif dim == 3
-        mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
-        integrand = zeros(Float64, kgrid.size)
         for (ki, k) in enumerate(kgrid.grid)
             integrand[ki] = _ΠT3d_integrand(k, q, 2π * n / β, param)
             @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
