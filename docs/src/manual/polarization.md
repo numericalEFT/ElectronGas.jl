@@ -1,67 +1,64 @@
 
 # Polarization of free electron
 
-## Definition
+## Generic formalism
 
 The bare polarization is defined as
 
 ```math
 \begin{aligned}
-\Pi_0(\omega_n, \vec{q})=
-N_ST\sum_{m}\int\frac{d^Dk}{{(2\pi)}^D}G_0(\omega_m, \vec{k})G_0(\omega_{m+n}, \vec{k}+\vec{q})
+\Pi_0(\Omega_n, \vec{q})=
+-S T\sum_{m}\int\frac{d^d k}{{(2\pi)}^d}G_0(\omega_m, \vec{k})G_0(\omega_m+\Omega_n, \vec{k}+\vec{q})
 \end{aligned}
 ```
-
-where ``N_S`` is spin number, ``G_0`` is bare Green's function.
+in the matsubara representation, where ``S`` is spin number, ``G_0`` is bare Green's function.
 We have
 
 ```math
 \begin{aligned}
-G_0(\omega_m, \vec{k})=\frac{1}{i\omega_m-\varepsilon_{\vec{k}}+\mu}
+G_0(\omega_m, \vec{k})=\frac{1}{i\omega_m-\epsilon_{\vec{k}}}
 \end{aligned}
 ```
 
-with dispersion given by ``\varepsilon_{\vec{k}}`` and chemical potential ``\mu``.
+with bare electron dispersion given by ``\epsilon_{\vec{k}}``. By summing over frequency we have 
 
+```math
+\begin{aligned}
+\Pi_0(\Omega_n, \vec{q}) &= -S \int\frac{d^d \vec k}{{(2\pi)}^d}
+\frac{n(\epsilon_{\vec{k}+\vec{q}})-n(\epsilon_{\vec{k}})}{i\omega_n-\epsilon_{\vec{k}+\vec{q}}+\epsilon_{\vec{k}}} \\
+&=-S\int \frac{d^d \vec k}{{(2\pi)}^d} n(\epsilon_{\vec k}) \left[ \frac{1}{i\Omega+\epsilon_{\vec k}-\epsilon_{\vec k+\vec q}}-\frac{1}{i\Omega+\epsilon_{\vec k-\vec q}-\epsilon_{\vec k}}\right]
+\end{aligned}
+```
+with the fermi distribution function 
+
+```math
+n(\epsilon_{\vec k}) =\frac{1}{e^{\beta\varepsilon_{\vec{k}}}+1}
+```
 
 ## Free electron in 3D
 
-   From now on we consider free electron in 3D, where ``D=3``, ``N_S=2`` and ``\varepsilon_{\vec{k}}=\frac{k^2}{2m}``.
-Then by summing over frequency we have
+From now on we consider free electron in 3D, where ``d=3`` and dispersion ``\epsilon_{\vec{k}}=k^2/2m-\mu``. We have
 
 ```math
 \begin{aligned}
-\Pi_0(\omega_n, \vec{q})&=2T\sum_{m}\int\frac{d^3k}{{(2\pi)}^3}
-\frac{1}{(i\omega_m-\varepsilon_{\vec{k}}+\mu)(i\omega_{m+n}-\varepsilon_{\vec{k}+\vec{q}}+\mu)}\\
-&=-2\int\frac{d^3k}{{(2\pi)}^3}
-\frac{n(\vec{k}+\vec{q})-n(\vec{k})}{i\omega_n-\varepsilon_{\vec{k}+\vec{q}}+\varepsilon_{\vec{k}}}\\
+\Pi_0(\Omega, \vec{q})&=-S\int_0^{\infty} \frac{k^2dk}{4\pi^2} n(\epsilon_k) \int_{-1}^{1} d(\cos \theta) \left[ \frac{1}{i\Omega+\epsilon_{\vec k}-\epsilon_{\vec k+\vec q}}-\frac{1}{i\Omega+\epsilon_{\vec k-\vec q}-\epsilon_{\vec k}}\right]\\
+&=-S\int_0^{\infty} \frac{k^2dk}{4\pi^2} n(\epsilon_k) \frac{m}{kq}\ln\frac{4m^2\Omega^2+(q^2-2kq)^2}{4m^2\Omega^2+(q^2+2kq)^2} \,,
 \end{aligned}
 ```
-
-with
-
-```math
-\begin{aligned}
-n(\vec{k})=\frac{1}{e^{\beta(\varepsilon_{\vec{k}}-\mu)}+1}.
-\end{aligned}
-```
-
-Now plug in the dispersion and we have
-
-```math
-\begin{aligned}
-\Pi_0(\omega_n, \vec{q})
-&=-2\int\frac{d^3k}{{(2\pi)}^3}
-[\frac{n(\vec{k})}{i\omega_n-\varepsilon_{\vec{k}}+\varepsilon_{\vec{k}+\vec{q}}}
--\frac{n(\vec{k})}{i\omega_n-\varepsilon_{\vec{k}+\vec{q}}+\varepsilon_{\vec{k}}}
-]\\
-&=-2\int\frac{d^3k}{{(2\pi)}^3}
-\frac{4mn(\vec{k})(q^2+2kq\cos(\theta))}
-{4m^2\omega_n^2+{(q^2+2kq\cos(\theta))}^2}\\
-&=-\int\frac{kmdk}{2\pi^2q}
-n(\vec{k})\ln(\frac{4m^2\omega_n^2+{(q^2+2kq)}^2}{4m^2\omega_n^2+{(q^2-2kq)}^2})\\
-\end{aligned}
-```
-
 which could be handled with one dimensional integral of ``k``.
 
+- In the limit ``q^2+2k_F q \ll 2m\Omega_n ``, the intergrand of ``\Pi_0`` is expanded as 
+  ```math
+  \frac{m}{kq}\ln\frac{4m^2\Omega^2+(q^2-2kq)^2}{4m^2\Omega^2+(q^2+2kq)^2}=-\frac{2q^2}{m\Omega^2}+\frac{2k^2q^4}{m^3\Omega^4}+\frac{(-4k^2+m^2\Omega^2)q^6}{2m^5\Omega^6}+...
+  ```
+- Zero temperature polarization can be calculated explicitly
+  ```math
+  \Pi_0(\Omega,q) = -\frac{N_F}{2}\left[1-\frac{1}{8 k_F q}\left\{ \left[\frac{(i2m\Omega-q^2)^2}{q^2}-4 k_F^2\right]\log\left(\frac{i2m\Omega-q^2-2 k_F q}{i2m\Omega-q^2+2 k_F q}\right)+\left[\frac{(i2m\Omega+q^2)^2}{q^2}-4 k_F^2\right]\log\left(\frac{i2m\Omega+q^2+2 k_F q}{i2m\Omega+q^2-2 k_F q}\right)\right\}\right]
+  ```
+- In the static limit ``\Omega=0``, 
+  ```math 
+  \Pi_0(0, q) = -N_F F(q/2k_F) \,,
+  ```
+   where ``N_F=Smk_F/(2\pi^2)`` is the density of states, and ``F(x)=\frac{1}{2}-\frac{x^2-1}{4x}\ln \left|\frac{1+x}{1-x}\right|`` is the Lindhard function. 
+   
+   The weak logarithmic singularity near ``2k_F`` is the cause of the Friedel oscillation and Kohn-Luttinger superconductivity.

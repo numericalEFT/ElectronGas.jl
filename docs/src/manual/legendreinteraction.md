@@ -53,13 +53,13 @@ could be decomposed with ``l``.
 For gap-function equation we have
 ```math
    \begin{aligned}
-\Delta_l(k) = \int \frac{p^2dp}{{2\pi}^2} w_l(k, p) f_l(p),
+\Delta_l(k) = \int \frac{p^2dp}{{4\pi}^2} w_l(k, p) f_l(p),
    \end{aligned}
 ```
 and for self-energy we have
 ```math
    \begin{aligned}
-\Sigma(k) = \int \frac{p^2dp}{{2\pi}^2} w_0(k, p) G(p).
+\Sigma(k) = \int \frac{p^2dp}{{4\pi}^2} w_0(k, p) G(p).
    \end{aligned}
 ```
 
