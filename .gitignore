@@ -27,4 +27,4 @@ docs/site/
 # environment.
 Manifest.toml
 
-*.DS_store
+*.DS_Store
