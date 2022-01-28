@@ -37,18 +37,6 @@ rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
 
 end
 
-"""
-    function Fock_ZeroTemp(q, n, param)
-
-Zero temperature one-spin Fock function for momentum.
-Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F) and Yukawa/Coulomb instant interaction.
-
-
-#Arguments:
- - q: momentum
- - n: matsubara frequency given in integer s.t. ωn=2πTn
-  - param: other system parameters
-"""
 @inline function Fock0_2dZeroTemp(k, param)
     @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 2
@@ -61,7 +49,19 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F) and Yukawa/Coulomb instant interactio
     return -e0^2 * log((sqrt(x^2 + c) + x) / 2 / l2)
 end
 
-function Fock_ZeroTemp(k::Float64, param)
+"""
+    function Fock0_ZeroTemp(q, n, param)
+
+Zero temperature one-spin Fock function for momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F) and Yukawa/Coulomb instant interaction.
+
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+  - param: other system parameters
+"""
+function Fock0_ZeroTemp(k::Float64, param)
     @unpack dim = param
 
     if dim == 2
