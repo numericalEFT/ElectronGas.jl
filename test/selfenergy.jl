@@ -5,25 +5,25 @@
         para = Parameter.rydbergUnit(θ, rs, 3)
         factor = -para.e0^2 * para.kF / π
         #test edge case when k → 0
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(1e-6, para) / factor, 2.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(1e-6, para) / factor, 2.0, rtol = 1e-6)
 
         #test edge case when k → 0
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(para.kF, para) / factor, 1.0, rtol = 1e-6)
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(para.kF + 1e-7, para) / factor, 1.0, rtol = 1e-6)
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(para.kF - 1e-7, para) / factor, 1.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF, para) / factor, 1.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF + 1e-7, para) / factor, 1.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF - 1e-7, para) / factor, 1.0, rtol = 1e-6)
 
         #test edge case when Λs → 0
         para = Parameter.rydbergUnit(θ, rs, 3, Λs = 1e-12)
-        @test isapprox(SelfEnergy.Fock0_3dZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
     end
 
     @testset "2D Fock" begin
         θ, rs = 0.1, 1.0
         para = Parameter.rydbergUnit(θ, rs, 2, Λs = 0.1)
         #test edge case when k → 0
-        f1 = SelfEnergy.Fock0_2dZeroTemp(0.0, para)
-        f2 = SelfEnergy.Fock0_2dZeroTemp(1e-7, para)
+        f1 = SelfEnergy.Fock0_ZeroTemp(0.0, para)
+        f2 = SelfEnergy.Fock0_ZeroTemp(1e-7, para)
         @test isapprox(f1, f2, rtol = 1e-6)
     end
 

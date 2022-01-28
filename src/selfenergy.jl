@@ -65,9 +65,9 @@ function Fock0_ZeroTemp(k::Float64, param)
     @unpack dim = param
 
     if dim == 2
-        return Fock_2dZeroTemp(q, param)
+        return Fock0_2dZeroTemp(k, param)
     elseif dim == 3
-        return Fock_3dZeroTemp(q, param)
+        return Fock0_3dZeroTemp(k, param)
     else
         error("No support for zero-temperature Fock in $dim dimension!")
     end
