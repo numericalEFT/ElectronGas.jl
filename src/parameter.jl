@@ -24,8 +24,8 @@ using ..Parameters
     μ::Float64 = 1.0
 
     # artificial parameters
-    Λs::Float64 = 0.0
-    Λa::Float64 = 0.0
+    Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
+    Λa::Float64 = 0.0   # Yukawa-type spin-asymmetric interaction ~1/(q^2+Λa)
     espin::Float64 = 0.0
 end
 

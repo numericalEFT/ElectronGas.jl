@@ -10,6 +10,69 @@ using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGr
 srcdir = "."
 rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
 
+@inline function Fock0_3dZeroTemp(k, param)
+    @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.dim == 3
+    @assert k >= 0
+    # TODO: add spin-asymmetric interaction
+    @unpack me, kF, Λs, e0 = param
+
+    if k < 1e-6
+        k = 1e-6
+    end
+
+    l = sqrt(Λs)
+    if l > 1e-14
+        fock = 1 + l / kF * (atan((k - kF) / l) - atan((k + kF) / l))
+        fock -= (l^2 - k^2 + kF^2) / 4 / k / kF * log((l^2 + (k - kF)^2) / (l^2 + (k + kF)^2))
+    else
+        if abs(k - kF) > 1e-10
+            fock = 1 + (k^2 - kF^2) / 4 / k / kF * log((k - kF)^2 / (k + kF)^2)
+        else
+            fock = 1
+        end
+    end
+
+    return fock * (-e0^2 * kF) / π
+
+end
+
+"""
+    function Fock_ZeroTemp(q, n, param)
+
+Zero temperature one-spin Fock function for momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F) and Yukawa/Coulomb instant interaction.
+
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+  - param: other system parameters
+"""
+@inline function Fock0_2dZeroTemp(k, param)
+    @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.dim == 2
+    # TODO: add spin-asymmetric interaction
+    @unpack me, kF, Λs, e0 = param
+    @assert !(Λs ≈ 0.0) "Fock diverges diverges for the bare Coulomb interaction"
+    l2 = Λs
+    x = kF^2 + l2 - k^2
+    c = 4 * k^2 * l2
+    return -e0^2 * log((sqrt(x^2 + c) + x) / 2 / l2)
+end
+
+function Fock_ZeroTemp(k::Float64, param)
+    @unpack dim = param
+
+    if dim == 2
+        return Fock_2dZeroTemp(q, param)
+    elseif dim == 3
+        return Fock_3dZeroTemp(q, param)
+    else
+        error("No support for zero-temperature Fock in $dim dimension!")
+    end
+end
+
 function G0wrapped(Euv, rtol, sgrid, param)
     @unpack me, kF, β, EF = param
 
