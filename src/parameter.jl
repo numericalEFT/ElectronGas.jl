@@ -67,17 +67,17 @@ generate Para with a complete set of parameters, no value presumed.
  - EF: Fermi energy
  - β: inverse temperature
 """
-@inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2)
-    return Para(
-        dim = dim,
+@inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
+    para = Para(dim = dim,
         spin = spin,
         ϵ0 = ϵ0,
         e0 = e0,
         me = me,
         EF = EF,
         β = β,
-        μ = EF,
+        μ = EF
     )
+    return reconstruct(para, kwargs...)
 end
 
 """
@@ -89,13 +89,13 @@ assume 4πϵ0=1, me=0.5, EF=1
  - Θ: dimensionless temperature. Since EF=1 we have β=beta
  - rs: Wigner-Seitz radius over Bohr radius.
 """
-@inline function defaultUnit(Θ, rs, dim = 3, spin = 2)
+@inline function defaultUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = (dim == 3) ? sqrt(2 * rs / (9π / (2spin))^(1 / 3)) : sqrt(sqrt(2) * rs)
     me = 0.5
     EF = 1
     β = 1 / Θ / EF
-    return fullUnit(ϵ0, e0, me, EF, β, dim, spin)
+    return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
 end
 
 
@@ -108,14 +108,14 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
  - Θ: dimensionless temperature. beta could be different from β
  - rs: Wigner-Seitz radius over Bohr radius.
 """
-@inline function rydbergUnit(Θ, rs, dim = 3, spin = 2)
+@inline function rydbergUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = sqrt(2)
     me = 0.5
     kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
     EF = kF^2 / (2me)
     β = 1 / Θ / EF
-    return fullUnit(ϵ0, e0, me, EF, β, dim, spin)
+    return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
 end
 
 export Para, Param
