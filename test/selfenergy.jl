@@ -18,16 +18,16 @@
 
         ΣR = real(Σ.dynamic)
         ΣI = imag(Σ.dynamic)
-        println(Σ.instant[1, 1, :])
-        println(ΣR[1, 1, kF_label, :])
-        println(ΣI[1, 1, kF_label, :])
+        # println(Σ.instant[1, 1, :])
+        # println(ΣR[1, 1, kF_label, :])
+        # println(ΣI[1, 1, kF_label, :])
         Z0 = (SelfEnergy.zfactor(Σ))
         # @test isapprox(Z0, 0.862, rtol = 5e-3)
 
         println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")
         G = SelfEnergy.Gwrapped(Σ, param)
-        println(G.dynamic[1, 1, kF_label, :])
+        # println(G.dynamic[1, 1, kF_label, :])
     end
     # @testset "default unit" begin
     #     # make sure everything works for different unit sets

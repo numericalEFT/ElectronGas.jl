@@ -61,7 +61,7 @@ end
 
 function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     # V:bare interaction
-    # G:G^{+-} is local field factor,0 for RPA
+    # F:F^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
     # comparing to previous convention, an additional V is multiplied
