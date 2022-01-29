@@ -8,7 +8,23 @@ using ElectronGas.Parameters
 using ElectronGas.Lehmann
 using ElectronGas.CompositeGrids
 
+function G2wrapped(Σ::GreenFunc.Green2DLR, param)
+    # return G(K)G(-K)
+    @unpack me, kF, β, EF = param
+    Σ_freq = GreenFunc.toMatFreq(Σ)
+    green =  Green2DLR{ComplexF64}(
+        :G, GreenFunc.IMFREQ,Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
+        timeSymmetry = Σ_freq.timeSymmetry, rtol = Σ_freq.dlrGrid.rtol)
 
+    green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
+    for (ki, k) in enumerate(green.spaceGrid)
+        for (ni, n) in enumerate(green.dlrGrid.n)
+            green_dyn[1,1,ki,ni] = 1/(im*(π/β*(2n+1)) - (k^2/2/me-EF) + Σ.dynamic[1,1,ki,ni] + Σ.instant[1,1,ki])
+        end
+    end
+    green.dynamic=green_dyn
+    return green
+end
 
 function calcΔ(F::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     @unpack β = W.param
