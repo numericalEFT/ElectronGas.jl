@@ -28,7 +28,7 @@
         println("n = $n,  ω_n = $(2π*n/param.β)")
         for (qi, q) in enumerate(qgrid)
             polar[qi] = Polarization.Polarization0_ZeroTemp(q, n, param)
-            println("q=$q, Π0=$(polar[qi])")
+            # println("q=$q, Π0=$(polar[qi])")
         end
     end
 
@@ -40,21 +40,21 @@
         println("q = $q")
         for (i, n) in enumerate(ngrid)
             polar[i] = Polarization.Polarization0_ZeroTemp(q, n, param)
-            println("n=$n, Π0=$(polar[i]) \n")
+            # println("n=$n, Π0=$(polar[i]) \n")
         end
     end
 
-    while true
-        print("Please enter a whole number between 1 and 5: ")
-        input = readline(stdin)
-        value = tryparse(Int, input)
-        if value !== nothing && 1 <= value <= 5
-            println("You entered $(input)")
-            break
-        else
-            @warn "Enter a whole number between 1 and 5"
-        end
-    end
+    # while true
+    #     print("Please enter a whole number between 1 and 5: ")
+    #     input = readline(stdin)
+    #     value = tryparse(Int, input)
+    #     if value !== nothing && 1 <= value <= 5
+    #         println("You entered $(input)")
+    #         break
+    #     else
+    #         @warn "Enter a whole number between 1 and 5"
+    #     end
+    # end
     # plt = plot(qgrid, polar, ytics = -0.08:0.01, ls = 1, Axes(grid = :on, key = "left"))
     # display(plt)
     # save(term = "png", output = "polar_2d.png",
