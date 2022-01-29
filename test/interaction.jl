@@ -4,8 +4,10 @@
         beta = 1e4
         rs = 2.0
         param = Interaction.Parameter.defaultUnit(1 / beta, rs)
-        # println(Interaction.RPA(0.01, 1, param))
-        # println(Interaction.KO(0.01, 1, param))
+        println(Interaction.RPA(1.0, 1, param))
+        println(Interaction.KO(1.0, 1, param))
+        println(Interaction.RPA(1.0, 1, param; isregularized = true))
+        println(Interaction.KO(1.0, 1, param; isregularized = true))
         # println(Interaction.RPA(1.0, 1, param; pifunc = Interaction.Polarization.Polarization0_FiniteTemp))
         # println(Interaction.KO(1.0, 1, param; pifunc = Interaction.Polarization.Polarization0_FiniteTemp))
 

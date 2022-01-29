@@ -59,31 +59,36 @@ function coulomb(q, param)
     end
 end
 
-function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
+function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int; regV::Float64 = V, isregularized::Bool = false)
     # V:bare interaction
     # F:F^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
     # comparing to previous convention, an additional V is multiplied
     K = 0
+    if isregularized == false
+        regV = 1.0
+    end
+
     if V ≈ 0
+        K = Π * ( - F)^2 / (1.0 - (Π) * ( - F)) / regV
         return K
     end
     if n == 0
         if F == 0
-            K = V * Π * (1)^2 / (1.0 / V - Π * (1))
+            K = (V / regV) * Π * (1)^2 / (1.0 / V - Π * (1))
         else
-            K = V * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
+            K = (V / regV) * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
         end
     else
-        K = Π * (V - F)^2 / (1.0 - (Π) * (V - F))
+        K = Π * (V - F)^2 / (1.0 - (Π) * (V - F)) / regV
     end
     @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
     return K
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb, isregularized = false)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vs::Float64, Va::Float64 = V_Bare(q, param)
@@ -91,8 +96,8 @@ function bubblecorrection(q::Float64, n::Int, param;
 
     if abs(q) > EPS
         Π::Float64 = spin * pifunc(q, n, param)
-        Ks = bubbledyson(Vs, Fs, Π, n)
-        Ka = bubbledyson(Va, Fa, Π, n)
+        Ks = bubbledyson(Vs, Fs, Π, n; regV = Vs, isregularized = isregularized)
+        Ka = bubbledyson(Va, Fa, Π, n; regV = Vs, isregularized = isregularized)
     else
         Ks, Ka = 0.0, 0.0
     end
@@ -110,8 +115,8 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, V_Bare = coulomb)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, V_Bare = V_Bare)
+function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, V_Bare = coulomb, isregularized = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, V_Bare = V_Bare, isregularized = isregularized)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
@@ -181,8 +186,8 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, V_Bare = coulomb)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb, isregularized = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, V_Bare = coulomb, isregularized = isregularized)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
