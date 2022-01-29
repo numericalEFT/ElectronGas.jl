@@ -16,6 +16,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Manual" => [
+            "manual/fock.md",
             "manual/polarization.md",
             "manual/polarization_2D.md",
             "manual/legendreinteraction.md",
