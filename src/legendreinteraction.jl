@@ -19,9 +19,6 @@ using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGr
 
 export DCKernel
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
-
 @inline function spin_factor(spin_state)
     if spin_state == :singlet
         factor = 1.0

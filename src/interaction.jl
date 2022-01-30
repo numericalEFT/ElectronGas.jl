@@ -11,9 +11,6 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
-
 export RPA, KO, RPAwrapped, KOwrapped, coulomb
 
 # if !@isdefined Para
@@ -59,26 +56,46 @@ function coulomb(q, param)
     end
 end
 
-function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int; regV::Float64 = V, isregularized::Bool = false)
+function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
     # V:bare interaction
     # F:F^{+-} is local field factor,0 for RPA
     # Π:Polarization. 2*Polarization0 for spin 1/2
     # n:matfreq. special case for n=0
     # comparing to previous convention, an additional V is multiplied
     K = 0
-    if isregularized == false
-        regV = 1.0
+    if V ≈ 0
+        K = Π * ( - F)^2 / (1.0 - (Π) * ( - F))
+        return K
     end
+    if n == 0
+        if F == 0
+            K = (V) * Π * (1)^2 / (1.0 / V - Π * (1))
+        else
+            K = (V) * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
+        end
+    else
+        K = Π * (V - F)^2 / (1.0 - (Π) * (V - F))
+    end
+    @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
+    return K
+end
 
+function bubbledysonreg(V::Float64, F::Float64, Π::Float64, n::Int; regV::Float64 = V)
+    # V:bare interaction
+    # F:F^{+-} is local field factor,0 for RPA
+    # Π:Polarization. 2*Polarization0 for spin 1/2
+    # n:matfreq. special case for n=0
+    # comparing to previous convention, an additional V is multiplied
+    K = 0
     if V ≈ 0
         K = Π * ( - F)^2 / (1.0 - (Π) * ( - F)) / regV
         return K
     end
     if n == 0
         if F == 0
-            K = (V / regV) * Π * (1)^2 / (1.0 / V - Π * (1))
+            K = Π * (1)^2 / (1.0 / V - Π * (1))
         else
-            K = (V / regV) * Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
+            K = Π * (1 - F / V)^2 / (1.0 / V - Π * (1 - F / V))
         end
     else
         K = Π * (V - F)^2 / (1.0 - (Π) * (V - F)) / regV
@@ -96,8 +113,13 @@ function bubblecorrection(q::Float64, n::Int, param;
 
     if abs(q) > EPS
         Π::Float64 = spin * pifunc(q, n, param)
-        Ks = bubbledyson(Vs, Fs, Π, n; regV = Vs, isregularized = isregularized)
-        Ka = bubbledyson(Va, Fa, Π, n; regV = Vs, isregularized = isregularized)
+        if isregularized
+            Ks = bubbledysonreg(Vs, Fs, Π, n, regV = Vs)
+            Ka = bubbledysonreg(Va, Fa, Π, n, regV = Vs)
+        else
+            Ks = bubbledyson(Vs, Fs, Π, n)
+            Ka = bubbledyson(Va, Fa, Π, n)
+        end
     else
         Ks, Ka = 0.0, 0.0
     end
