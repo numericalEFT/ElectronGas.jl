@@ -7,15 +7,6 @@ using ..Convention
 
 export Polarization0_ZeroTemp, Polarization0_FiniteTemp
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
-
-# using Parameters, GreenFunc, CompositeGrids
-# include(srcdir*"/parameter.jl")
-# using .Parameter
-# include(srcdir*"/convention.jl")
-# using .Convention
-
 # Analytical calculated integrand of Π0 in 2D.
 @inline function _ΠT2d_integrand(k, q, ω, param)
     @unpack me, β, μ = param

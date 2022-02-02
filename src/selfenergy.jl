@@ -7,9 +7,6 @@ module SelfEnergy
 using ..Parameter, ..Convention, ..Polarization, ..Interaction, ..LegendreInteraction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
-
 @inline function Fock0_3dZeroTemp(k, param)
     @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 3
