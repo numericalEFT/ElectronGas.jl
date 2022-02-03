@@ -91,7 +91,7 @@ function coulombinv(q, param)
     else
         Vinva = ϵ0 * (q^2 + Λa) / e0a^2
     end
-    return  Vinvs, Vinva
+    return Vinvs, Vinva
 end
 
 """
@@ -110,7 +110,7 @@ function bubbledyson(Vinv::Float64, F::Float64, Π::Float64)
         if F ≈ 0
             K = 0
         else
-            K = Π / ( 1.0 / (-F) - (Π)) * (-F)
+            K = Π / (1.0 / (-F) - (Π)) * (-F)
         end
     else
         K = Π / (Vinv / (1 - F * Vinv) - (Π)) * (1 - F * Vinv) / Vinv
@@ -135,7 +135,7 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
         if F ≈ 0
             K = 0
         else
-            K = Π / ( 1.0 / (-F) - (Π))
+            K = Π / (1.0 / (-F) - (Π))
         end
     else
         K = Π / (Vinv / (1 - F * Vinv) - (Π))
@@ -145,8 +145,8 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
-    Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false, kwargs...)
+    Fs::Float64, Fa::Float64 = landaufunc(q, n, param; kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     # Vs::Float64, Va::Float64 = V_Bare(q, param)
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
@@ -216,7 +216,7 @@ Now Landau parameter F. F(+-)=G(+-)*V
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function landauParameterTakada(q, n, param)
+function landauParameterTakada(q, n, param; kwargs...)
     @unpack me, kF, rs, e0s, e0, e0a, β, Λs, Λa, ϵ0 = param
     if e0 ≈ 0.0
         return 0.0, 0.0
@@ -234,8 +234,12 @@ function landauParameterTakada(q, n, param)
     return F_s, F_a
 end
 
-@inline function landauParameter0(q, n, param)
+@inline function landauParameter0(q, n, param; kwargs...)
     return 0.0, 0.0
+end
+
+@inline function landauParameterConst(q, n, param; Fs = 0.0, Fa = 0.0, kwargs...)
+    return Fs, Fa
 end
 
 """
@@ -249,8 +253,8 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, isregularized = isregularized)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false, kwargs...)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, isregularized = isregularized, kwargs...)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
