@@ -11,9 +11,6 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-srcdir = "."
-rundir = isempty(ARGS) ? pwd() : (pwd() * "/" * ARGS[1])
-
 export RPA, KO, RPAwrapped, KOwrapped, coulomb
 
 # if !@isdefined Para
@@ -52,47 +49,118 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
 """
 function coulomb(q, param)
     @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if (q^2+Λs)*(q^2+Λa) ≈ 0.0
-        return 0.0, 0.0
+    if e0s ≈ 0.0
+        Vs = 0.0
     else
-        return e0s^2 / ϵ0 / (q^2 + Λs), e0a^2 / ϵ0 / (q^2 + Λa)
+        if (q^2 + Λs) ≈ 0.0
+            Vs = Inf
+        else
+            Vs = e0s^2 / ϵ0 / (q^2 + Λs)
+        end
     end
+    if e0a ≈ 0.0
+        Va = 0.0
+    else
+        if (q^2 + Λa) ≈ 0.0
+            Va = Inf
+        else
+            Va = e0a^2 / ϵ0 / (q^2 + Λa)
+        end
+    end
+    return Vs, Va
 end
 
-function bubbledyson(V::Float64, F::Float64, Π::Float64, n::Int)
-    # V:bare interaction
-    # G:G^{+-} is local field factor,0 for RPA
-    # Π:Polarization. 2*Polarization0 for spin 1/2
-    # n:matfreq. special case for n=0
-    # comparing to previous convention, an additional V is multiplied
-    K = 0
-    if V ≈ 0
-        return K
+"""
+    function coulombinv(q,param)
+
+Inverse of bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+
+#Arguments:
+ - q: momentum
+ - param: other system parameters
+"""
+function coulombinv(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if e0s^2 ≈ 0.0
+        Vinvs = Inf
+    else
+        Vinvs = ϵ0 * (q^2 + Λs) / e0s^2
     end
-    if n == 0
-        if F == 0
-            K = -V * Π * (1)^2 / (1.0 / V + Π * (1))
+    if e0a^2 ≈ 0.0
+        Vinva = Inf
+    else
+        Vinva = ϵ0 * (q^2 + Λa) / e0a^2
+    end
+    return  Vinvs, Vinva
+end
+
+"""
+    function bubbledyson(Vinv::Float64, F::Float64, Π::Float64)
+
+Return (V - F)^2 Π / (1 - (V - F)Π), which is the dynamic part of effective interaction.
+
+#Arguments:
+- Vinv: inverse bare interaction
+- F: Landau parameter
+- Π: polarization
+"""
+function bubbledyson(Vinv::Float64, F::Float64, Π::Float64)
+    K = 0
+    if Vinv ≈ Inf
+        if F ≈ 0
+            K = 0
         else
-            K = -V * Π * (1 - F / V)^2 / (1.0 / V + Π * (1 - F / V))
+            K = Π / ( 1.0 / (-F) - (Π)) * (-F)
         end
     else
-        K = -(Π) * (V - F)^2 / (1.0 + (Π) * (V - F))
+        K = Π / (Vinv / (1 - F * Vinv) - (Π)) * (1 - F * Vinv) / Vinv
     end
-    @assert !isnan(K) "nan at V=$V, F=$F, Π=$Π, n=$n"
+    @assert !isnan(K) "nan at Vinv=$Vinv, F=$F, Π=$Π"
+    return K
+end
+
+"""
+    function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
+
+Return (V - F) Π / (1 - (V - F)Π), which is the dynamic part of effective interaction divided by (V - F).
+
+#Arguments:
+- Vinv: inverse bare interaction
+- F: Landau parameter
+- Π: polarization
+"""
+function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
+    K = 0
+    if Vinv ≈ Inf
+        if F ≈ 0
+            K = 0
+        else
+            K = Π / ( 1.0 / (-F) - (Π))
+        end
+    else
+        K = Π / (Vinv / (1 - F * Vinv) - (Π))
+    end
+    @assert !isnan(K) "nan at Vinv=$Vinv, F=$F, Π=$Π"
     return K
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
-    Vs::Float64, Va::Float64 = V_Bare(q, param)
+    # Vs::Float64, Va::Float64 = V_Bare(q, param)
+    Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
     @unpack spin = param
 
     if abs(q) > EPS
         Π::Float64 = spin * pifunc(q, n, param)
-        Ks = bubbledyson(Vs, Fs, Π, n)
-        Ka = bubbledyson(Va, Fa, Π, n)
+        if isregularized
+            Ks = bubbledysonreg(Vinvs, Fs, Π)
+            Ka = bubbledysonreg(Vinva, Fa, Π)
+        else
+            Ks = bubbledyson(Vinvs, Fs, Π)
+            Ka = bubbledyson(Vinva, Fa, Π)
+        end
     else
         Ks, Ka = 0.0, 0.0
     end
@@ -110,13 +178,14 @@ Dynamic part of RPA interaction, with polarization approximated by zero temperat
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, V_Bare = coulomb)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, V_Bare = V_Bare)
+function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, isregularized = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, Vinv_Bare = Vinv_Bare, isregularized = isregularized)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv) where {SGT}
+
+    @unpack β = param
     gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
@@ -125,9 +194,9 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, V_Bare = V_Bare)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare)
         end
-        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = V_Bare(k, param)
+        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
     gs.dynamic = green_dyn_s
     gs.instant = green_ins_s
@@ -137,7 +206,7 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
 end
 
 """
-TODO    function landauParameterTakada(q, n, param)->exchange correlation kernel/Landau parameter
+    function landauParameterTakada(q, n, param)
 
 G factor with Takada's anzats. See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.13-2.16).
 Now Landau parameter F. F(+-)=G(+-)*V
@@ -180,13 +249,14 @@ Returns the spin symmetric part and asymmetric part separately.
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, V_Bare = coulomb)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, isregularized = isregularized)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, V_Bare = coulomb) where {SGT}
-    @unpack me, kF, rs, e0, β, Λs, ϵ0 = param
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv) where {SGT}
+
+    @unpack β = param
     gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
@@ -195,9 +265,9 @@ function KOwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, V_Bare = V_Bare)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare)
         end
-        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = V_Bare(k, param)
+        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
     gs.dynamic = green_dyn_s
     gs.instant = green_ins_s

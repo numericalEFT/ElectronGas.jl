@@ -13,10 +13,10 @@ const INL, OUTL, INR, OUTR = 1, 2, 3, 4
 const EPS = 1e-16
 
 # export all conventions
-for n in names(@__MODULE__; all=true)
-	  if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
-		    @eval export $n
-	  end
+for n in names(@__MODULE__; all = true)
+    if Base.isidentifier(n) && n ∉ (Symbol(@__MODULE__), :eval, :include)
+        @eval export $n
+    end
 end
 
 end
