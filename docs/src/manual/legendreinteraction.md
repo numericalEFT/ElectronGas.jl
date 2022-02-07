@@ -111,7 +111,12 @@ For 3D electron gas with bare interaction ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\
 ```
 3D Yukawa interaction has
 ```math
-V(r) = \frac{e^2}{r}e^{-mr}, \quad V(q)=\frac{4\pi e^2}{q^2+m^2}
+\begin{aligned}
+V(r) &= \frac{e^2}{r}e^{-mr}, \quad V(q)=\frac{4\pi e^2}{q^2+m^2} ,\\
+\delta h_{1}(k, p)&=2 \pi e^{2} \ln\left[\frac{(k+p)^2+m^2}{(k-p)^2+m^2}\right], \\
+\delta h_{3}(k, p)&=4 \pi e^{2} \left[2kp - \frac{m^2}{2} \ln \frac{(k+p)^2+m^2}{(k-p)^2+m^2} \right], \\
+\delta h_{5}(k, p)&=4 \pi e^{2}\left[2 k p\left(k^2+p^2 -m^2\right) +\frac{m^4}{2}\ln \frac{(k+p)^2+m^2}{(k-p)^2+m^2} \right].
+\end{aligned}
 ```
 
 ``w_l`` can be expressed as
@@ -148,14 +153,20 @@ For ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\,\left(V(r)=-\ln \frac{r}{L}\right)``,
 2D Yukawa interaction has
 ```math
 \begin{aligned}
-V(r)&=\frac{e^2}{r} e^{-mr}\\
+V(r)&=\frac{e^2}{r} e^{-mr} ,\\
 V(q)&=\int {\rm d}^2\vec r V(r) e^{i\vec q\cdot \vec r} \\
     & = \int r dr \frac{e^2}{r} e^{-mr} \int_0^{2\pi} d\theta e^{iqr\cos \theta} \\
     & = \int dr e^2 e^{-mr} 2\pi J_0(qr) \\
-    & = \frac{2\pi e^2}{\sqrt{m^2+q^2}} 
+    & = \frac{2\pi e^2}{\sqrt{q^2+m^2}} \,,
 \end{aligned}
 ```
-
+and the helper functions for the first term have
+```math
+\begin{aligned}
+\delta h_{1}(k, p)&=2\pi e^{2} (\sqrt{(k+p)^2+m^2}-\sqrt{(k-p)^2+m^2}), \\
+\delta h_{3}(k, p)&=\frac 2 3 \pi e^{2}\left ([(k+p)^2-2m^2]\sqrt{(k+p)^2+m^2} - [(k-p)^2-2m^2]\sqrt{(k-p)^2+m^2} \right ).
+\end{aligned}
+```
 
 **Reference**:
 1. Christopher Frye and Costas J. Efthimiou, Spherical Harmonics in ``p`` Dimensions, arXiv 1205.3548
