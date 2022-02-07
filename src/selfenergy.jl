@@ -39,7 +39,6 @@ end
     @assert param.dim == 2
     # TODO: add spin-asymmetric interaction
     @unpack me, kF, Λs, e0 = param
-    @assert !(Λs ≈ 0.0) "Fock diverges diverges for the bare Coulomb interaction"
     l2 = Λs
     x = √((k - kF)^2 + l2)
     y = √((k + kF)^2 + l2)

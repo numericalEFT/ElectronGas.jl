@@ -25,6 +25,10 @@
         f1 = SelfEnergy.Fock0_ZeroTemp(0.0, para)
         f2 = SelfEnergy.Fock0_ZeroTemp(1e-7, para)
         @test isapprox(f1, f2, rtol = 1e-6)
+
+        para1 = Parameter.rydbergUnit(θ, rs, 2)
+        para2 = Parameter.rydbergUnit(θ, rs, 2, Λs = 1e-12)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para1.kF, para1), SelfEnergy.Fock0_ZeroTemp(para2.kF, para2), rtol = 1e-6)
     end
 
     @testset "default unit" begin
