@@ -41,10 +41,35 @@ end
     @unpack me, kF, Λs, e0 = param
     @assert !(Λs ≈ 0.0) "Fock diverges diverges for the bare Coulomb interaction"
     l2 = Λs
-    x = kF^2 + l2 - k^2
-    c = 4 * k^2 * l2
-    return -e0^2 * log((sqrt(x^2 + c) + x) / 2 / l2)
+    x = √((k - kF)^2 + l2)
+    y = √((k + kF)^2 + l2)
+    z = √(k^2 + l2)
+
+    if abs(k) > EPS
+        if l2 < EPS
+            fock = abs(k - kF) * (1 - kF / k) + abs(k + kF) * (1 + kF / k) - 2 * abs(k)
+        else
+            fock = (k - kF) * x / k + (k + kF) * y / k - 2z
+            fock += l2 * log((k - kF + x) * (k + kF + y) / (k + z)^2) / k
+        end
+    else
+        fock = 4 * (√(kF^2 + l2) - sqrt(Λs))
+    end
+
+    return fock * (-e0^2) / 4π
 end
+
+# @inline function Fock0_2dZeroTemp(k, param)
+#     @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
+#     @assert param.dim == 2
+#     # TODO: add spin-asymmetric interaction
+#     @unpack me, kF, Λs, e0 = param
+#     @assert !(Λs ≈ 0.0) "Fock diverges diverges for the bare Coulomb interaction"
+#     l2 = Λs
+#     x = kF^2 + l2 - k^2
+#     c = 4 * k^2 * l2
+#     return -e0^2 * log((sqrt(x^2 + c) + x) / 2 / l2)
+# end
 
 """
     function Fock0_ZeroTemp(q, n, param)
