@@ -215,6 +215,7 @@ end
 function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state = :auto)
     # use helper function
     @unpack kF, β = param
+    channel = 0
 
     if spin_state == :sigma
         # for self-energy, always use ℓ=0
