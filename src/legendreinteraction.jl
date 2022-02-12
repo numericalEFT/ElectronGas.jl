@@ -36,18 +36,42 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
+    @unpack dim = param
+    if dim ∉ [2, 3]
+        throw(UndefVarError(dim))
+    end
+
     if int_type == :rpa
-        ks, ka = RPA(q, n, param)
+        if dim == 3
+            ks, ka = RPA(q, n, param)
+        elseif dim == 2
+            ks, ka = RPA(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+        end
     elseif int_type == :ko
-        ks, ka = KO(q, n, param)
+        if dim == 3
+            ks, ka = KO(q, n, param)
+        elseif dim == 2
+            ks, ka = KO(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+        end
     else
         throw(UndefVarError(int_type))
     end
+
     return ks + spin_factor(spin_state) * ka
 end
 
 @inline function interaction_instant(q, param, spin_state)
-    Vs, Va = coulomb(q, param)
+    @unpack dim = param
+    if dim ∉ [2, 3]
+        throw(UndefVarError(dim))
+    end
+
+    if dim == 3
+        Vs, Va = coulomb(q, param)
+    elseif dim == 2
+        Vs, Va = coulomb_2d(q, param)
+    end
+
     return (Vs + spin_factor(spin_state) * Va)
 end
 

@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d
 
 # if !@isdefined Para
 #     include(rundir*"/para.jl")
@@ -71,9 +71,41 @@ function coulomb(q, param)
 end
 
 """
+    function coulomb_2d(q,param)
+
+Bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+
+#Arguments:
+ - q: momentum
+ - param: other system parameters
+"""
+function coulomb_2d(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if e0s ≈ 0.0
+        Vs = 0.0
+    else
+        if (q^2 + Λs) ≈ 0.0
+            Vs = Inf
+        else
+            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs)
+        end
+    end
+    if e0a ≈ 0.0
+        Va = 0.0
+    else
+        if (q^2 + Λa) ≈ 0.0
+            Va = Inf
+        else
+            Va = e0a^2 / 2ϵ0 / √(q^2 + Λa)
+        end
+    end
+    return Vs, Va
+end
+
+"""
     function coulombinv(q,param)
 
-Inverse of bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+Inverse of bare interaction in 3D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
 
 #Arguments:
  - q: momentum
@@ -91,7 +123,31 @@ function coulombinv(q, param)
     else
         Vinva = ϵ0 * (q^2 + Λa) / e0a^2
     end
-    return  Vinvs, Vinva
+    return Vinvs, Vinva
+end
+
+"""
+    function coulombinv_2d(q,param)
+
+Inverse of bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+
+#Arguments:
+ - q: momentum
+ - param: other system parameters
+"""
+function coulombinv_2d(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if e0s^2 ≈ 0.0
+        Vinvs = Inf
+    else
+        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2
+    end
+    if e0a^2 ≈ 0.0
+        Vinva = Inf
+    else
+        Vinva = 2ϵ0 * √(q^2 + Λa) / e0a^2
+    end
+    return Vinvs, Vinva
 end
 
 """
@@ -110,7 +166,7 @@ function bubbledyson(Vinv::Float64, F::Float64, Π::Float64)
         if F ≈ 0
             K = 0
         else
-            K = Π / ( 1.0 / (-F) - (Π)) * (-F)
+            K = Π / (1.0 / (-F) - (Π)) * (-F)
         end
     else
         K = Π / (Vinv / (1 - F * Vinv) - (Π)) * (1 - F * Vinv) / Vinv
@@ -135,7 +191,7 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
         if F ≈ 0
             K = 0
         else
-            K = Π / ( 1.0 / (-F) - (Π))
+            K = Π / (1.0 / (-F) - (Π))
         end
     else
         K = Π / (Vinv / (1 - F * Vinv) - (Π))
@@ -250,7 +306,7 @@ Returns the spin symmetric part and asymmetric part separately.
  - param: other system parameters
 """
 function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, isregularized = isregularized)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, isregularized = isregularized)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;

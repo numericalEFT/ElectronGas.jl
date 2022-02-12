@@ -133,8 +133,8 @@ w_2(k,p) &= \frac{1}{{(2kp)}^3}
 For 2D, the sphereical harmonic is just a Fourier series as
 ```math
 \begin{aligned}
- P_{\ell}(\hat{kp}) &=  \pi \cos[\ell(\theta_{\hat k} - \theta_{\hat p})] , \quad N(2,\ell) = 2\\
-Y_{\ell 1}(\hat k) &= \cos(\ell \theta),\;  Y_{\ell 2}(\hat k) = \sin(\ell \theta).
+ P_{\ell}(\hat{kp}) &=  \cos[\ell(\theta_{\hat k} - \theta_{\hat p})] , \quad N(2,\ell) = 2\\
+Y_{\ell 1}(\hat k) &= \frac{1}{\sqrt{\pi}}\cos(\ell \theta),\;  Y_{\ell 2}(\hat k) = \frac{1}{\sqrt{\pi}} \sin(\ell \theta).
 \end{aligned}
 ```
 The ``GW`` self energy is
