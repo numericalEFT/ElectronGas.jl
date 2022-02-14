@@ -8,7 +8,6 @@ using ElectronGas
 using Parameters, Random
 using MCIntegration
 using Lehmann
-include("interpolation.jl")
 
 const steps = 1e6
 beta = 25.0
