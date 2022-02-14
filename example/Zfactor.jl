@@ -1,97 +1,112 @@
-using Printf, LinearAlgebra, Distributed
+"""
+calculate the Z factor of UEG using MC
+"""
 
-const Ncpu = 16 # number of workers (CPU)
-const totalStep = 1e8
-addprocs(Ncpu)
+using Printf, LinearAlgebra
+using CompositeGrids
+using ElectronGas
+using Parameters, Random
+using MCIntegration
+using Lehmann
+include("interpolation.jl")
 
-@everywhere using QuantumStatistics, Parameters, Random, LinearAlgebra
-@everywhere include("parameter.jl")
-@everywhere include("interaction.jl")
-@everywhere include("RPA.jl")
+const steps = 1e6
+beta = 25.0
+rs = 1.0
+mass2 = 1.e-3
+const para = Parameter.rydbergUnit(1.0 / beta, rs, 3, Λs = mass2)
+const kF = para.kF
+const EF = para.EF
+const β = para.β
 
-@everywhere const kgrid = Grid.fermiK(kF, 3kF, 0.2kF, 16)  # external K grid for sigma
-@everywhere const dlr = DLR.DLRGrid(:fermi, 10EF, β, 1e-10)
+qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 * kF, 8)
+τgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, β], [0.0, β], 16, β * 1e-4, 8)
 
-@everywhere struct Para{Q,T}
-    dW0::Matrix{Float64}
-    qgrid::Q
-    τgrid::T # dedicated τgrid for dynamic interaction
-    function Para()
-        qgrid = Grid.boseK(kF, 6kF, 0.1kF, 512) 
-        # τgrid = Grid.tau(β, EF / 5, 128) #for rs=4
-        τgrid = Grid.tau(β, EF / 25, 128) # for rs=1
-        # TODO: τgrid halflife works very strange
-
-        vqinv = [(q^2 + mass2) / (4π * e0^2) for q in qgrid.grid]
-        dW0 = dWRPA(vqinv, qgrid.grid, τgrid.grid, kF, β, spin, me) # dynamic part of the effective interaction
-        return new{typeof(qgrid),typeof(τgrid)}(dW0, qgrid, τgrid)
+dlr = DLRGrid(Euv = 10EF, beta = β, rtol = 1e-10, isFermi = false, symmetry = :ph)
+W = zeros(length(qgrid), dlr.size)
+for (qi, q) in enumerate(qgrid.grid)
+    for (ni, n) in enumerate(dlr.n)
+        # W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_FiniteTemp)[1]
+        W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_ZeroTemp)[1]
     end
 end
+const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
 
-@everywhere function integrand(config)
+function integrand(config)
     if config.curr == 1
-        return 1.0
-    elseif config.curr == 2
         return eval2(config)
     else
         error("impossible!")
     end
 end
 
-@everywhere function eval2(config)
-    para = config.para
+function interactionDynamic(qd, τIn, τOut)
+
+    dτ = abs(τOut - τIn)
+
+    kDiQ = sqrt(dot(qd, qd))
+    vd = 4π * para.e0^2 / (kDiQ^2 + para.Λs)
+    if kDiQ <= qgrid.grid[1]
+        q = qgrid.grid[1] + 1.0e-6
+        wd = vd * Interp.linear2D(dW0, qgrid, τgrid, q, dτ)
+        # the current interpolation vanishes at q=0, which needs to be corrected!
+    else
+        wd = vd * Interp.linear2D(dW0, qgrid, τgrid, kDiQ, dτ) # dynamic interaction, don't forget the singular factor vq
+    end
+
+    return wd
+end
+
+function eval2(config)
 
     K, T = config.var[1], config.var[2]
     k, τ = K[1], T[1]
-    k0 = [0.0, 0.0, kF] # external momentum
+    k0 = zeros(para.dim)
+    k0[end] = kF # external momentum
     kq = k + k0
-    ω = (dot(kq, kq) - kF^2) / (2me)
+    ω = (dot(kq, kq) - kF^2) / (2 * para.me)
     g = Spectral.kernelFermiT(τ, ω, β)
-    v, dW = interactionDynamic(config, k, 0.0, τ)
-    phase = 1.0 / (2π)^3
+    dW = interactionDynamic(k, 0.0, τ)
+    phase = 1.0 / (2π)^para.dim
     return g * dW * phase
 end
 
-@everywhere function measure(config)
+function measure(config)
     factor = 1.0 / config.reweight[config.curr]
     τ = config.var[2][1]
+    # println(config.observable[1][1])
     if config.curr == 1
-        config.observable[1][1] += factor
-    elseif config.curr == 2
         weight = integrand(config)
-        config.observable[2][1] += weight * sin(-π / β * τ) / abs(weight) * factor
-        config.observable[2][2] += weight * sin(π / β * τ) / abs(weight) * factor
+        config.observable[1] += weight * sin(π / β * τ) / abs(weight) * factor
+        config.observable[2] += weight * sin(3π / β * τ) / abs(weight) * factor
     else
         return
     end
 end
 
-@everywhere normalize(config) = config.observable[2] / config.observable[1][1]
-
 function fock(extn)
-    para = Para()
-    Ksize = length(kgrid.grid)
+    K = MCIntegration.FermiK(para.dim, kF, 0.2 * kF, 10.0 * kF)
+    T = MCIntegration.Tau(β, β / 2.0)
 
-    K = MonteCarlo.FermiK(dim, kF, 0.2 * kF, 10.0 * kF)
-    T = MonteCarlo.Tau(β, β / 2.0)
+    dof = [[1, 1],] # degrees of freedom of the Fock diagram
+    obs = zeros(2) # observable for the Fock diagram 
 
-    dof = ([0, 0], [1, 1]) # degrees of freedom of the normalization diagram and the bubble
-    obs = ([0.0, 0.0], [0.0, 0.0]) # observable for the normalization diagram and the bubble
+    config = MCIntegration.Configuration(steps, (K, T), dof, obs; para = para)
+    avg, std = MCIntegration.sample(config, integrand, measure; print = 0, Nblock = 16)
 
-    avg, std = MonteCarlo.sample(totalStep, (K, T), dof, obs, integrand, measure, normalize; para=para, print=10)
+    if isnothing(avg) == false
+        @printf("%10.6f   %10.6f ± %10.6f\n", -1.0, avg[1], std[1])
+        @printf("%10.6f   %10.6f ± %10.6f\n", 0.0, avg[2], std[2])
 
-
-    @printf("%10.6f   %10.6f ± %10.6f\n", -1.0, avg[1], std[1])
-    @printf("%10.6f   %10.6f ± %10.6f\n", 0.0, avg[2], std[2])
-
-    dS_dw = (avg[1] - avg[2]) / (2π / β)
-    error = (std[1] + std[2]) / (2π / β)
-    println("dΣ/diω= $dS_dw ± $error") 
-    Z = (1 / (1 + dS_dw))
-    Zerror = error / Z^2
-    println("Z=  $Z ± $Zerror")
-    # TODO: add errorbar estimation
-    # println
+        dS_dw = (avg[1] - avg[2]) / (2π / β)
+        error = (std[1] + std[2]) / (2π / β)
+        println("dΣ/diω= $dS_dw ± $error")
+        Z = (1 / (1 + dS_dw))
+        Zerror = error / Z^2
+        println("Z=  $Z ± $Zerror")
+        # TODO: add errorbar estimation
+        # println
+    end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

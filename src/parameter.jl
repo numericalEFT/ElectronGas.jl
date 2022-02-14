@@ -100,13 +100,16 @@ end
 
 
 """
-    function rydbergUnit(Θ, rs)
+    function rydbergUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
 
 assume 4πϵ0=1, me=0.5, e0=sqrt(2)
 
 #Arguments:
  - Θ: dimensionless temperature. beta could be different from β
  - rs: Wigner-Seitz radius over Bohr radius.
+ - dim: dimension of the system
+ - spin: spin = 1 or 2
+ - kwargs: user may explicity set other paramters using the key/value pairs
 """
 @inline function rydbergUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
     ϵ0 = 1 / (4π)
@@ -117,6 +120,13 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     β = 1 / Θ / EF
     return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
 end
+
+"""
+    isZeroT(para) = (para.β == Inf)
+
+    check if it is at zero temperature or not.
+"""
+isZeroT(para) = (para.β == Inf)
 
 export Para, Param
 
