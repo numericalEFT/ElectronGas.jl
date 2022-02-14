@@ -13,14 +13,6 @@ using ..Parameters, ..CompositeGrids, ..GreenFunc
 
 export RPA, KO, RPAwrapped, KOwrapped, coulomb
 
-# if !@isdefined Para
-#     include(rundir*"/para.jl")
-#     using .Para
-# end
-
-# println(Parameter.Param)
-# @unpack me, kF, rs, e0, β , Λs, ϵ0= Parameter.Param
-
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
     # See Takada(doi:10.1103/PhysRevB.47.5202)(Eq.2.16).
@@ -145,7 +137,7 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false, kwargs...)
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param; kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     # Vs::Float64, Va::Float64 = V_Bare(q, param)
@@ -154,7 +146,7 @@ function bubblecorrection(q::Float64, n::Int, param;
 
     if abs(q) > EPS
         Π::Float64 = spin * pifunc(q, n, param)
-        if isregularized
+        if regular
             Ks = bubbledysonreg(Vinvs, Fs, Π)
             Ka = bubbledysonreg(Vinva, Fa, Π)
         else
@@ -169,17 +161,30 @@ function bubblecorrection(q::Float64, n::Int, param;
 end
 
 """
-    function RPA(q, n, param)
+    function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, regular = false)
 
-Dynamic part of RPA interaction, with polarization approximated by zero temperature Π0.
+    Dynamic part of RPA interaction. 
 
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
+ - pifunc: caller to the polarization function 
+ - Vinv_Bare: caller to the bare Coulomb interaction
+ - regular: regularized RPA or not
+
+# Return:
+If set to be regularized, it returns the dynamic part of effective interaction divided by ``v_q - f_q``
+```math
+    \\frac{v_q^{\\pm} Π_0} {1 - v_q^{\\pm} Π_0}.
+```
+otherwise, return
+```math
+    \\frac{(v_q^{\\pm})^2 Π_0} {1 - v_q^{\\pm} Π_0}.
+```
 """
-function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, isregularized = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, Vinv_Bare = Vinv_Bare, isregularized = isregularized)
+function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, regular = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, Vinv_Bare = Vinv_Bare, regular = regular)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
@@ -243,18 +248,31 @@ end
 end
 
 """
-    function KO(q, n, param)
+    function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
 
-Dynamic part of KO interaction, with polarization approximated by zero temperature Π0.
-Returns the spin symmetric part and asymmetric part separately.
+Dynamic part of KO interaction. Returns the spin symmetric part and asymmetric part separately.
 
 #Arguments:
  - q: momentum
  - n: matsubara frequency given in integer s.t. ωn=2πTn
  - param: other system parameters
+ - pifunc: caller to the polarization function 
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+ - regular: regularized RPA or not
+
+# Return:
+If set to be regularized, it returns the dynamic part of effective interaction divided by ``v_q - f_q``
+```math
+    \\frac{(v_q^{\\pm} - f_q^{\\pm}) Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
+```
+otherwise, return
+```math
+    \\frac{(v_q^{\\pm} - f_q^{\\pm})^2 Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
+```
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false, kwargs...)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, isregularized = isregularized, kwargs...)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, regular = regular, kwargs...)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
