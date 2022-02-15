@@ -44,6 +44,33 @@ end
     # end
 end
 
+mutable struct KGrid_Cache
+    q::Float64
+    kF::Float64
+    maxk::Int
+    scaleN::Int
+    minterval::Float64
+    gaussN::Int
+
+    kgrid
+end
+
+kgrid_cache = KGrid_Cache(0.0, 1.0, 20, 20, 1e-6, 10, nothing)
+
+function finitetemp_kgrid(q::Float64, kF::Float64, maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+    if (q, kF, maxk, scaleN, minterval, gaussN) == (kgrid_cache.q, kgrid_cache.kF, kgrid_cache.maxk, kgrid_cache.scaleN, kgrid_cache.minterval, kgrid_cache.gaussN) && kgrid_cache.kgrid ≢ nothing
+        # println("reuse kgrid")
+        return kgrid_cache.kgrid
+    else
+        # println("new kgrid")
+        mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+        kgrid_cache.q, kgrid_cache.kF, kgrid_cache.maxk, kgrid_cache.scaleN, kgrid_cache.minterval, kgrid_cache.gaussN = q, kF, maxk, scaleN, minterval, gaussN
+        kgrid_cache.kgrid = kgrid
+        return kgrid
+    end
+end
+
 """
     function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
 
@@ -61,7 +88,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
  - minterval: optional, actual minterval of grid is this value times min(q,kF)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
-function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
     @unpack dim, kF, β = param
     if dim ∉ [2, 3]
         error("No support for finite-temperature polarization in $dim dimension!")
@@ -71,8 +98,9 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN =
         q = -q
     end
 
-    mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
-    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    kgrid = finitetemp_kgrid(q, kF, maxk, scaleN, minterval, gaussN)
     integrand = zeros(Float64, kgrid.size)
     if dim == 2
         for (ki, k) in enumerate(kgrid.grid)
@@ -88,7 +116,6 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN =
 
     return Interp.integrate1D(integrand, kgrid)
 end
-
 
 @inline function Polarization0_2dZeroTemp(q, n, param)
     @unpack me, kF, β = param
@@ -123,6 +150,9 @@ end
     # check sign of q, use -q if negative
     if q < 0
         q = -q
+    end
+    if n < 0
+        n = -n
     end
     # if q is too small, set to 1000eps
     if q < eps(0.0) * 1e6
@@ -204,9 +234,9 @@ Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
  - rtol: rtol of DLRGrid
  - sgrid: momentum grid
  - param: other system parameters
- - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
+ - polatype: type of pi function, support :zerotemp or :finitetemp
 """
-function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc = Polarization0_ZeroTemp) where {SGT}
+function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc = Polarization0_ZeroTemp) where {SGT}
     @unpack β = param
 
     green = GreenFunc.Green2DLR{Float64}(:polarization, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
