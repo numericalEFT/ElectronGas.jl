@@ -44,31 +44,10 @@ end
     # end
 end
 
-mutable struct KGrid_Cache
-    q::Float64
-    kF::Float64
-    maxk::Int
-    scaleN::Int
-    minterval::Float64
-    gaussN::Int
-
-    kgrid
-end
-
-kgrid_cache = KGrid_Cache(0.0, 1.0, 20, 20, 1e-6, 10, nothing)
-
 function finitetemp_kgrid(q::Float64, kF::Float64, maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
-    if (q, kF, maxk, scaleN, minterval, gaussN) == (kgrid_cache.q, kgrid_cache.kF, kgrid_cache.maxk, kgrid_cache.scaleN, kgrid_cache.minterval, kgrid_cache.gaussN) && kgrid_cache.kgrid ≢ nothing
-        # println("reuse kgrid")
-        return kgrid_cache.kgrid
-    else
-        # println("new kgrid")
-        mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
-        kgrid_cache.q, kgrid_cache.kF, kgrid_cache.maxk, kgrid_cache.scaleN, kgrid_cache.minterval, kgrid_cache.gaussN = q, kF, maxk, scaleN, minterval, gaussN
-        kgrid_cache.kgrid = kgrid
-        return kgrid
-    end
+    mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    return kgrid
 end
 
 """
@@ -115,6 +94,39 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN =
     end
 
     return Interp.integrate1D(integrand, kgrid)
+end
+
+function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+    @unpack dim, kF, β = param
+    if dim ∉ [2, 3]
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+
+    # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    kgrid = finitetemp_kgrid(q, kF, maxk, scaleN, minterval, gaussN)
+    integrand = zeros(Float64, (kgrid.size, length(n)))
+    if dim == 2
+        for (ki, k) in enumerate(kgrid.grid)
+            for (mi, m) in enumerate(n)
+                integrand[ki, mi] = _ΠT2d_integrand(k, q, 2π * m / β, param)
+                @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
+            end
+        end
+    elseif dim == 3
+        for (ki, k) in enumerate(kgrid.grid)
+            for (mi, m) in enumerate(n)
+                integrand[ki, mi] = _ΠT3d_integrand(k, q, 2π * m / β, param)
+                @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
+            end
+        end
+    end
+
+    return Interp.integrate1D(integrand, kgrid; axis = 1)
 end
 
 @inline function Polarization0_2dZeroTemp(q, n, param)
@@ -220,6 +232,22 @@ function Polarization0_ZeroTemp(q::Float64, n::Int, param)
     end
 end
 
+function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param)
+    @unpack dim = param
+    result = zeros(Float64, length(n))
+    if dim == 2
+        for (mi, m) in enumerate(n)
+            result[mi] = Polarization0_2dZeroTemp(q, m, param)
+        end
+    elseif dim == 3
+        for (mi, m) in enumerate(n)
+            result[mi] = Polarization0_3dZeroTemp(q, m, param)
+        end
+    else
+        error("No support for zero-temperature polarization in $dim dimension!")
+    end
+    return result
+end
 
 """
     function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, polatype=:zerotemp) where{TGT, SGT}
@@ -242,9 +270,10 @@ function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc = Polarizatio
     green = GreenFunc.Green2DLR{Float64}(:polarization, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = pifunc(k, n, param)
-        end
+        # for (ni, n) in enumerate(green.dlrGrid.n)
+        #     green_dyn[1, 1, ki, ni] = pifunc(k, n, param)
+        # end
+        green_dyn[1, 1, ki, :] = pifunc(k, green.dlrGrid.n, param)
     end
     green.dynamic = green_dyn
     return green
