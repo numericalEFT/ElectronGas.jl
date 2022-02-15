@@ -82,12 +82,16 @@ function KOstatic(Fp, Fm, cp, cm, mr, qgrid)
 end
 
 
-function interactionDynamic(para, qd, τIn, τOut)
+function interactionDynamic(para, qd, τIn, τOut, dim = 3)
 
     dτ = abs(τOut - τIn)
 
     kDiQ = sqrt(dot(qd, qd))
-    vd = 4π * e0^2 / (kDiQ^2 + mass2) + fp
+    if dim == 3
+        vd = 4π * e0^2 / (kDiQ^2 + mass2) + fp
+    elseif dim == 2
+        vd = 2π * e0^2 / √(kDiQ^2 + mass2) + fp
+    end
     if kDiQ <= para.qgrid.grid[1]
         q = para.qgrid.grid[1] + 1.0e-6
         wd = vd * linear2D(para.dW0, para.qgrid, para.τgrid, q, dτ)

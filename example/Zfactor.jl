@@ -9,35 +9,32 @@ using Parameters, Random
 using MCIntegration
 using Lehmann
 
-const steps = 1e7
+const steps = 1e6
+# include("parameter.jl")
+dim = 2
+beta = 1000.0
+rs = 1.0
+mass2 = 1.e-6
+# const para = Parameter.rydbergUnit(1.0 / beta, rs, dim, Λs = mass2)
+const para = Parameter.defaultUnit(1.0 / beta, rs, dim, Λs = mass2)
+const kF = para.kF
+const EF = para.EF
+const β = para.β
 
-include("parameter.jl")
-include("interaction.jl")
+qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 * kF, 8)
+τgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, β], [0.0, β], 16, β * 1e-4, 8)
 
-kgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 3kF], [0.0, kF], 8, 0.01 * kF, 8) # external K grid for sigma
-# dlr = DLRGrid(Euv = 10EF, β = β, isFermi = true, rtol = 1e-10)
-const basic = Parameter.rydbergUnit(1 / beta, rs, dim)
-
-struct Para{Q,T}
-    dW0::Matrix{Float64}
-    qgrid::Q
-    τgrid::T # dedicated τgrid for dynamic interaction
-    function Para()
-        qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 * kF, 8)
-        # τgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, β], [0.0, β], 16, β * 1e-4, 8)
-
-        vqinv = [(q^2 + mass2) / (4π * e0^2) for q in qgrid.grid] # 3D Yukawa
-        # vqinv = [√(q^2 + mass2) / (2π * e0^2) for q in qgrid.grid] # 2D Yukawa
-        # dW0 = TwoPoint.dWRPA(vqinv, qgrid.grid, τgrid.grid, dim, EF, kF, β, spin, me) # dynamic part of the effective interaction
-        # dW0 = TwoPoint.dWKO(vqinv, qgrid.grid, τgrid.grid, dim, EF, kF, β, spin, me, fp, fm) # dynamic part of the effective interaction
-        Ws, Wa = Interaction.RPAwrapped(10EF, 1e-10, qgrid.grid, basic)
-        τgrid = Ws.dlrGrid.τ
-        dW0 = real.(matfreq2tau(Ws.dlrGrid, Ws.dynamic, τgrid, axis = 4))
-        println(dW0)
-        return new{typeof(qgrid),typeof(τgrid)}(dW0, qgrid, τgrid)
-    end
-end
-const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
+# dlr = DLRGrid(Euv = 10EF, β = β, rtol = 1e-10, isFermi = false, symmetry = :ph)
+# W = zeros(length(qgrid), dlr.size)
+# for (qi, q) in enumerate(qgrid.grid)
+#     for (ni, n) in enumerate(dlr.n)
+#         # W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_FiniteTemp)[1]
+#         W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_ZeroTemp)[1]
+#     end
+# end
+# const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
+Ws, Wa = Interaction.RPAwrapped(10EF, 1e-10, qgrid.grid, para)
+const dW0 = real.(matfreq2tau(Ws.dlrGrid, Ws.dynamic, τgrid.grid, axis = 4))[1, 1, :, :]
 
 function integrand(config)
     if config.curr == 1
@@ -47,8 +44,25 @@ function integrand(config)
     end
 end
 
+function interactionDynamic(qd, τIn, τOut)
+    dτ = abs(τOut - τIn)
+    kDiQ = sqrt(dot(qd, qd))
+
+    # vd = 4π * para.e0^2 / (kDiQ^2 + para.Λs)
+    vs, va = Interaction.coulomb_2d(kDiQ, para)
+    # vs, va = Interaction.coulomb(kDiQ, para)
+    if kDiQ <= qgrid.grid[1]
+        q = qgrid.grid[1] + 1.0e-6
+        wd = vs * Interp.linear2D(dW0, qgrid, τgrid, q, dτ)
+        # the current interpolation vanishes at q=0, which needs to be corrected!
+    else
+        wd = vs * Interp.linear2D(dW0, qgrid, τgrid, kDiQ, dτ) # dynamic interaction, don't forget the singular factor vq
+    end
+
+    return wd
+end
+
 function eval2(config)
-    para = config.para
 
     K, T = config.var[1], config.var[2]
     k, τ = K[1], T[1]
@@ -57,8 +71,8 @@ function eval2(config)
     kq = k + k0
     ω = (dot(kq, kq) - kF^2) / (2 * para.me)
     g = Spectral.kernelFermiT(τ, ω, β)
-    v, dW = interactionDynamic(para, k, 0.0, τ)
-    phase = 1.0 / (2π)^3
+    dW = interactionDynamic(k, 0.0, τ)
+    phase = 1.0 / (2π)^para.dim
     return g * dW * phase
 end
 
@@ -76,12 +90,9 @@ function measure(config)
 end
 
 function fock(extn)
-    para = Para()
-    Ksize = length(kgrid.grid)
-
-    K = MCIntegration.FermiK(dim, kF, 0.2 * kF, 10.0 * kF)
+    K = MCIntegration.FermiK(para.dim, kF, 0.2 * kF, 10.0 * kF)
     T = MCIntegration.Tau(β, β / 2.0)
-    # Ext =
+
     dof = [[1, 1],] # degrees of freedom of the Fock diagram
     obs = zeros(2) # observable for the Fock diagram 
 
@@ -106,5 +117,5 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     # using Gaston
     ngrid = [-1, 0, 1]
-    fock(ngrid)
+    @time fock(ngrid)
 end

@@ -10,7 +10,7 @@ const spin = 2  # number of spins
 const rs = 1.0
 const kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
 const EF = kF^2 / (2me)
-const beta = 100
+const beta = 1000
 const β = beta / EF
 const mass2 = 1e-6
 const NF = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π
