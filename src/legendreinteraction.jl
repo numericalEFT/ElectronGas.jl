@@ -185,7 +185,7 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
-    θgrid = SimpleGrid.Uniform{Float64}([0, 2π], 500)
+    θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
 
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
@@ -194,7 +194,7 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
         for (pi, p) in enumerate(qgrids[ki].grid)
             data = [kernel0_integrand2d(k, p, θ, channel, param, spin_state) for θ in θgrid.grid]
             kernel_bare[ki, pi] = Interp.integrate1D(data, θgrid)
-            @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, with $(kernel_bare[ki,pi])"
+            @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, ($k, $p) with $(kernel_bare[ki,pi])"
             for (ni, n) in enumerate(bdlr.n)
                 data = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
                 kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid)

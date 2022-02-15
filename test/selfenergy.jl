@@ -33,12 +33,12 @@
 
     @testset "3D RPA" begin
         # make sure everything works for different unit sets
-        θ, rs = 1e-2, 1.0
+        θ, rs = 1e-3, 1.0
         param = Parameter.defaultUnit(θ, rs)
         Euv, rtol = 100 * param.EF, 1e-10
         Nk, order = 8, 4
 
-        Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
+        @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
         Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
 
         Z0 = (SelfEnergy.zfactor(Σ))
@@ -49,21 +49,22 @@
     @testset "2D RPA" begin
         dim = 2
         θ, rs = 1e-3, 1.0
-        param = Parameter.defaultUnit(θ, rs, dim)
-        # param = Parameter.rydbergUnit(θ, rs, dim)
+        # Λs = 1e-6
+        # param = Parameter.defaultUnit(θ, rs, dim; Λs = Λs)
+        param = Parameter.rydbergUnit(θ, rs, dim)
 
         Euv, rtol = 100 * param.EF, 1e-10
         # set Nk, minK = 8, 1e-7 for β<1e6;  11, 1e-8 for β<1e7
         # Nk, order, minK = 11, 4, 1e-8
         Nk, order, minK = 8, 4, 1e-7
 
-        Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
+        @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
         Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
 
         kgrid = Σ.spaceGrid
         kF = kgrid.panel[3]
         Z0 = (SelfEnergy.zfactor(Σ))
-        @test isapprox(Z0, 0.66, rtol = 2e-3)
+        @test isapprox(Z0, 0.662, rtol = 2e-3)
 
         println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")
