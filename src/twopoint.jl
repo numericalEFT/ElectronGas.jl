@@ -87,7 +87,7 @@ Compute the polarization function of free electrons at a given frequency. Relati
 - `m`: mass
 - `spin` : number of spins
 """
-@inline function LindhardΩnFiniteTemperature(dim::Int, q::T, n::Int, μ::T, kF::T, β::T, m::T, spin) where {T <: AbstractFloat}
+@inline function LindhardΩnFiniteTemperature(dim::Int, q::T, n::Int, μ::T, kF::T, β::T, m::T, spin) where {T<:AbstractFloat}
     if q < 0.0
         q = -q
     end
@@ -104,9 +104,9 @@ Compute the polarization function of free electrons at a given frequency. Relati
             error("not implemented")
         end
         ω = 2π * n / β
-        ϵ = β * (k^2 - μ) / (2m)
+        ϵ = (k^2 - μ) / (2m)
 
-        p = phase * Spectral.fermiDirac(ϵ) * m / k / q * log(((q^2 - 2k * q)^2 + 4m^2 * ω^2) / ((q^2 + 2k * q)^2 + 4m^2 * ω^2)) * spin
+        p = phase * Spectral.fermiDirac(ϵ, β) * m / k / q * log(((q^2 - 2k * q)^2 + 4m^2 * ω^2) / ((q^2 + 2k * q)^2 + 4m^2 * ω^2)) * spin
 
         if isnan(p)
             println("warning: integrand at ω=$ω, q=$q, k=$k is NaN!")
@@ -121,9 +121,9 @@ Compute the polarization function of free electrons at a given frequency. Relati
     end
 
     # TODO: use CompositeGrids to perform the integration
-    result, err = Cuba.cuhre(integrand, 2, 1, rtol=1.0e-10) 
+    result, err = Cuba.cuhre(integrand, 2, 1, rtol = 1.0e-10)
     # result, err = Cuba.vegas(integrand, 1, 1, rtol=rtol)
-return result[1], err[1]
+    return result[1], err[1]
 end
 
 
@@ -154,9 +154,9 @@ Note that this dynamic contribution ``dW_0'' diverges at small q. For this reaso
 - `mass`: mass
 """
 function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
-    @assert all(qgrid .!= 0.0)
+    # @assert all(qgrid .!= 0.0)
     EF = kF^2 / (2mass)
-    dlr = DLR.DLRGrid(:corr, 10EF, β, 1e-10) # effective interaction is a correlation function of the form <O(τ)O(0)>
+    dlr = DLRGrid(10EF, β, 1e-10, false, :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
     Nq, Nτ = length(qgrid), length(τgrid)
     Π = zeros(Complex{Float64}, (Nq, dlr.size)) # Matsubara grid is the optimized sparse DLR grid 
     dW0norm = similar(Π)
@@ -168,8 +168,8 @@ function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
         # println("ω_n=2π/β*$(n), Π(q=0, n=0)=$(Π[1, ni])")
         # println("$ni  $(dW0norm[2, ni])")
     end
-    dW0norm = DLR.matfreq2tau(:corr, dW0norm, dlr, τgrid, axis=2) # dW0/vq in imaginary-time representation, real-valued but in complex format
-    
+    dW0norm = matfreq2tau(dlr, dW0norm, τgrid, axis = 2) # dW0/vq in imaginary-time representation, real-valued but in complex format
+
     # println(dW0norm[1, :])
     # println(DLR.matfreq2tau(:corr, dW0norm[1, :], dlr, τgrid, axis=1))
     # println(DLR.matfreq2tau(:corr, dW0norm[2, :], dlr, τgrid, axis=1))
@@ -178,7 +178,7 @@ function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
     # for (ni, n) in enumerate(dlr.n)
     #     println(dW0norm[1, ni], " vs ", fitted[ni])
     # end
-    return real.(dW0norm) 
+    return real.(dW0norm)
 end
 
 function interactionDynamic(config, qd, τIn, τOut)
@@ -188,7 +188,7 @@ function interactionDynamic(config, qd, τIn, τOut)
 
     kDiQ = sqrt(dot(qd, qd))
     vd = 4π * e0^2 / (kDiQ^2 + mass2)
-        if kDiQ <= para.qgrid.grid[1]
+    if kDiQ <= para.qgrid.grid[1]
         q = para.qgrid.grid[1] + 1.0e-6
         wd = vd * Grid.linear2D(para.dW0, para.qgrid, para.τgrid, q, dτ)
         # the current interpolation vanishes at q=0, which needs to be corrected!

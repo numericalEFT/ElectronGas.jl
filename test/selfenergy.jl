@@ -33,7 +33,7 @@
 
     @testset "3D RPA" begin
         # make sure everything works for different unit sets
-        θ, rs = 1e-4, 1.0
+        θ, rs = 1e-2, 1.0
         param = Parameter.defaultUnit(θ, rs)
         Euv, rtol = 100 * param.EF, 1e-10
         Nk, order = 8, 4
@@ -48,7 +48,7 @@
 
     @testset "2D RPA" begin
         dim = 2
-        θ, rs = 1e-4, 1.0
+        θ, rs = 1e-3, 1.0
         param = Parameter.defaultUnit(θ, rs, dim)
         # param = Parameter.rydbergUnit(θ, rs, dim)
 
@@ -63,7 +63,7 @@
         kgrid = Σ.spaceGrid
         kF = kgrid.panel[3]
         Z0 = (SelfEnergy.zfactor(Σ))
-        # @test isapprox(Z0, 0.66, rtol = 2e-3)
+        @test isapprox(Z0, 0.66, rtol = 2e-3)
 
         println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")
