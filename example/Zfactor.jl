@@ -1,3 +1,7 @@
+"""
+calculate the Z factor of UEG using MC
+"""
+
 using Printf, LinearAlgebra
 using CompositeGrids
 using ElectronGas
@@ -33,6 +37,7 @@ struct Para{Q,T}
         return new{typeof(qgrid),typeof(τgrid)}(dW0, qgrid, τgrid)
     end
 end
+const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
 
 function integrand(config)
     if config.curr == 1
@@ -47,9 +52,10 @@ function eval2(config)
 
     K, T = config.var[1], config.var[2]
     k, τ = K[1], T[1]
-    k0 = [0.0, 0.0, kF] # external momentum
+    k0 = zeros(para.dim)
+    k0[end] = kF # external momentum
     kq = k + k0
-    ω = (dot(kq, kq) - kF^2) / (2me)
+    ω = (dot(kq, kq) - kF^2) / (2 * para.me)
     g = Spectral.kernelFermiT(τ, ω, β)
     v, dW = interactionDynamic(para, k, 0.0, τ)
     phase = 1.0 / (2π)^3
