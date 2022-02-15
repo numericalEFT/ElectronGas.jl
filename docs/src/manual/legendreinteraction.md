@@ -94,15 +94,8 @@ Changing variables in Eq.(1) to ``z^2=k^2+p^2-2kp\chi``, we obatin
 ```math
 w_{\ell}(k, p)=\frac{1}{k p} \int_{|k-p|}^{k+p} z d z P_{\ell}\left(\frac{k^{2}+p^{2}-z^{2}}{2 k p}\right) W(z)
 ```
-Since ``P_{\ell}(x)`` is a polynomial in ``x``, for any ``k``,``p``, and integer ``\ell``, ``w_l`` can be expressed as the combination of helper functions:
-```math
-   \begin{aligned}
-w_0(k,p) &= \frac{1}{kp} \delta H_1(k, p), \\
-w_1(k,p) &= \frac{1}{2{(kp)}^2} {[(k^2+p^2)\delta H_1(k, p)-\delta H_3(k, p)]}, \\
-w_2(k,p) &= \frac{1}{{(2kp)}^3}
-{\{[3{(k^2+p^2)}^2-4k^2p^2]\delta H_1(k, p)-6(k^2+p^2)\delta H_3(k, p)+3\delta H_5(k, p)\} }.
-   \end{aligned}
-```
+Since ``P_{\ell}(x)`` is a polynomial in ``x``, for any ``k``,``p``, and integer ``\ell``, ``w_l`` can be expressed as the combination of helper functions.
+
 For electron gas, the ``W`` function contains two terms, bare interaction ``V`` and generic ``W(q,\tau)``. We only tabulated helper functions for the second term. Helper functions for the first term ``h_n`` can be done analytically.
 
 ## Three dimensions
@@ -115,6 +108,25 @@ For 3D, ``N(3,\ell)=2\ell +1``, and ``Y_{\ell m}`` is the standard sphereical ha
 For 3D electron gas with bare interaction ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\, \left( V(r)=\frac{e^2}{r} \right)``, the helper functions for the first term have
 ```math
 \delta h_{1}(k, p)=4 \pi e^{2} \ln \frac{k+p}{|k-p|}, \quad \delta h_{3}(k, p)=4 \pi e^{2}[2 k p], \quad \delta h_{5}(k, p)=4 \pi e^{2}\left[2 k p\left(k^{2}+p^{2}\right)\right] .
+```
+3D Yukawa interaction has
+```math
+\begin{aligned}
+V(r) &= \frac{e^2}{r}e^{-mr}, \quad V(q)=\frac{4\pi e^2}{q^2+m^2} ,\\
+\delta h_{1}(k, p)&=2 \pi e^{2} \ln\left[\frac{(k+p)^2+m^2}{(k-p)^2+m^2}\right], \\
+\delta h_{3}(k, p)&=4 \pi e^{2} \left[2kp - \frac{m^2}{2} \ln \frac{(k+p)^2+m^2}{(k-p)^2+m^2} \right], \\
+\delta h_{5}(k, p)&=4 \pi e^{2}\left[2 k p\left(k^2+p^2 -m^2\right) +\frac{m^4}{2}\ln \frac{(k+p)^2+m^2}{(k-p)^2+m^2} \right].
+\end{aligned}
+```
+
+``w_l`` can be expressed as
+```math
+   \begin{aligned}
+w_0(k,p) &= \frac{1}{kp} \delta H_1(k, p), \\
+w_1(k,p) &= \frac{1}{2{(kp)}^2} {[(k^2+p^2)\delta H_1(k, p)-\delta H_3(k, p)]}, \\
+w_2(k,p) &= \frac{1}{{(2kp)}^3}
+{\{[3{(k^2+p^2)}^2-4k^2p^2]\delta H_1(k, p)-6(k^2+p^2)\delta H_3(k, p)+3\delta H_5(k, p)\} }.
+   \end{aligned}
 ```
 
 ## Two dimensions
@@ -131,11 +143,30 @@ The ``GW`` self energy is
 \Sigma(k) =   \int \frac{p {\rm d}p}{4\pi} w_0(k, p) G(p) \,.
    \end{aligned}
 ```
-For 2D electron gas with 2D coulomb potential ``V=\frac{2\pi e^2}{q} \delta(\tau)\, \left( V(r)=\frac{e^2}{r} \right)``, the helper functions for the first term have
+For 2D electron gas with 2D coulomb potential ``V=\frac{2\pi e^2}{q} \delta(\tau)\, \left( V(r)=\frac{e^2}{r} \right)``, 
+the helper functions for the first term have
 ```math
 \delta h_{1}(k, p)=2\pi e^{2} (k+p-|k-p|), \quad \delta h_{3}(k, p)=\frac 2 3 \pi e^{2}\left [(k+p)^3-|k-p|^3\right ].
 ```
 For ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\,\left(V(r)=-\ln \frac{r}{L}\right)``, ``\delta h_n`` has the same form as in 3D electron gas. 
+
+2D Yukawa interaction has
+```math
+\begin{aligned}
+V(r)&=\frac{e^2}{r} e^{-mr} ,\\
+V(q)&=\int {\rm d}^2\vec r V(r) e^{i\vec q\cdot \vec r} \\
+    & = \int r dr \frac{e^2}{r} e^{-mr} \int_0^{2\pi} d\theta e^{iqr\cos \theta} \\
+    & = \int dr e^2 e^{-mr} 2\pi J_0(qr) \\
+    & = \frac{2\pi e^2}{\sqrt{q^2+m^2}} \,,
+\end{aligned}
+```
+and the helper functions for the first term have
+```math
+\begin{aligned}
+\delta h_{1}(k, p)&=2\pi e^{2} (\sqrt{(k+p)^2+m^2}-\sqrt{(k-p)^2+m^2}), \\
+\delta h_{3}(k, p)&=\frac 2 3 \pi e^{2}\left ([(k+p)^2-2m^2]\sqrt{(k+p)^2+m^2} - [(k-p)^2-2m^2]\sqrt{(k-p)^2+m^2} \right ).
+\end{aligned}
+```
 
 **Reference**:
 1. Christopher Frye and Costas J. Efthimiou, Spherical Harmonics in ``p`` Dimensions, arXiv 1205.3548

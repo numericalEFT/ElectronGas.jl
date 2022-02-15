@@ -13,6 +13,7 @@ export Polarization0_ZeroTemp, Polarization0_FiniteTemp
     density = me / 2π
     nk = 1.0 / (exp(β * (k^2 / 2 / me - μ)) + 1)
 
+    error("not implemeted!")
     return nothing
 end
 
@@ -72,6 +73,14 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN =
     if dim ∉ [2, 3]
         error("No support for finite-temperature polarization in $dim dimension!")
     end
+
+    ####################### ! temprary fix #######################################
+    # !TODO: fix _ΠT2d_integrand, and calculate the finiteT polarization for 2d
+    if dim == 2
+        return Polarization0_2dZeroTemp(q, n, param)
+    end
+    ####################### ! temprary fix #######################################
+
     # check sign of q, use -q if negative
     if q < 0
         q = -q
@@ -250,7 +259,7 @@ function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param)
 end
 
 """
-    function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, polatype=:zerotemp) where{TGT, SGT}
+    function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc = Polarization0_ZeroTemp) where{TGT, SGT}
 
 Π0 function for matsubara frequency and momentum. Use Polarization0_ZeroTemp by default,
 Polarization0_FiniteTemp when pifunc is specified.
@@ -262,7 +271,7 @@ Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
  - rtol: rtol of DLRGrid
  - sgrid: momentum grid
  - param: other system parameters
- - polatype: type of pi function, support :zerotemp or :finitetemp
+ - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
 """
 function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc = Polarization0_ZeroTemp) where {SGT}
     @unpack β = param
