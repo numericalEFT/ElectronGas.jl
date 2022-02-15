@@ -156,11 +156,7 @@ Note that this dynamic contribution ``dW_0'' diverges at small q. For this reaso
 function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
     # @assert all(qgrid .!= 0.0)
     EF = kF^2 / (2mass)
-<<<<<<< HEAD
-    dlr = DLRGrid(10EF, β, 1e-10, false, :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
-=======
-    dlr = DLRGrid(Euv = 10EF, beta = β, rtol = 1e-10, isFermi = false, symmetry = :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
->>>>>>> master
+    dlr = DLRGrid(Euv = 10EF, β = β, rtol = 1e-10, isFermi = false, symmetry = :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
     Nq, Nτ = length(qgrid), length(τgrid)
     Π = zeros(Complex{Float64}, (Nq, dlr.size)) # Matsubara grid is the optimized sparse DLR grid 
     dW0norm = similar(Π)
@@ -172,10 +168,7 @@ function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
         # println("ω_n=2π/β*$(n), Π(q=0, n=0)=$(Π[1, ni])")
         # println("$ni  $(dW0norm[2, ni])")
     end
-<<<<<<< HEAD
-=======
     # display(dW0norm)
->>>>>>> master
     dW0norm = matfreq2tau(dlr, dW0norm, τgrid, axis = 2) # dW0/vq in imaginary-time representation, real-valued but in complex format
 
     # println(dW0norm[1, :])
