@@ -255,7 +255,7 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare, regular = true)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
