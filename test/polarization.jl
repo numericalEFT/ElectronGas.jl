@@ -82,7 +82,7 @@
 
     @testset "Polarization: wrapped" begin
         dim = 3
-        beta, rs = 1e8, 1.0
+        beta, rs = 1e3, 1.0
         param = Parameter.defaultUnit(1 / beta, rs, dim)
 
         qgrid = [0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
