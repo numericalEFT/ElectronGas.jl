@@ -8,152 +8,104 @@ using ElectronGas.Parameters
 using ElectronGas.Lehmann
 using ElectronGas.CompositeGrids
 
-function G2wrapped(param, Σ::GreenFunc.Green2DLR)
+function G02wrapped(fdlr, kgrid, param)
     # return G(K)G(-K)
     @unpack me, kF, β, EF = param
-    Σ_freq = GreenFunc.toMatFreq(Σ)
-    Σ_shift = real(GreenFunc.dynamic(Σ_freq, π/β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
-    green =  Green2DLR{Float64}(
-        :G, GreenFunc.IMFREQ,Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
-        timeSymmetry = Σ_freq.timeSymmetry, rtol = Σ_freq.dlrGrid.rtol)
 
-    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    for (ki, k) in enumerate(green.spaceGrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
+    green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
+    for (ki, k) in enumerate(kgrid)
+        for (ni, n) in enumerate(fdlr.n)
             ω = k^2/2/me
-            ΣR, ΣI = real(Σ_freq.dynamic[1,1,ki,ni] + Σ_freq.instant[1,1,ki] - Σ_shift), imag(Σ_freq.dynamic[1,1,ki,ni])
-            green_dyn[1,1,ki,ni] = 1/(
-                ( (2n + 1) * π / β - ΣI) ^ 2
-                + (ω + ΣR ) ^ 2
-            )
-        end
-    end
-    green.dynamic=green_dyn
-    return green
-end
-
-function G02wrapped(param, Euv, rtol, kgrid)
-    # return G(K)G(-K)
-    @unpack me, kF, β, EF = param
-    green =  Green2DLR{Float64}(
-        :G, GreenFunc.IMFREQ,β, true, Euv, kgrid, 1;
-        timeSymmetry = :pha, rtol = rtol)
-
-    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    for (ki, k) in enumerate(green.spaceGrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            ω = k^2/2/me
-            green_dyn[1,1,ki,ni] = 1/(
+            green_dyn[ki,ni] = 1/(
                 ( (2n + 1) * π / β) ^ 2
                 + (ω) ^ 2
             )
         end
     end
-    green.dynamic=green_dyn
-    return green
+
+    return green_dyn
 end
 
-function normalize!(Δ::GreenFunc.Green2DLR)
-    kgrid = Δ.spaceGrid
-    λ = real(CompositeGrids.Interp.integrate1D(Δ.instant[1,1,:] .+ Δ.dynamic[1,1,:,1], kgrid))
-    Δ.instant = Δ.instant ./ λ
-    Δ.dynamic = Δ.dynamic ./ λ
-    return λ
-end
+function Δinit(fdlr, kgrid)
+    @unpack me, kF, β, EF = param
 
-function calcΔ!(F::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel, Δ::GreenFunc.Green2DLR)
-    @unpack β = W.param
-    kgrid = W.kgrid
-    qgrids = W.qgrids
-    fdlr = F.dlrGrid
-    bdlr = W.dlrGrid
+    delta = zeros(Float64, (kgrid.size, fdlr.size))
+    delta0 = zeros(Float64, kgrid.size)
 
-    kernel_bare = W.kernel_bare ./(4*π*π)
-    kernel_freq = W.kernel
-    kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis = 3)./(4*π*π)
-
-    F_tau = GreenFunc.toTau(F)
-    F_ins = real(tau2tau(F_tau.dlrGrid, F_tau.dynamic, [β,], F_tau.timeGrid.grid; axis = 4)[1, 1, :, 1])
-
-    for (ki, k) in enumerate(Δ.spaceGrid)
-        for (τi, τ) in enumerate(Δ.dlrGrid.τ)
-            Fk = CompositeGrids.Interp.interp1DGrid(F.dynamic[1,1,:,τi], kgrid, qgrids[ki].grid)
-            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Fk ./ k .* qgrids[ki].grid
-            Δ.dynamic[1, 1, ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            if τi == 1
-                Fk = CompositeGrids.Interp.interp1DGrid(F_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Fk ./ k .* qgrids[ki].grid
-                Δ.instant[1, 1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            end
+    for (ki, k) in enumerate(kgrid)
+        delta0[ki] = 1.0
+        for (τi, τ) in enumerate(fdlr.τ)
+            delta[ki, τi] = 1.0
         end
     end
+
+    return delta, delta0
 end
 
-function calcF!(Δ::GreenFunc.Green2DLR, G2::GreenFunc.Green2DLR, F::GreenFunc.Green2DLR)
-    Δ_freq = GreenFunc.toMatFreq(Δ)
-    for (ki, k) in enumerate(F.spaceGrid)
-        for (ni, n) in enumerate(F.dlrGrid.n)
-            F.dynamic[1, 1, ki, ni] = real(Δ_freq.dynamic[1, 1, ki, ni] + Δ_freq.instant[1, 1, ki]) * G2.dynamic[1, 1, ki, ni]
-        end
-    end
+function normalizeΔ()
 end
 
-function gapIteration(param, N, Euv, rtol, Nk, maxK, minK, order, int_type)
-    @unpack β = param
-
-    W = LegendreInteraction.DCKernel0(param;
-                                      Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type)
-    kgrid = W.kgrid
-    qgrids = W.qgrids
-    bdlr = W.dlrGrid
-
-    # Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
-    G2 = G02wrapped(param, Euv, rtol, W.kgrid)
-    fdlr = G2.dlrGrid
-
-
-    Δ = GreenFunc.Green2DLR{Float64}(
-        :delta, GreenFunc.IMTIME,param.β,true,G2.dlrGrid.Euv,kgrid,1;
-        timeSymmetry = :pha, rtol = rtol)
-    Δ.instant = ones(Float64, (1,1,length(kgrid.grid)))
-    Δ.dynamic = ones(Float64, (1,1,length(kgrid.grid), fdlr.size))
-
-    F = GreenFunc.Green2DLR{Float64}(
-        :F, GreenFunc.IMFREQ,param.β,true,G2.dlrGrid.Euv,W.kgrid,1;
-        timeSymmetry = :pha, rtol = rtol)
-    F.instant = ones(Float64, (1,1,length(kgrid.grid)))
-    F.dynamic = ones(Float64, (1,1,length(kgrid.grid), fdlr.size))
-
-    Δ_freq = GreenFunc.toMatFreq(Δ)
-
-    shift = 2.0
-
-    for i in 1:N
-        Δ_freq_new = GreenFunc.toMatFreq(Δ)
-        Δ_freq.instant = Δ_freq.instant .* shift .+ Δ_freq_new.instant
-        Δ_freq.dynamic = Δ_freq.dynamic .* shift .+ Δ_freq_new.dynamic
-
-        λ = normalize!(Δ_freq) - shift
-        println("λ = $λ")
-
-        calcF!(Δ_freq, G2, F)
-        calcΔ!(F, W, Δ)
-    end
-
-    return Δ
+function calcF!()
 end
+
+function calcΔ!()
+end
+
+function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2, Δ, Δ0;
+                      Nstep = 1e3, rtol = 1e-3, shift = 2.0)
+
+end
+
+
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(1/1000.0, 3.0)
+
+    #--- parameters ---
+
+
+    param = Parameter.defaultUnit(1/1000.0, 3.0)
     Euv, rtol = 100*param.EF, 1e-10
+    maxK, minK = 10param.kF, 1e-6param.kF
     Nk, order = 8, 4
+    int_type = :rpa
 
-    Δ = gapIteration(param, 10, Euv, rtol, Nk, 10*param.kF, 1e-7*param.kF, order, :rpa)
+    #--- prepare kernel ---
+    W = LegendreInteraction.DCKernel0(param;
+                                      Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
+                                      int_type = int_type)
 
-    kgrid = Δ.spaceGrid
-    kF = kgrid.panel[3]
-    kF_label = searchsortedfirst(kgrid.grid, kF)
+    fdlr = Lehmann.DLRGrid(Euv, param.β, rtol, true, :ph)
+    bdlr = W.dlrGrid
+    kgrid = W.kgrid
+    qgrids = W.qgrids
 
-    println(Δ.instant[1,1,:])
-    println(Δ.dynamic[1,1,kF_label,:])
+    kernel_bare = W.kernel_bare
+    kernel_freq = W.kernel
+    kernel = real(Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis = 3))
+
+    kF_label = searchsortedfirst(kgrid.grid, param.kF)
+    qF_label = searchsortedfirst(qgrids[kF_label].grid, param.kF)
+
+    println("dynamic kernel at (kF, kF):")
+    print(view(kernel, kF_label, qF_label, :))
+
+    #--- prepare G2 ---
+
+    G2 = G02wrapped(fdlr, kgrid, param)
+
+    println("G2 at kF:")
+    print(view(G2, kF_label, :))
+
+    #--- prepare Δ ---
+    Δ, Δ0 = Δinit(fdlr, kgrid)
+
+
+    # Δ = gapIteration(param, 10, Euv, rtol, Nk, 10*param.kF, 1e-7*param.kF, order, :rpa)
+
+    # kgrid = Δ.spaceGrid
+    # kF = kgrid.panel[3]
+    # kF_label = searchsortedfirst(kgrid.grid, kF)
+
+    # println(Δ.instant[1,1,:])
+    # println(Δ.dynamic[1,1,kF_label,:])
 end
