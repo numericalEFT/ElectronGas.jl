@@ -3,12 +3,12 @@
     rs = 2.0
     param = Parameter.defaultUnit(1 / beta, rs)
     @testset "bubble dyson" begin
-        @test Interaction.coulombinv(0.0, Parameter.DerivePara(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
-        @test Interaction.coulomb(0.0, Parameter.DerivePara(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
-        @test Interaction.coulombinv(0.0, Parameter.DerivePara(param, e0 = 1.0, espin = 1.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
-        @test Interaction.coulomb(0.0, Parameter.DerivePara(param, e0 = 1.0, espin = 1.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
-        @test Interaction.coulombinv(1.0, Parameter.DerivePara(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
-        @test Interaction.coulomb(1.0, Parameter.DerivePara(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
+        @test Interaction.coulombinv(0.0, Parameter.derive(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
+        @test Interaction.coulomb(0.0, Parameter.derive(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
+        @test Interaction.coulombinv(0.0, Parameter.derive(param, e0 = 1.0, espin = 1.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
+        @test Interaction.coulomb(0.0, Parameter.derive(param, e0 = 1.0, espin = 1.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
+        @test Interaction.coulombinv(1.0, Parameter.derive(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
+        @test Interaction.coulomb(1.0, Parameter.derive(param, e0 = 0.0, espin = 0.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
 
         @test Interaction.bubbledyson(Inf, 1.0, 1.0) == 0.5
         @test Interaction.bubbledyson(Inf, 0.0, 1.0) == 0.0
