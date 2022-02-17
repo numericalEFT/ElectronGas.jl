@@ -9,7 +9,7 @@ using Parameters, Random
 using MCIntegration
 using Lehmann
 
-const steps = 1e6
+const steps = 1e7
 # include("parameter.jl")
 dim = 2
 beta = 1000.0
@@ -21,7 +21,8 @@ const kF = para.kF
 const EF = para.EF
 const β = para.β
 
-qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 * kF, 8)
+# qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 *kF , 8)
+qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 1e-6 * kF, 8)
 τgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, β], [0.0, β], 16, β * 1e-4, 8)
 
 # dlr = DLRGrid(Euv = 10EF, β = β, rtol = 1e-10, isFermi = false, symmetry = :ph)

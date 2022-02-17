@@ -64,7 +64,7 @@
         kgrid = Σ.spaceGrid
         kF = kgrid.panel[3]
         Z0 = (SelfEnergy.zfactor(Σ))
-        @test isapprox(Z0, 0.662, rtol = 2e-3)
+        @test isapprox(Z0, 0.662, rtol = 5e-3)
 
         println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")

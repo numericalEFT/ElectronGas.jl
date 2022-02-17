@@ -64,7 +64,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
 """
 function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
     @unpack dim, kF, β = param
-    if dim ∉ [2, 3]
+    if dim != 2 && dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
     end
 
