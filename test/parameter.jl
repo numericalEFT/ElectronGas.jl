@@ -1,6 +1,6 @@
 @testset "Parameter" begin
     # test constructor and reconstruct of Para
-    
+
     beta = 1e4
     rs = 2.0
     param = Parameter.defaultUnit(1 / beta, rs)
@@ -13,7 +13,7 @@
 
     newbeta = 1e3
     espin = 1.0
-    newparam = Parameter.DerivePara(param, β = newbeta, espin = espin)
+    newparam = Parameter.derive(param, β = newbeta, espin = espin)
 
     @test newparam.me == 0.5
     @test newparam.EF == 1.0
