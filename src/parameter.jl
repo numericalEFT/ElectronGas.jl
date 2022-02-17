@@ -8,6 +8,7 @@ module Parameter
 
 # using Parameters
 using ..Parameters
+using Roots, Polylogarithms
 
 @with_kw struct Para
     WID::Int = 1
@@ -54,8 +55,8 @@ could not handle derived parameters correctly.
  - param: only "non-derived" fields that's not mentioned in kws are extracted from param
  - kws...: new values
 """
-derive(param::Para; kws...) = _reconstruct(param,kws)
-derive(param::Para, di::Union{AbstractDict, Tuple{Symbol,Any}}) = _reconstruct(param, di)
+derive(param::Para; kws...) = _reconstruct(param, kws)
+derive(param::Para, di::Union{AbstractDict,Tuple{Symbol,Any}}) = _reconstruct(param, di)
 
 # reconstruct(pp::Para, di) = reconstruct(Para, pp, di)
 # reconstruct(pp; kws...) = reconstruct(pp, kws)
@@ -66,7 +67,7 @@ function _reconstruct(pp::Para, di)
     di = !isa(di, AbstractDict) ? Dict(di) : copy(di)
     ns = fieldnames(Para)
     args = []
-    for (i,n) in enumerate(ns)
+    for (i, n) in enumerate(ns)
         if n ∉ derived_para_names
             # if exist in di, use value from di
             # the default value is from pp
@@ -75,10 +76,10 @@ function _reconstruct(pp::Para, di)
             pop!(di, n, getfield(pp, n))
         end
     end
-    length(di)!=0 && error("Fields $(keys(di)) not in type $T")
+    length(di) != 0 && error("Fields $(keys(di)) not in type $T")
 
     dargs = Dict(args)
-    return Para(;dargs...)
+    return Para(; dargs...)
 end
 
 # function Base.getproperty(obj::Para, sym::Symbol)
@@ -108,6 +109,20 @@ end
 # end
 
 """
+    function chemical_potential(beta)
+
+generate chemical potential μ with given beta and density conservation.
+
+#Arguments:
+ - beta: dimensionless inverse temperature
+"""
+function chemical_potential(beta)
+    f(β, μ) = real(polylog(3 / 2, -exp(β * μ))) + 4 / 3 / π^0.5 * (β)^(3 / 2)
+    g(μ) = f(beta, μ)
+    return find_zero(g, (-1e6, 1))
+end
+
+"""
     function fullUnit(ϵ0, e0, me, EF, β)
 
 generate Para with a complete set of parameters, no value presumed.
@@ -120,6 +135,13 @@ generate Para with a complete set of parameters, no value presumed.
  - β: inverse temperature
 """
 @inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
+    μ = try
+        chemical_potential(β * EF) * EF
+    catch e
+        if isa(e, StackOverflowError)
+            EF
+        end
+    end
     para = Para(dim = dim,
         spin = spin,
         ϵ0 = ϵ0,
@@ -127,7 +149,7 @@ generate Para with a complete set of parameters, no value presumed.
         me = me,
         EF = EF,
         β = β,
-        μ = EF
+        μ = μ
     )
     return reconstruct(para, kwargs...)
 end
