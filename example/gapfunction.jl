@@ -11,7 +11,7 @@ using ElectronGas.CompositeGrids
 using ElectronGas.Convention
 
 function G02wrapped(fdlr, kgrid, param)
-    # return G(K)G(-K)
+    # return G0(K)G0(-K)
     @unpack me, kF, β, EF = param
 
     green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
@@ -25,6 +25,28 @@ function G02wrapped(fdlr, kgrid, param)
         end
     end
 
+    return green_dyn
+end
+
+function G2wrapped(fdlr, kgrid, param, Σ::GreenFunc.Green2DLR)
+    # return G(K)G(-K)
+    @unpack me, kF, β, EF = param
+
+    Σ_freq = GreenFunc.toMatFreq(Σ, fdlr.n)
+    Σ_shift = real(GreenFunc.dynamic(Σ_freq, π/β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
+
+    green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
+
+    for (ki, k) in enumerate(kgrid)
+        for (ni, n) in enumerate(fdlr.n)
+            ω = k^2/2/me
+            ΣR, ΣI = real(Σ_freq.dynamic[1,1,ki,ni] + Σ_freq.instant[1,1,ki] - Σ_shift), imag(Σ_freq.dynamic[1,1,ki,ni])
+            green_dyn[ki,ni] = 1/(
+                ( (2n + 1) * π / β - ΣI) ^ 2
+                + (ω + ΣR ) ^ 2
+            )
+        end
+    end
     return green_dyn
 end
 
@@ -72,7 +94,7 @@ function calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
             Δ[ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])./(-4*π*π)
             if τi == 1
                 Fk = CompositeGrids.Interp.interp1DGrid(F_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Fk
+                integrand = view(kernel_bare, ki, 1:qgrids[ki].size) .* Fk
                 Δ0[ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])./(-4*π*π)
             end
         end
@@ -125,11 +147,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     #--- parameters ---
 
+    sigmatype = :g0w0
+
 
     param = Parameter.defaultUnit(1/250.0, 4.0)
     Euv, rtol = 100*param.EF, 1e-10
     maxK, minK = 10param.kF, 1e-7param.kF
-    Nk, order = 16, 4
+    Nk, order = 12, 4
     int_type = :rpa
 
     #--- prepare kernel ---
@@ -152,24 +176,33 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println("dynamic kernel at (kF, kF):")
     println(view(kernel, kF_label, qF_label, :))
 
-    #--- prepare G2 ---
+    #--- prepare Σ ---
+    if sigmatype == :g0w0
+        Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+    end
 
-    G2 = G02wrapped(fdlr, kgrid, param)
+    #--- prepare G2 ---
+    if sigmatype == :none
+        G2 = G02wrapped(fdlr, kgrid, param)
+    elseif sigmatype == :g0w0
+        G2 = G2wrapped(fdlr, kgrid, param, Σ)
+    end
+
 
     println("G2 at kF:")
     println(view(G2, kF_label, :))
 
-    #--- prepare Δ ---
-    Δ, Δ0, F = ΔFinit(fdlr, kgrid)
-    norm = dotΔ(fdlr, kgrid, Δ, Δ0)
-    println("norm=$norm")
-    println(view(Δ, kF_label, :))
+    # #--- prepare Δ ---
+    # Δ, Δ0, F = ΔFinit(fdlr, kgrid)
+    # norm = dotΔ(fdlr, kgrid, Δ, Δ0)
+    # println("norm=$norm")
+    # println(view(Δ, kF_label, :))
 
-    calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
-    println(view(F, kF_label, :))
+    # calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
+    # println(view(F, kF_label, :))
 
-    calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
-    println(view(Δ, kF_label, :))
+    # calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
+    # println(view(Δ, kF_label, :))
 
     lamu, Δ, Δ0, F = gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2)
     println("lamu=$lamu")
