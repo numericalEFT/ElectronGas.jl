@@ -164,7 +164,7 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (4 * π^2), Σ_ins ./ (4 * π^2)
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (4 * π^2)
     return Σ
 end
 
@@ -208,7 +208,7 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (4 * π^2), Σ_ins ./ (4 * π^2)
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (4 * π^2)
     return Σ
 end
 
@@ -241,17 +241,30 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
-    println("kF=$kF")
     kF_label = searchsortedfirst(kgrid.grid, kF)
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
 
     # ΣI = imag(Σ_freq.dynamic[1, 1, kF_label, :])
-    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*β)
-    # Z0 = 1 / (1 + (ΣI[2] - ΣI[1]) / 2 / π * β)
-
-    Z0 = 1 / (1 + imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
+    # Z0 = 1 / (1 - (ΣI[2] - ΣI[1]) / 2 / π * β)
+    Z0 = 1 / (1 - imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
 
     return Z0
+end
+
+function massratio(param, Σ::GreenFunc.Green2DLR)
+    @unpack kF, me = param
+
+    kgrid = Σ.spaceGrid
+    kF_label = searchsortedfirst(kgrid.grid, kF)
+    z = zfactor(Σ)
+
+    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    k1, k2 = kF_label, kF_label - 1
+    sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
+    sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
+    ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
+
+    return 1.0 / z / (1 + me * kF * ds_dk)
 end
 
 end

@@ -45,7 +45,11 @@
 
         Z0 = (SelfEnergy.zfactor(Σ))
         @test isapprox(Z0, 0.862, rtol = 1e-3)
+        println("θ = $θ,  rs= $rs")
         println("z-factor = $Z0")
+
+        mratio = SelfEnergy.massratio(param, Σ)
+        println("m*/m = $mratio")
     end
 
     @testset "2D RPA" begin
@@ -67,9 +71,11 @@
         kF = kgrid.panel[3]
         Z0 = (SelfEnergy.zfactor(Σ))
         @test isapprox(Z0, 0.662, rtol = 5e-3)
-
         println("θ = $θ,  rs= $rs")
         println("Z-factor = $Z0")
+
+        mratio = SelfEnergy.massratio(param, Σ)
+        println("m*/m = $mratio")
         # G = SelfEnergy.Gwrapped(Σ, param)
         # println(G.dynamic[1, 1, kF_label, :])
     end
