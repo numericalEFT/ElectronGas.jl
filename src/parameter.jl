@@ -8,7 +8,7 @@ module Parameter
 
 # using Parameters
 using ..Parameters
-using Roots, Polylogarithms
+using Roots, Polylogarithms, SpecialFunctions
 
 @with_kw struct Para
     WID::Int = 1
@@ -116,8 +116,8 @@ generate chemical potential μ with given beta and density conservation.
 #Arguments:
  - beta: dimensionless inverse temperature
 """
-function chemical_potential(beta)
-    f(β, μ) = real(polylog(3 / 2, -exp(β * μ))) + 4 / 3 / π^0.5 * (β)^(3 / 2)
+function chemical_potential(beta, dim)
+    f(β, μ) = real(polylog(dim / 2, -exp(β * μ))) + 1 / gamma(1 + dim / 2) * (β)^(dim / 2)
     g(μ) = f(beta, μ)
     return find_zero(g, (-1e6, 1))
 end
@@ -136,7 +136,7 @@ generate Para with a complete set of parameters, no value presumed.
 """
 @inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
     μ = try
-        chemical_potential(β * EF) * EF
+        chemical_potential(β * EF, dim) * EF
     catch e
         if isa(e, StackOverflowError)
             EF
