@@ -152,19 +152,19 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
 
         for (τi, τ) in enumerate(fdlr.τ)
             Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
-            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k
+            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
             Σ_dyn[1, 1, ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
             @assert isfinite(Σ_dyn[1, 1, ki, τi]) "fail Δ at $ki, $τi"
             if τi == 1
                 Gq = CompositeGrids.Interp.interp1DGrid(G_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k
+                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
                 Σ_ins[1, 1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
                 @assert isfinite(Σ_ins[1, 1, ki]) "fail Δ0 at $ki"
             end
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ 4π, Σ_ins ./ 4π
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (4 * π^2), Σ_ins ./ (4 * π^2)
     return Σ
 end
 
@@ -216,12 +216,18 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
     @unpack dim = param
     # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
     # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
-    kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-        Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
-    G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+    # kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+    #     Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+    # G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
     if dim == 2
+        kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_2d(G0, kernel)
     elseif dim == 3
+        kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_3d(G0, kernel)
     else
         error("No support for G0W0 in $dim dimension!")

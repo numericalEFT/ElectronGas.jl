@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -63,9 +63,41 @@ function coulomb(q, param)
 end
 
 """
+    function coulomb_2d(q,param)
+
+Bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+
+#Arguments:
+ - q: momentum
+ - param: other system parameters
+"""
+function coulomb_2d(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if e0s ≈ 0.0
+        Vs = 0.0
+    else
+        if (q^2 + Λs) ≈ 0.0
+            Vs = Inf
+        else
+            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs)
+        end
+    end
+    if e0a ≈ 0.0
+        Va = 0.0
+    else
+        if (q^2 + Λa) ≈ 0.0
+            Va = Inf
+        else
+            Va = e0a^2 / 2ϵ0 / √(q^2 + Λa)
+        end
+    end
+    return Vs, Va
+end
+
+"""
     function coulombinv(q,param)
 
-Inverse of bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+Inverse of bare interaction in 3D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
 
 #Arguments:
  - q: momentum
@@ -82,6 +114,30 @@ function coulombinv(q, param)
         Vinva = Inf
     else
         Vinva = ϵ0 * (q^2 + Λa) / e0a^2
+    end
+    return Vinvs, Vinva
+end
+
+"""
+    function coulombinv_2d(q,param)
+
+Inverse of bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa otherwise.
+
+#Arguments:
+ - q: momentum
+ - param: other system parameters
+"""
+function coulombinv_2d(q, param)
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
+    if e0s^2 ≈ 0.0
+        Vinvs = Inf
+    else
+        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2
+    end
+    if e0a^2 ≈ 0.0
+        Vinva = Inf
+    else
+        Vinva = 2ϵ0 * √(q^2 + Λa) / e0a^2
     end
     return Vinvs, Vinva
 end
@@ -199,7 +255,7 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare, regular = true)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
@@ -271,8 +327,8 @@ otherwise, return
     \\frac{(v_q^{\\pm} - f_q^{\\pm})^2 Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
 ```
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = coulombinv, regular = regular, kwargs...)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, regular = regular)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
