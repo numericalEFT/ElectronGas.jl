@@ -327,8 +327,8 @@ otherwise, return
     \\frac{(v_q^{\\pm} - f_q^{\\pm})^2 Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
 ```
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, isregularized = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, isregularized = isregularized)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, regular = regular)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
