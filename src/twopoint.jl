@@ -156,7 +156,7 @@ Note that this dynamic contribution ``dW_0'' diverges at small q. For this reaso
 function dWRPA(vqinv, qgrid, τgrid, dim, μ, kF, β, spin, mass)
     # @assert all(qgrid .!= 0.0)
     EF = kF^2 / (2mass)
-    dlr = DLRGrid(Euv = 10EF, beta = β, rtol = 1e-10, isFermi = false, symmetry = :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
+    dlr = DLRGrid(Euv = 10EF, β = β, rtol = 1e-10, isFermi = false, symmetry = :ph) # effective interaction is a correlation function of the form <O(τ)O(0)>
     Nq, Nτ = length(qgrid), length(τgrid)
     Π = zeros(Complex{Float64}, (Nq, dlr.size)) # Matsubara grid is the optimized sparse DLR grid 
     dW0norm = similar(Π)

@@ -7,7 +7,7 @@
 In many cases we need to calculate integrals of the following form:
 ```math
    \begin{aligned}
-\Delta(\vec{k}) = \int \frac{d^dp}{{2\pi}^d} W(|\vec{k}-\vec{p}|) F(\vec{p}),
+\Delta(\vec{k}) = \int \frac{d^dp}{(2\pi)^d} W(|\vec{k}-\vec{p}|) F(\vec{p}),
 \tag{1}
    \end{aligned}
 ```
@@ -17,7 +17,7 @@ Two typical cases are the calculation of self-energy and gap-function equation. 
 
 
 ## How?
-We first express the interaction in Legendre polynomials:
+We first express the interaction in Legendre polynomials for ``d (\geq 3)`` dimensions:
 ```math
    \begin{aligned}
 W(|\vec{k}-\vec{p}|)&=\sum_{\ell=0}^{\infty}\frac{N(d,\ell)}{2} w_l(k, p) P_{l}(\hat{kp}) \,,\\
@@ -32,7 +32,7 @@ N(d, \ell)=\frac{2 \ell+d-2}{\ell}\left(
 \ell-1
 \end{array}\right)
 ```
-denotes the number of linearly independent Legendre polynomials of degree ``\ell`` in ``d`` dimensions.
+denotes the number of linearly independent Legendre polynomials of degree ``\ell`` in ``d`` dimensions (``d\geq 3``).
 The Legendre polynomials of a scalar product of unit vectors can be expanded using the addition theorem for spherical harmonics
 ```math
 P_{\ell}(\hat{k p})=\frac{\Omega_{d}}{N(d,\ell)} \sum_{m=1}^{N(d,\ell)} Y_{\ell m}(\hat{k}) Y_{\ell m}^{*}(\hat{p})\,,
@@ -130,27 +130,39 @@ w_2(k,p) &= \frac{1}{{(2kp)}^3}
 ```
 
 ## Two dimensions
-For 2D, the sphereical harmonic is just a Fourier series as
-```math
-\begin{aligned}
- P_{\ell}(\hat{kp}) &=  \pi \cos[\ell(\theta_{\hat k} - \theta_{\hat p})] , \quad N(2,\ell) = 2\\
-Y_{\ell 1}(\hat k) &= \cos(\ell \theta),\;  Y_{\ell 2}(\hat k) = \sin(\ell \theta).
-\end{aligned}
-```
-The ``GW`` self energy is
+For 2D, the interaction is expressed as Fourier series:
 ```math
    \begin{aligned}
-\Sigma(k) =   \int \frac{p {\rm d}p}{4\pi} w_0(k, p) G(p) \,.
+W(|\vec{k}-\vec{p}|)&=\frac{w_0}{2\pi} + \sum_{\ell=1}^{\infty} w_l(k, p) \frac{\cos[\ell(\theta_{\hat k} - \theta_{\hat p})]}{\pi} \,,\\
+w_{\ell}(k, p) &= \int_{0}^{2\pi} d\theta \cos(\ell \theta) W(\sqrt{k^2+p^2-2kp\cos \theta}) \,. \\
    \end{aligned}
 ```
-For 2D electron gas with 2D coulomb potential ``V=\frac{2\pi e^2}{q} \delta(\tau)\, \left( V(r)=\frac{e^2}{r} \right)``, 
-the helper functions for the first term have
+Projecting Eq.(1), we have
 ```math
-\delta h_{1}(k, p)=2\pi e^{2} (k+p-|k-p|), \quad \delta h_{3}(k, p)=\frac 2 3 \pi e^{2}\left [(k+p)^3-|k-p|^3\right ].
+\begin{aligned}
+&\frac{\Delta_{0}(k)}{2\pi}+ \sum_{\ell=1} \Delta_{\ell}(k) \frac{\cos(\ell \theta_{\hat k})}{\pi} +\overline{\Delta}_{\ell}(k) \frac{\sin(\ell \theta_{\hat k})}{\pi} \\
+=& \int \frac{{\rm d}\vec p}{(2\pi)^2} \frac{w_{0}(k,p)}{2\pi} \frac{f_0(p)}{2\pi} + \sum_{\ell=1} w_{\ell}(k,p) \frac{\cos(\ell \theta_{\hat k})\cos(\ell \theta_{\hat p}) - \sin(\ell \theta_{\hat k})\sin(\ell \theta_{\hat p}) }{\pi}    \sum_{\ell^\prime=1} \left[ f_{\ell^\prime}(p) \frac{\cos(\ell^\prime \theta_{\hat p})}{\pi}  + \overline{f}_{\ell^\prime}(p) \frac{\sin(\ell^\prime \theta_{\hat p})}{\pi} \right] \\
+=& \int \frac{pdp}{(2\pi)^2} w_{0}(k,p) \frac{f_0(p)}{2\pi} + \sum_{\ell=1} w_{\ell}(k,p) \left[f_{\ell}(p) \frac{\cos(\ell \theta_{\hat k})}{\pi} +\overline{f}_{\ell}(p) \frac{\sin(\ell \theta_{\hat k})}{\pi} \right] \,,
+\end{aligned}
 ```
-For ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\,\left(V(r)=-\ln \frac{r}{L}\right)``, ``\delta h_n`` has the same form as in 3D electron gas. 
+where ``\Delta_{\ell}(k) =\int_{0}^{2\pi} d\theta \cos(\ell \theta) \Delta(\vec k) ``. It leads to the decoupled equations with ``\ell`` channels.
+The ``GW`` self energy corresponding to ``\ell=0`` is
+```math
+\Sigma(k) =   \int \frac{p {\rm d}p}{(2\pi)^2} w_0(k, p) G(p) \,,
+```
+and for gap function we have
+```math
+\Delta_l(k) = \int \frac{p {\rm d}p}{(2\pi)^2} w_l(k, p) f_l(p) \,.
+```
 
-2D Yukawa interaction has
+Since ``\sin \theta`` is lack in 2D integration, the helper functions are complicated and useless in 2D. Here, we directly calculate 
+``w_{\ell}(k,p)`` integration with a CompositeGrid (range ``[0, \pi]``, Log-dense at ``0``).
+
+- standard 2D coulomb potential (3D coulomb interaction restricted in 2D): ``V=\frac{2\pi e^2}{q} \delta(\tau)\, \left( V(r)=\frac{e^2}{r} \right)`` has the same real-space form as in 3D electron gas.
+
+- REAL 2D coulomb potential (obey Gauss's law in 2D): ``V=\frac{4\pi e^2}{q^2} \delta(\tau)\,\left(V(r)=-\ln \frac{r}{L}\right)`` has the same momentum-space form as in 3D electron gas.
+
+- 2D Yukawa interaction has
 ```math
 \begin{aligned}
 V(r)&=\frac{e^2}{r} e^{-mr} ,\\
@@ -158,13 +170,6 @@ V(q)&=\int {\rm d}^2\vec r V(r) e^{i\vec q\cdot \vec r} \\
     & = \int r dr \frac{e^2}{r} e^{-mr} \int_0^{2\pi} d\theta e^{iqr\cos \theta} \\
     & = \int dr e^2 e^{-mr} 2\pi J_0(qr) \\
     & = \frac{2\pi e^2}{\sqrt{q^2+m^2}} \,,
-\end{aligned}
-```
-and the helper functions for the first term have
-```math
-\begin{aligned}
-\delta h_{1}(k, p)&=2\pi e^{2} (\sqrt{(k+p)^2+m^2}-\sqrt{(k-p)^2+m^2}), \\
-\delta h_{3}(k, p)&=\frac 2 3 \pi e^{2}\left ([(k+p)^2-2m^2]\sqrt{(k+p)^2+m^2} - [(k-p)^2-2m^2]\sqrt{(k-p)^2+m^2} \right ).
 \end{aligned}
 ```
 

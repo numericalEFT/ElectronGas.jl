@@ -9,27 +9,33 @@ using Parameters, Random
 using MCIntegration
 using Lehmann
 
-const steps = 1e6
-beta = 25.0
+const steps = 1e7
+# include("parameter.jl")
+dim = 2
+beta = 1000.0
 rs = 1.0
-mass2 = 1.e-3
-const para = Parameter.rydbergUnit(1.0 / beta, rs, 3, Λs = mass2)
+mass2 = 1.e-6
+# const para = Parameter.rydbergUnit(1.0 / beta, rs, dim, Λs = mass2)
+const para = Parameter.defaultUnit(1.0 / beta, rs, dim, Λs = mass2)
 const kF = para.kF
 const EF = para.EF
 const β = para.β
 
-qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 * kF, 8)
+# qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 0.01 *kF , 8)
+qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 1e-6 * kF, 8)
 τgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, β], [0.0, β], 16, β * 1e-4, 8)
 
-dlr = DLRGrid(Euv = 10EF, beta = β, rtol = 1e-10, isFermi = false, symmetry = :ph)
-W = zeros(length(qgrid), dlr.size)
-for (qi, q) in enumerate(qgrid.grid)
-    for (ni, n) in enumerate(dlr.n)
-        # W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_FiniteTemp)[1]
-        W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_ZeroTemp)[1]
-    end
-end
-const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
+# dlr = DLRGrid(Euv = 10EF, β = β, rtol = 1e-10, isFermi = false, symmetry = :ph)
+# W = zeros(length(qgrid), dlr.size)
+# for (qi, q) in enumerate(qgrid.grid)
+#     for (ni, n) in enumerate(dlr.n)
+#         # W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_FiniteTemp)[1]
+#         W[qi, ni] = Interaction.RPA(q, n, para, regular = true, pifunc = Polarization.Polarization0_ZeroTemp)[1]
+#     end
+# end
+# const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
+Ws, Wa = Interaction.RPAwrapped(10EF, 1e-10, qgrid.grid, para)
+const dW0 = real.(matfreq2tau(Ws.dlrGrid, Ws.dynamic, τgrid.grid, axis = 4))[1, 1, :, :]
 
 function integrand(config)
     if config.curr == 1
@@ -40,17 +46,18 @@ function integrand(config)
 end
 
 function interactionDynamic(qd, τIn, τOut)
-
     dτ = abs(τOut - τIn)
-
     kDiQ = sqrt(dot(qd, qd))
-    vd = 4π * para.e0^2 / (kDiQ^2 + para.Λs)
+
+    # vd = 4π * para.e0^2 / (kDiQ^2 + para.Λs)
+    vs, va = Interaction.coulomb_2d(kDiQ, para)
+    # vs, va = Interaction.coulomb(kDiQ, para)
     if kDiQ <= qgrid.grid[1]
         q = qgrid.grid[1] + 1.0e-6
-        wd = vd * Interp.linear2D(dW0, qgrid, τgrid, q, dτ)
+        wd = vs * Interp.linear2D(dW0, qgrid, τgrid, q, dτ)
         # the current interpolation vanishes at q=0, which needs to be corrected!
     else
-        wd = vd * Interp.linear2D(dW0, qgrid, τgrid, kDiQ, dτ) # dynamic interaction, don't forget the singular factor vq
+        wd = vs * Interp.linear2D(dW0, qgrid, τgrid, kDiQ, dτ) # dynamic interaction, don't forget the singular factor vq
     end
 
     return wd
@@ -111,5 +118,5 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     # using Gaston
     ngrid = [-1, 0, 1]
-    fock(ngrid)
+    @time fock(ngrid)
 end
