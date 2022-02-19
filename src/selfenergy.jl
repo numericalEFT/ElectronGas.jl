@@ -235,6 +235,9 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
 
     return Σ
 end
+function G0W0(param; Euv = 10 * param.EF, rtol = 1e-14, Nk = 12, maxK = 6 * param.kF, minK = 1e-8 * param.kF, order = 4, int_type = :rpa)
+    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+end
 
 function zfactor(Σ::GreenFunc.Green2DLR)
     kgrid = Σ.spaceGrid
