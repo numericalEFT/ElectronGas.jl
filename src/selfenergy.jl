@@ -95,13 +95,13 @@ function Fock0_ZeroTemp(k::Float64, param)
 end
 
 function G0wrapped(Euv, rtol, sgrid, param)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
 
     green = GreenFunc.Green2DLR{ComplexF64}(:g0, GreenFunc.IMFREQ, β, true, Euv, sgrid, 1)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - EF))
+            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ))
         end
     end
     green.dynamic = green_dyn
@@ -109,7 +109,7 @@ function G0wrapped(Euv, rtol, sgrid, param)
 end
 
 function Gwrapped(Σ::GreenFunc.Green2DLR, param)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
     Σ_freq = GreenFunc.toMatFreq(Σ)
     green = Green2DLR{ComplexF64}(
         :G, GreenFunc.IMFREQ, Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
@@ -118,7 +118,7 @@ function Gwrapped(Σ::GreenFunc.Green2DLR, param)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(green.spaceGrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - EF) + Σ.dynamic[1, 1, ki, ni] + Σ.instant[1, 1, ki])
+            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ) - Σ.dynamic[1, 1, ki, ni] - Σ.instant[1, 1, ki])
         end
     end
     green.dynamic = green_dyn

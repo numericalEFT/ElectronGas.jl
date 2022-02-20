@@ -193,7 +193,7 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     qgridmax = maximum([qg.size for qg in qgrids])
     # θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
     θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, minK, order)
-    println(θgrid.size)
+    # println(θgrid.size)
     # println(θgrid.grid)
 
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
