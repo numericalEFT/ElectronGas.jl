@@ -119,7 +119,7 @@ generate chemical potential μ with given beta and density conservation.
 function chemical_potential(beta, dim)
     f(β, μ) = real(polylog(dim / 2, -exp(β * μ))) + 1 / gamma(1 + dim / 2) * (β)^(dim / 2)
     g(μ) = f(beta, μ)
-    return find_zero(g, (-1e6, 1))
+    return find_zero(g, (-1e4, 1))
 end
 
 """
@@ -138,10 +138,15 @@ generate Para with a complete set of parameters, no value presumed.
     μ = try
         chemical_potential(β * EF, dim) * EF
     catch e
-        if isa(e, StackOverflowError)
-            EF
-        end
+        # if isa(e, StackOverflowError)
+        EF
     end
+    # if β * EF < 500
+    #     μ = chemical_potential(β * EF, dim) * EF
+    # else
+    #     μ = EF
+    # end
+
     para = Para(dim = dim,
         spin = spin,
         ϵ0 = ϵ0,
