@@ -95,18 +95,20 @@ end
 end
 
 @inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
-    q2 = k^2 + p^2 - 2k * p * cos(θ)
-    if q2 < EPS
-        q2 = EPS
+    x = cos(θ)
+    q2 = k^2 + p^2 - 2k * p * x
+    if x == 1 || q2 <= 0
+        q2 = (k - p)^2 + k * p * θ^2
     end
-    # convention changed, now interaction_dynamic already included the V_Bare
     return cos(channel * θ) * interaction_dynamic(√q2, n, param, int_type, spin_state)
 end
 
 @inline function kernel0_integrand2d(k, p, θ, channel, param, spin_state)
-    q2 = k^2 + p^2 - 2k * p * cos(θ)
-    if q2 < EPS
-        q2 = EPS
+    x = cos(θ)
+    q2 = k^2 + p^2 - 2k * p * x
+    if x == 1 || q2 <= 0
+        q2 = (k - p)^2 + k * p * θ^2
+        # println("$k, $p, $q2, $((k - p)^2), $x, $θ")
     end
     return cos(channel * θ) * interaction_instant(√q2, param, spin_state)
 end
@@ -192,8 +194,8 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
     # θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
-    θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, minK, order)
-    println(θgrid.size)
+    θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7, order)
+    # println(θgrid.size)
     # println(θgrid.grid)
 
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
@@ -201,6 +203,7 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     data = zeros(Float64, length(θgrid.grid))
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
+            # if abs(k - p) > 1e7
             for (θi, θ) in enumerate(θgrid.grid)
                 data[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
             end
@@ -214,7 +217,12 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
                 kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid) * 2
                 @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
             end
-
+            # else
+            #     kernel_bare[ki, pi] = 0
+            #     for (ni, n) in enumerate(bdlr.n)
+            #         kernel[ki, pi, ni] = 0
+            #     end
+            # end
         end
     end
 
