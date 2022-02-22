@@ -1,56 +1,56 @@
 @testset "Self Energy" begin
 
-    # @testset "3D Fock" begin
-    #     θ, rs = 0.1, 1.0
-    #     para = Parameter.rydbergUnit(θ, rs, 3)
-    #     println("$(para.μ), $(para.EF)")
-    #     factor = -para.e0^2 * para.kF / π
-    #     #test edge case when k → 0
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(1e-6, para) / factor, 2.0, rtol = 1e-6)
+    @testset "3D Fock" begin
+        θ, rs = 0.1, 1.0
+        para = Parameter.rydbergUnit(θ, rs, 3)
+        println("$(para.μ), $(para.EF)")
+        factor = -para.e0^2 * para.kF / π
+        #test edge case when k → 0
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(1e-6, para) / factor, 2.0, rtol = 1e-6)
 
-    #     #test edge case when k → 0
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF, para) / factor, 1.0, rtol = 1e-6)
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF + 1e-7, para) / factor, 1.0, rtol = 1e-6)
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF - 1e-7, para) / factor, 1.0, rtol = 1e-6)
+        #test edge case when k → 0
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF, para) / factor, 1.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF + 1e-7, para) / factor, 1.0, rtol = 1e-6)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para.kF - 1e-7, para) / factor, 1.0, rtol = 1e-6)
 
-    #     #test edge case when Λs → 0
-    #     para = Parameter.rydbergUnit(θ, rs, 3, Λs = 1e-12)
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
-    # end
+        #test edge case when Λs → 0
+        para = Parameter.rydbergUnit(θ, rs, 3, Λs = 1e-12)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
+    end
 
-    # @testset "2D Fock" begin
-    #     θ, rs = 0.1, 1.0
-    #     para = Parameter.rydbergUnit(θ, rs, 2, Λs = 0.1)
-    #     println("$(para.μ), $(para.EF)")
-    #     #test edge case when k → 0
-    #     f1 = SelfEnergy.Fock0_ZeroTemp(0.0, para)
-    #     f2 = SelfEnergy.Fock0_ZeroTemp(1e-7, para)
-    #     @test isapprox(f1, f2, rtol = 1e-6)
+    @testset "2D Fock" begin
+        θ, rs = 0.1, 1.0
+        para = Parameter.rydbergUnit(θ, rs, 2, Λs = 0.1)
+        println("$(para.μ), $(para.EF)")
+        #test edge case when k → 0
+        f1 = SelfEnergy.Fock0_ZeroTemp(0.0, para)
+        f2 = SelfEnergy.Fock0_ZeroTemp(1e-7, para)
+        @test isapprox(f1, f2, rtol = 1e-6)
 
-    #     para1 = Parameter.rydbergUnit(θ, rs, 2)
-    #     para2 = Parameter.rydbergUnit(θ, rs, 2, Λs = 1e-12)
-    #     @test isapprox(SelfEnergy.Fock0_ZeroTemp(para1.kF, para1), SelfEnergy.Fock0_ZeroTemp(para2.kF, para2), rtol = 1e-6)
-    # end
+        para1 = Parameter.rydbergUnit(θ, rs, 2)
+        para2 = Parameter.rydbergUnit(θ, rs, 2, Λs = 1e-12)
+        @test isapprox(SelfEnergy.Fock0_ZeroTemp(para1.kF, para1), SelfEnergy.Fock0_ZeroTemp(para2.kF, para2), rtol = 1e-6)
+    end
 
-    # @testset "3D RPA" begin
-    #     # make sure everything works for different unit sets
-    #     θ, rs = 1e-3, 1.0
-    #     param = Parameter.defaultUnit(θ, rs)
-    #     Euv, rtol = 100 * param.EF, 1e-10
-    #     Nk, order = 8, 4
+    @testset "3D RPA" begin
+        # make sure everything works for different unit sets
+        θ, rs = 1e-3, 1.0
+        param = Parameter.defaultUnit(θ, rs)
+        Euv, rtol = 100 * param.EF, 1e-10
+        Nk, order = 8, 4
 
-    #     @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
-    #     Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
+        @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
+        Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
 
-    #     Z0 = (SelfEnergy.zfactor(Σ))
-    #     @test isapprox(Z0, 0.862, rtol = 1e-3)
-    #     println("θ = $θ,  rs= $rs")
-    #     println("z-factor = $Z0")
+        Z0 = (SelfEnergy.zfactor(Σ))
+        @test isapprox(Z0, 0.862, rtol = 1e-3)
+        println("θ = $θ,  rs= $rs")
+        println("z-factor = $Z0")
 
-    #     mratio = SelfEnergy.massratio(param, Σ)
-    #     println("m*/m = $mratio")
-    # end
+        mratio = SelfEnergy.massratio(param, Σ)
+        println("m*/m = $mratio")
+    end
 
     @testset "2D RPA" begin
         dim = 2
