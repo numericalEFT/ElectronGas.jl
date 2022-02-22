@@ -8,7 +8,8 @@ module Parameter
 
 # using Parameters
 using ..Parameters
-using Roots, Polylogarithms, SpecialFunctions
+using Roots, SpecialFunctions
+# using Polylogarithms
 
 @with_kw struct Para
     WID::Int = 1
@@ -108,19 +109,19 @@ end
 #     end
 # end
 
-"""
-    function chemical_potential(beta)
+# """
+#     function chemical_potential(beta)
 
-generate chemical potential μ with given beta and density conservation.
+# generate chemical potential μ with given beta and density conservation.
 
-#Arguments:
- - beta: dimensionless inverse temperature
-"""
-function chemical_potential(beta, dim)
-    f(β, μ) = real(polylog(dim / 2, -exp(β * μ))) + 1 / gamma(1 + dim / 2) * (β)^(dim / 2)
-    g(μ) = f(beta, μ)
-    return find_zero(g, (-1e4, 1))
-end
+# #Arguments:
+#  - beta: dimensionless inverse temperature
+# """
+# function chemical_potential(beta, dim)
+#     f(β, μ) = real(polylog(dim / 2, -exp(β * μ))) + 1 / gamma(1 + dim / 2) * (β)^(dim / 2)
+#     g(μ) = f(beta, μ)
+#     return find_zero(g, (-1e4, 1))
+# end
 
 """
     function fullUnit(ϵ0, e0, me, EF, β)
@@ -135,16 +136,11 @@ generate Para with a complete set of parameters, no value presumed.
  - β: inverse temperature
 """
 @inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
-    μ = try
-        chemical_potential(β * EF, dim) * EF
-    catch e
-        # if isa(e, StackOverflowError)
-        EF
-    end
-    # if β * EF < 500
-    #     μ = chemical_potential(β * EF, dim) * EF
-    # else
-    #     μ = EF
+    # μ = try
+    #     chemical_potential(β * EF, dim) * EF
+    # catch e
+    #     # if isa(e, StackOverflowError)
+    #     EF
     # end
 
     para = Para(dim = dim,
@@ -154,7 +150,8 @@ generate Para with a complete set of parameters, no value presumed.
         me = me,
         EF = EF,
         β = β,
-        μ = μ
+        μ = EF
+        # μ = μ
     )
     return reconstruct(para, kwargs...)
 end
