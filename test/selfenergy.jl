@@ -65,8 +65,8 @@
             Euv, rtol = 100 * param.EF, 1e-10
             # set Nk, minK = 8, 1e-7 for β<1e6;  11, 1e-8 for β<1e7
             # Nk, order, minK = 11, 4, 1e-8
-            # Nk, order, minK = 8, 8, 1e-7
-            Nk, order, minK = 12, 8, 1e-7
+            Nk, order, minK = 8, 8, 1e-7
+            # Nk, order, minK = 12, 8, 1e-7
             # Nk, order, minK = 12, 8, 1e-8
 
             @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
