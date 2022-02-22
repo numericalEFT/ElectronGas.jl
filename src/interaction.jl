@@ -327,12 +327,12 @@ otherwise, return
     \\frac{(v_q^{\\pm} - f_q^{\\pm})^2 Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
 ```
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, regular = regular)
+function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
+    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, regular = regular, kwargs...)
 end
 
 function KOwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv) where {SGT}
+    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, kwargs...) where {SGT}
 
     @unpack β = param
     gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
@@ -343,7 +343,7 @@ function KOwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(gs.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, kwargs...)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
