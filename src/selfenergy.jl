@@ -145,7 +145,7 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1]
+    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1] .* (-1)
     @assert length(G.instant) == 0 "current implication supports green function without instant part"
 
     for (ki, k) in enumerate(kgrid.grid)
@@ -164,7 +164,7 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (4 * π^2)
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
     return Σ
 end
 
@@ -189,11 +189,10 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1]
+    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1] .* (-1)
     @assert length(G.instant) == 0 "current implication supports green function without instant part"
 
     for (ki, k) in enumerate(kgrid.grid)
-
         for (τi, τ) in enumerate(fdlr.τ)
             Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
             integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
@@ -208,7 +207,7 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (4 * π^2)
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
     return Σ
 end
 
@@ -267,7 +266,8 @@ function massratio(param, Σ::GreenFunc.Green2DLR)
     sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
     ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
 
-    return 1.0 / z / (1 + me * kF * ds_dk)
+    # println("m/kF ds_dk = $(me/kF*ds_dk)")
+    return 1.0 / z / (1 + me / kF * ds_dk)
 end
 
 end
