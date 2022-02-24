@@ -200,17 +200,17 @@ function bubblecorrection(q::Float64, n::Int, param;
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
     @unpack spin = param
 
-    if abs(q) > EPS
-        Π::Float64 = spin * pifunc(q, n, param)
-        if regular
-            Ks = bubbledysonreg(Vinvs, Fs, Π)
-            Ka = bubbledysonreg(Vinva, Fa, Π)
-        else
-            Ks = bubbledyson(Vinvs, Fs, Π)
-            Ka = bubbledyson(Vinva, Fa, Π)
-        end
+    if abs(q) < EPS
+        q = EPS
+    end
+
+    Π::Float64 = spin * pifunc(q, n, param)
+    if regular
+        Ks = bubbledysonreg(Vinvs, Fs, Π)
+        Ka = bubbledysonreg(Vinva, Fa, Π)
     else
-        Ks, Ka = 0.0, 0.0
+        Ks = bubbledyson(Vinvs, Fs, Π)
+        Ka = bubbledyson(Vinva, Fa, Π)
     end
 
     return Ks, Ka
@@ -299,9 +299,19 @@ end
     return 0.0, 0.0
 end
 
-@inline function landauParameterConst(q, n, param; Fs = 0.0, Fa = 0.0, kwargs...)
-    return Fs, Fa
+@inline function landauParameterConst(q, n, param; Fs = 0.0, Fa = 0.0, massratio = 1.0, kwargs...)
+    return Fs / param.NF / massratio, Fa / param.NF / massratio
 end
+
+@inline function counterterm(q, n, param; landaufunc, kwargs...)
+    fs, fa = landaufunc(q, n, param; kwargs...)
+    return fs, fa
+end
+
+@inline function countertermConst(q, n, param; landaufunc, Cs, Ca, kwargs...)
+    return Cs, Ca
+end
+
 
 """
     function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
@@ -352,6 +362,68 @@ function KOwrapped(Euv, rtol, sgrid::SGT, param;
     ga.dynamic = green_dyn_a
     ga.instant = green_ins_a
     return gs, ga
+end
+
+"""
+    function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, counter_term = counterterm, kwargs...)
+
+Dynamic part of KO interaction. Returns the spin symmetric part and asymmetric part separately.
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+ - param: other system parameters
+ - pifunc: caller to the polarization function 
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+ - counter_term: counterterm, by default, it is the landaufunc
+
+# Return:
+Return the total effective interaction
+```math
+    W^{\\pm} = \\frac{(v_q^{\\pm} - f_q^{\\pm}) Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0} + C_q^{\\pm}.
+```
+which reduces to the convential KO interaction if ``C_q^{\\pm} \\equiv f_q^{\\pm}``
+"""
+function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, counter_term = counterterm, kwargs...)
+    @unpack spin = param
+
+    if abs(q) < EPS
+        q = EPS
+    end
+
+    Π::Float64 = spin * pifunc(q, n, param; kwargs...)
+
+    fs, fa = landaufunc(q, n, param; kwargs...)
+    Cs, Ca = counter_term(q, n, param; landaufunc = landaufunc, kwargs...)
+    Vinvs, Vinva = Vinv_Bare(q, param)
+
+    if param.e0s ≈ 0.0
+        Ka = (-fs) / (1 - (-fs) * Π) + Cs
+    else
+        Ks = 1.0 / (Vinvs / (1 - fs * Vinvs) - Π) + Cs
+    end
+    if param.espin ≈ 0.0
+        Ka = (-fa) / (1 - (-fa) * Π) + Ca
+    else
+        Ka = 1.0 / (Vinva / (1 - fa * Vinva) - Π) + Ca
+    end
+    return Ks, Ka
+end
+
+function RPA_total(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, kwargs...)
+    @unpack spin = param
+
+    if abs(q) < EPS
+        q = EPS
+    end
+
+    Π::Float64 = spin * pifunc(q, n, param)
+    Vinvs, Vinva = Vinv_Bare(q, param)
+
+    Ws = 1.0 / (Vinvs - (Π))
+    Wa = 1.0 / (Vinva - (Π))
+    return Ws, Wa
 end
 
 end
