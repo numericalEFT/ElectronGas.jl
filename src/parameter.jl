@@ -27,8 +27,12 @@ using Roots, SpecialFunctions
 
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
-    Λa::Float64 = 0.0   # Yukawa-type spin-asymmetric interaction ~1/(q^2+Λa)
+    Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)
     espin::Float64 = 0.0
+    ξe::Float64 = 1.0   # inverse relative permittivity
+    gs::Float64 = 1.0   # spin-symmetric coupling 
+    ga::Float64 = 1.0   # spin-antisymmetric coupling
+    coupling::Float64 = 1.0   # spin-fermion coupling constant
 
     # derived parameters
     beta::Float64 = β * EF

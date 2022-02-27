@@ -36,7 +36,7 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
-    @unpack dim = param
+    @unpack dim, gs, ga = param
     if dim != 2 && dim != 3
         throw(UndefVarError(dim))
     end
@@ -57,11 +57,12 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
         throw(UndefVarError(int_type))
     end
 
-    return ks + spin_factor(spin_state) * ka
+    # return ks + spin_factor(spin_state) * ka
+    return ks * gs^2 + spin_factor(spin_state) * ka * ga^2
 end
 
 @inline function interaction_instant(q, param, spin_state)
-    @unpack dim = param
+    @unpack dim, gs, ga = param
     if dim != 2 && dim != 3
         throw(UndefVarError(dim))
     end
@@ -72,7 +73,8 @@ end
         Vs, Va = coulomb_2d(q, param)
     end
 
-    return (Vs + spin_factor(spin_state) * Va)
+    # return (Vs + spin_factor(spin_state) * Va)
+    return (Vs * gs^2 + spin_factor(spin_state) * Va * ga^2)
 end
 
 @inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state)
@@ -194,7 +196,8 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
     # θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
-    θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7, order)
+    # θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7, order)
+    θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7 * kF, order)
     # println(θgrid.size)
     # println(θgrid.grid)
 
