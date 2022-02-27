@@ -40,24 +40,24 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
  - param: other system parameters
 """
 function coulomb(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξe = param
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξs, ξa = param
     # if e0s ≈ 0.0
-    if ξe ≈ 0.0
+    if ξs ≈ 0.0
         Vs = 0.0
     else
         if (q^2 + Λs) ≈ 0.0
             Vs = Inf
         else
-            Vs = e0s^2 / ϵ0 / (q^2 + Λs) * ξe
+            Vs = e0s^2 / ϵ0 / (q^2 + Λs) * ξs
         end
     end
-    if e0a ≈ 0.0
+    if ξa ≈ 0.0
         Va = 0.0
     else
         if (q^2 + Λa) ≈ 0.0
             Va = Inf
         else
-            Va = e0a^2 / ϵ0 / (q^2 + Λa)
+            Va = e0a^2 / ϵ0 / (q^2 + Λa) * ξa
         end
     end
     return Vs, Va
@@ -73,25 +73,25 @@ Bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa othe
  - param: other system parameters
 """
 function coulomb_2d(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξe = param
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξs, ξa = param
     # if e0s ≈ 0.0
-    if ξe ≈ 0.0
+    if ξs ≈ 0.0
         Vs = 0.0
     else
         if (q^2 + Λs) ≈ 0.0
             Vs = Inf
         else
-            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs) * ξe
+            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs) * ξs
         end
     end
-    if e0a ≈ 0.0
+    if ξa ≈ 0.0
         Va = 0.0
     else
         if (q^2 + Λa) ≈ 0.0
             Va = Inf
         else
             # Va = e0a^2 / 2ϵ0 / √(q^2 + Λa)
-            Va = e0a^2 / ϵ0 / (q^2 + Λa)
+            Va = e0a^2 / ϵ0 / (q^2 + Λa) * ξa
         end
     end
     return Vs, Va
@@ -107,17 +107,17 @@ Inverse of bare interaction in 3D momentum space. Coulomb interaction if Λs=0, 
  - param: other system parameters
 """
 function coulombinv(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξe = param
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξs, ξa = param
     # if e0s^2 ≈ 0.0
-    if ξe ≈ 0.0
+    if ξs ≈ 0.0
         Vinvs = Inf
     else
-        Vinvs = ϵ0 * (q^2 + Λs) / e0s^2 / ξe
+        Vinvs = ϵ0 * (q^2 + Λs) / e0s^2 / ξs
     end
-    if e0a^2 ≈ 0.0
+    if ξa ≈ 0.0
         Vinva = Inf
     else
-        Vinva = ϵ0 * (q^2 + Λa) / e0a^2
+        Vinva = ϵ0 * (q^2 + Λa) / e0a^2 / ξa
     end
     return Vinvs, Vinva
 end
@@ -132,17 +132,17 @@ Inverse of bare interaction in 2D momentum space. Coulomb interaction if Λs=0, 
  - param: other system parameters
 """
 function coulombinv_2d(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξe = param
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, ξs, ξa = param
     # if e0s^2 ≈ 0.0
-    if ξe ≈ 0.0
+    if ξs ≈ 0.0
         Vinvs = Inf
     else
-        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2 / ξe
+        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2 / ξs
     end
-    if e0a^2 ≈ 0.0
+    if ξa ≈ 0.0
         Vinva = Inf
     else
-        Vinva = ϵ0 * (q^2 + Λa) / e0a^2
+        Vinva = ϵ0 * (q^2 + Λa) / e0a^2 / ξa
         # Vinva = 2ϵ0 * √(q^2 + Λa) / e0a^2
     end
     return Vinvs, Vinva
@@ -204,14 +204,14 @@ function bubblecorrection(q::Float64, n::Int, param;
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     # Vs::Float64, Va::Float64 = V_Bare(q, param)
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
-    @unpack spin, gs, ga = param
+    @unpack spin = param
 
     if abs(q) < EPS
         q = EPS
     end
 
-    Πs::Float64 = spin * gs^2 * pifunc(q, n, param)
-    Πa::Float64 = spin * ga^2 * pifunc(q, n, param)
+    Πs::Float64 = spin * pifunc(q, n, param)
+    Πa::Float64 = spin * pifunc(q, n, param)
     if regular
         Ks = bubbledysonreg(Vinvs, Fs, Πs)
         Ka = bubbledysonreg(Vinva, Fa, Πa)

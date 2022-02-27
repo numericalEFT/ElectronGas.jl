@@ -9,12 +9,12 @@ ExtQ = 0
 
 dim = 2
 beta, rs = 10^bexp, 1.0
-espin = 1.0
+ξa = 1.0
 param = Interaction.Parameter.rydbergUnit(1 / beta, rs, dim)
 
-Λa = param.Λa + Polarization.Polarization0_ZeroTemp(0.0, 0, param) * param.spin * (-espin^2) / param.ϵ0
+Λa = param.Λa + Polarization.Polarization0_ZeroTemp(0.0, 0, param) * param.spin * ξa * (-param.espin^2) / param.ϵ0
 println(Λa)
-param = Parameter.Para(param, ξe = 0.0, espin = espin, Λa = Λa, e0a = espin)
+param = Parameter.Para(param, ξs = 0.0, ξa = ξa, Λa = Λa)
 
 function sigma(param)
     Euv, rtol = 100 * param.EF, 1e-10
@@ -37,15 +37,16 @@ function sigma(param)
     println(ΣR[1, 1, kF_label, :])
 
     label = 1
-    open("./plot/sigma_b1e$(bexp)_q$(ExtQ)kf_m0.txt", "w") do io
-        writedlm(io, [ωgrid.n ωgrid.ωn ΣR[1, 1, label, :] ΣI[1, 1, label, :]])
-    end
+    print([ωgrid.n ωgrid.ωn ΣR[1, 1, label, :] ΣI[1, 1, label, :]])
+    # open("./plot/sigma_b1e$(bexp)_q$(ExtQ)kf_m0.txt", "w") do io
+    #     writedlm(io, [ωgrid.n ωgrid.ωn ΣR[1, 1, label, :] ΣI[1, 1, label, :]])
+    # end
 end
 
 
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # sigma(param)
+    sigma(param)
 
     data = readdlm("./plot/sigma_b1e$(bexp)_q$(ExtQ)kf_m0.txt", '\t', Float64, '\n')
     # using Gaston
@@ -54,7 +55,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     x = data[:, 2] / param.EF
     y = -data[:, end]
     plot(x, y, curveconf = "notit w lp lw 1 lc '#08F7FE'",
-        Axes(xrange = (0, 0.5),
+        Axes(xrange = (0, 0.1),
             # yrange = (-4, 1.2),
             ylabel = "'-Im Σ'",
             # ylabel = "'f_{xc} N_F (q/ω_n)^2'",

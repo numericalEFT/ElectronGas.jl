@@ -36,7 +36,7 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
-    @unpack dim, gs, ga = param
+    @unpack dim = param
     if dim != 2 && dim != 3
         throw(UndefVarError(dim))
     end
@@ -57,12 +57,11 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
         throw(UndefVarError(int_type))
     end
 
-    # return ks + spin_factor(spin_state) * ka
-    return ks * gs^2 + spin_factor(spin_state) * ka * ga^2
+    return ks + spin_factor(spin_state) * ka
 end
 
 @inline function interaction_instant(q, param, spin_state)
-    @unpack dim, gs, ga = param
+    @unpack dim = param
     if dim != 2 && dim != 3
         throw(UndefVarError(dim))
     end
@@ -73,8 +72,7 @@ end
         Vs, Va = coulomb_2d(q, param)
     end
 
-    # return (Vs + spin_factor(spin_state) * Va)
-    return (Vs * gs^2 + spin_factor(spin_state) * Va * ga^2)
+    return (Vs + spin_factor(spin_state) * Va)
 end
 
 @inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state)
