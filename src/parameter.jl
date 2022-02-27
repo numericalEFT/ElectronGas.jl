@@ -32,7 +32,6 @@ using Roots, SpecialFunctions
     ξe::Float64 = 1.0   # inverse relative permittivity
     gs::Float64 = 1.0   # spin-symmetric coupling 
     ga::Float64 = 1.0   # spin-antisymmetric coupling
-    coupling::Float64 = 1.0   # spin-fermion coupling constant
 
     # derived parameters
     beta::Float64 = β * EF
