@@ -77,7 +77,7 @@
             kF = kgrid.panel[3]
             Z0 = (SelfEnergy.zfactor(Σ))
             z = zlist[ind]
-            @test isapprox(Z0, z, rtol = 8e-3)
+            @test isapprox(Z0, z, atol = 3e-3)
             println("θ = $θ,  rs= $rs")
             println("Z-factor = $Z0 ($z)")
 
