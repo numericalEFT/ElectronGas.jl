@@ -40,23 +40,23 @@ Bare interaction in momentum space. Coulomb interaction if Λs=0, Yukawa otherwi
  - param: other system parameters
 """
 function coulomb(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if e0s ≈ 0.0
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, gs, ga = param
+    if gs ≈ 0.0
         Vs = 0.0
     else
         if (q^2 + Λs) ≈ 0.0
             Vs = Inf
         else
-            Vs = e0s^2 / ϵ0 / (q^2 + Λs)
+            Vs = e0s^2 / ϵ0 / (q^2 + Λs) * gs
         end
     end
-    if e0a ≈ 0.0
+    if ga ≈ 0.0
         Va = 0.0
     else
         if (q^2 + Λa) ≈ 0.0
             Va = Inf
         else
-            Va = e0a^2 / ϵ0 / (q^2 + Λa)
+            Va = e0a^2 / ϵ0 / (q^2 + Λa) * ga
         end
     end
     return Vs, Va
@@ -72,23 +72,24 @@ Bare interaction in 2D momentum space. Coulomb interaction if Λs=0, Yukawa othe
  - param: other system parameters
 """
 function coulomb_2d(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if e0s ≈ 0.0
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, gs, ga = param
+    if gs ≈ 0.0
         Vs = 0.0
     else
         if (q^2 + Λs) ≈ 0.0
             Vs = Inf
         else
-            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs)
+            Vs = e0s^2 / 2ϵ0 / √(q^2 + Λs) * gs
         end
     end
-    if e0a ≈ 0.0
+    if ga ≈ 0.0
         Va = 0.0
     else
         if (q^2 + Λa) ≈ 0.0
             Va = Inf
         else
-            Va = e0a^2 / 2ϵ0 / √(q^2 + Λa)
+            # Va = e0a^2 / 2ϵ0 / √(q^2 + Λa)
+            Va = e0a^2 / ϵ0 / (q^2 + Λa) * ga
         end
     end
     return Vs, Va
@@ -104,16 +105,16 @@ Inverse of bare interaction in 3D momentum space. Coulomb interaction if Λs=0, 
  - param: other system parameters
 """
 function coulombinv(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if e0s^2 ≈ 0.0
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, gs, ga = param
+    if gs ≈ 0.0
         Vinvs = Inf
     else
-        Vinvs = ϵ0 * (q^2 + Λs) / e0s^2
+        Vinvs = ϵ0 * (q^2 + Λs) / e0s^2 / gs
     end
-    if e0a^2 ≈ 0.0
+    if ga ≈ 0.0
         Vinva = Inf
     else
-        Vinva = ϵ0 * (q^2 + Λa) / e0a^2
+        Vinva = ϵ0 * (q^2 + Λa) / e0a^2 / ga
     end
     return Vinvs, Vinva
 end
@@ -128,16 +129,17 @@ Inverse of bare interaction in 2D momentum space. Coulomb interaction if Λs=0, 
  - param: other system parameters
 """
 function coulombinv_2d(q, param)
-    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0 = param
-    if e0s^2 ≈ 0.0
+    @unpack me, kF, rs, e0s, e0a, β, Λs, Λa, ϵ0, gs, ga = param
+    if gs ≈ 0.0
         Vinvs = Inf
     else
-        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2
+        Vinvs = 2ϵ0 * √(q^2 + Λs) / e0s^2 / gs
     end
-    if e0a^2 ≈ 0.0
+    if ga ≈ 0.0
         Vinva = Inf
     else
-        Vinva = 2ϵ0 * √(q^2 + Λa) / e0a^2
+        Vinva = ϵ0 * (q^2 + Λa) / e0a^2 / ga
+        # Vinva = 2ϵ0 * √(q^2 + Λa) / e0a^2
     end
     return Vinvs, Vinva
 end
@@ -196,7 +198,6 @@ function bubblecorrection(q::Float64, n::Int, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param; kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
-    # Vs::Float64, Va::Float64 = V_Bare(q, param)
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
     @unpack spin = param
 
@@ -204,13 +205,14 @@ function bubblecorrection(q::Float64, n::Int, param;
         q = EPS
     end
 
-    Π::Float64 = spin * pifunc(q, n, param)
+    Πs::Float64 = spin * pifunc(q, n, param)
+    Πa::Float64 = spin * pifunc(q, n, param)
     if regular
-        Ks = bubbledysonreg(Vinvs, Fs, Π)
-        Ka = bubbledysonreg(Vinva, Fa, Π)
+        Ks = bubbledysonreg(Vinvs, Fs, Πs)
+        Ka = bubbledysonreg(Vinva, Fa, Πa)
     else
-        Ks = bubbledyson(Vinvs, Fs, Π)
-        Ka = bubbledyson(Vinva, Fa, Π)
+        Ks = bubbledyson(Vinvs, Fs, Πs)
+        Ka = bubbledyson(Vinva, Fa, Πa)
     end
 
     return Ks, Ka
@@ -247,23 +249,23 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv) where {SGT}
 
     @unpack β = param
-    gs = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
-    green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
-    green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
-    green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
+    green_s = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_a = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
+    green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
+    green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
+    green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(gs.dlrGrid.n)
+        for (ni, n) in enumerate(green_s.dlrGrid.n)
             green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare, regular = true)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
-    gs.dynamic = green_dyn_s
-    gs.instant = green_ins_s
-    ga.dynamic = green_dyn_a
-    ga.instant = green_ins_a
-    return gs, ga
+    green_s.dynamic = green_dyn_s
+    green_s.instant = green_ins_s
+    green_a.dynamic = green_dyn_a
+    green_a.instant = green_ins_a
+    return green_s, green_a
 end
 
 """
@@ -345,23 +347,23 @@ function KOwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, kwargs...) where {SGT}
 
     @unpack β = param
-    gs = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    ga = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    green_dyn_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size, gs.timeGrid.size))
-    green_ins_s = zeros(Float64, (gs.color, gs.color, gs.spaceGrid.size))
-    green_dyn_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size, ga.timeGrid.size))
-    green_ins_a = zeros(Float64, (ga.color, ga.color, ga.spaceGrid.size))
+    green_s = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_a = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
+    green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
+    green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
+    green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(gs.dlrGrid.n)
+        for (ni, n) in enumerate(green_s.dlrGrid.n)
             green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, kwargs...)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
-    gs.dynamic = green_dyn_s
-    gs.instant = green_ins_s
-    ga.dynamic = green_dyn_a
-    ga.instant = green_ins_a
-    return gs, ga
+    green_s.dynamic = green_dyn_s
+    green_s.instant = green_ins_s
+    green_a.dynamic = green_dyn_a
+    green_a.instant = green_ins_a
+    return green_s, green_a
 end
 
 """
@@ -403,7 +405,7 @@ function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = lan
     else
         Ks = 1.0 / (Vinvs / (1 - fs * Vinvs) - Π) + Cs
     end
-    if param.espin ≈ 0.0
+    if param.e0a ≈ 0.0
         Ka = (-fa) / (1 - (-fa) * Π) + Ca
     else
         Ka = 1.0 / (Vinva / (1 - fa * Vinva) - Π) + Ca
