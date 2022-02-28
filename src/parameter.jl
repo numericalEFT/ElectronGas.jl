@@ -46,7 +46,7 @@ using Roots, SpecialFunctions
     NF::Float64 = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π
 end
 
-derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :e0s, :e0a, :NF)
+derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF)
 
 """
     function derive(param::Para; kws...)
