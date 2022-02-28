@@ -9,12 +9,12 @@ ExtQ = 0
 
 dim = 2
 beta, rs = 10^bexp, 1.0
-ξa = 1.0
+ga = 1.0
 param = Interaction.Parameter.rydbergUnit(1 / beta, rs, dim)
 
-Λa = param.Λa + Polarization.Polarization0_ZeroTemp(0.0, 0, param) * param.spin * ξa * (-param.espin^2) / param.ϵ0
+Λa = param.Λa + Polarization.Polarization0_ZeroTemp(0.0, 0, param) * param.spin * ga * (-param.e0a^2) / param.ϵ0
 println(Λa)
-param = Parameter.Para(param, ξs = 0.0, ξa = ξa, Λa = Λa)
+param = Parameter.Para(param, gs = 0.0, ga = ga, Λa = Λa)
 
 function sigma(param)
     Euv, rtol = 100 * param.EF, 1e-10

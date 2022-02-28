@@ -24,13 +24,12 @@ using Roots, SpecialFunctions
     EF::Float64 = 1.0     #kF^2 / (2me)
     β::Float64 = 200 # bare inverse temperature
     μ::Float64 = 1.0
-    espin::Float64 = e0
 
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
     Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)
-    ξs::Float64 = 1.0   # spin-symmetric coupling 
-    ξa::Float64 = 0.0   # spin-antisymmetric coupling
+    gs::Float64 = 1.0   # spin-symmetric coupling 
+    ga::Float64 = 0.0   # spin-antisymmetric coupling
 
     # derived parameters
     beta::Float64 = β * EF
@@ -41,6 +40,7 @@ using Roots, SpecialFunctions
     a0::Float64 = 4π * ϵ0 / (me * e0^2)
     rs::Float64 = Rs / a0
     kF::Float64 = sqrt(2 * me * EF)
+    espin::Float64 = e0
     e0s::Float64 = e0
     e0a::Float64 = espin
     NF::Float64 = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π

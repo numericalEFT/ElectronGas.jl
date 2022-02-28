@@ -204,11 +204,11 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     data = zeros(Float64, length(θgrid.grid))
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
-            # if abs(k - p) > 1e7
             for (θi, θ) in enumerate(θgrid.grid)
                 data[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
             end
             kernel_bare[ki, pi] = Interp.integrate1D(data, θgrid) * 2
+            # println("$ki,$pi,  $(kernel_bare[ki,pi])")
             @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, ($k, $p) with $(kernel_bare[ki,pi]) \n $data"
             for (ni, n) in enumerate(bdlr.n)
                 for (θi, θ) in enumerate(θgrid.grid)
@@ -216,14 +216,9 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
                 end
                 # data = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
                 kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid) * 2
+                # ni == 1 && println("$ki,$pi, $n  $(kernel[ki, pi, ni])")
                 @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
             end
-            # else
-            #     kernel_bare[ki, pi] = 0
-            #     for (ni, n) in enumerate(bdlr.n)
-            #         kernel[ki, pi, ni] = 0
-            #     end
-            # end
         end
     end
 

@@ -8,7 +8,7 @@ using ..Parameter, ..Convention, ..Polarization, ..Interaction, ..LegendreIntera
 using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
 @inline function Fock0_3dZeroTemp(k, param)
-    @assert param.ξa ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.ga ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 3
     @assert k >= 0
     # TODO: add spin-asymmetric interaction
@@ -35,7 +35,7 @@ using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGr
 end
 
 @inline function Fock0_2dZeroTemp(k, param)
-    @assert param.ξa ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.ga ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 2
     # TODO: add spin-asymmetric interaction
     @unpack me, kF, Λs, e0 = param
