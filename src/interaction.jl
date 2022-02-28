@@ -310,8 +310,8 @@ end
     return fs, fa
 end
 
-@inline function countertermConst(q, n, param; landaufunc, Cs, Ca, kwargs...)
-    return Cs, Ca
+@inline function countertermConst(q, n, param; landaufunc, Cs = 0.0, Ca = 0.0, massratio = 1.0, kwargs...)
+    return Cs / param.NF / massratio, Ca / param.NF / massratio
 end
 
 
@@ -400,12 +400,12 @@ function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = lan
     Cs, Ca = counter_term(q, n, param; landaufunc = landaufunc, kwargs...)
     Vinvs, Vinva = Vinv_Bare(q, param)
 
-    if param.e0s ≈ 0.0
+    if param.gs ≈ 0.0
         Ka = (-fs) / (1 - (-fs) * Π) + Cs
     else
         Ks = 1.0 / (Vinvs / (1 - fs * Vinvs) - Π) + Cs
     end
-    if param.e0a ≈ 0.0
+    if param.ga ≈ 0.0
         Ka = (-fa) / (1 - (-fa) * Π) + Ca
     else
         Ka = 1.0 / (Vinva / (1 - fa * Vinva) - Π) + Ca
