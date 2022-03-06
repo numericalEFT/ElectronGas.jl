@@ -8,7 +8,7 @@ using ..Parameter, ..Convention, ..Polarization, ..Interaction, ..LegendreIntera
 using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
 @inline function Fock0_3dZeroTemp(k, param)
-    @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.ga ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 3
     @assert k >= 0
     # TODO: add spin-asymmetric interaction
@@ -35,7 +35,7 @@ using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGr
 end
 
 @inline function Fock0_2dZeroTemp(k, param)
-    @assert param.e0a ≈ 0 "current implementation only supports spin-symmetric interaction"
+    @assert param.ga ≈ 0 "current implementation only supports spin-symmetric interaction"
     @assert param.dim == 2
     # TODO: add spin-asymmetric interaction
     @unpack me, kF, Λs, e0 = param
@@ -95,13 +95,13 @@ function Fock0_ZeroTemp(k::Float64, param)
 end
 
 function G0wrapped(Euv, rtol, sgrid, param)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
 
     green = GreenFunc.Green2DLR{ComplexF64}(:g0, GreenFunc.IMFREQ, β, true, Euv, sgrid, 1)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - EF))
+            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ))
         end
     end
     green.dynamic = green_dyn
@@ -109,7 +109,7 @@ function G0wrapped(Euv, rtol, sgrid, param)
 end
 
 function Gwrapped(Σ::GreenFunc.Green2DLR, param)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
     Σ_freq = GreenFunc.toMatFreq(Σ)
     green = Green2DLR{ComplexF64}(
         :G, GreenFunc.IMFREQ, Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
@@ -118,7 +118,7 @@ function Gwrapped(Σ::GreenFunc.Green2DLR, param)
     green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(green.spaceGrid)
         for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - EF) + Σ.dynamic[1, 1, ki, ni] + Σ.instant[1, 1, ki])
+            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ) - Σ.dynamic[1, 1, ki, ni] - Σ.instant[1, 1, ki])
         end
     end
     green.dynamic = green_dyn
@@ -145,26 +145,26 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1]
+    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1] .* (-1)
     @assert length(G.instant) == 0 "current implication supports green function without instant part"
 
     for (ki, k) in enumerate(kgrid.grid)
 
         for (τi, τ) in enumerate(fdlr.τ)
             Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
-            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k
+            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
             Σ_dyn[1, 1, ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
             @assert isfinite(Σ_dyn[1, 1, ki, τi]) "fail Δ at $ki, $τi"
             if τi == 1
                 Gq = CompositeGrids.Interp.interp1DGrid(G_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k
+                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
                 Σ_ins[1, 1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
                 @assert isfinite(Σ_ins[1, 1, ki]) "fail Δ0 at $ki"
             end
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ 4π, Σ_ins ./ 4π
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
     return Σ
 end
 
@@ -189,11 +189,10 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1]
+    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis = 4)[1, 1, :, 1] .* (-1)
     @assert length(G.instant) == 0 "current implication supports green function without instant part"
 
     for (ki, k) in enumerate(kgrid.grid)
-
         for (τi, τ) in enumerate(fdlr.τ)
             Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
             integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
@@ -208,7 +207,7 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (4 * π^2), Σ_ins ./ (4 * π^2)
+    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
     return Σ
 end
 
@@ -216,12 +215,18 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
     @unpack dim = param
     # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
     # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
-    kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-        Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
-    G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+    # kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+    #     Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+    # G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
     if dim == 2
+        kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_2d(G0, kernel)
     elseif dim == 3
+        kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_3d(G0, kernel)
     else
         error("No support for G0W0 in $dim dimension!")
@@ -229,23 +234,40 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
 
     return Σ
 end
+function G0W0(param; Euv = 10 * param.EF, rtol = 1e-14, Nk = 12, maxK = 6 * param.kF, minK = 1e-8 * param.kF, order = 4, int_type = :rpa)
+    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+end
 
 function zfactor(Σ::GreenFunc.Green2DLR)
     kgrid = Σ.spaceGrid
     kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
-    println("kF=$kF")
     kF_label = searchsortedfirst(kgrid.grid, kF)
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
 
     # ΣI = imag(Σ_freq.dynamic[1, 1, kF_label, :])
-    # for correct sign of ΣI should be 1/(1 - (ΣI[2]-ΣI[1])/2/π*β)
-    # Z0 = 1 / (1 + (ΣI[2] - ΣI[1]) / 2 / π * β)
-
-    Z0 = 1 / (1 + imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
+    # Z0 = 1 / (1 - (ΣI[2] - ΣI[1]) / 2 / π * β)
+    Z0 = 1 / (1 - imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
 
     return Z0
+end
+
+function massratio(param, Σ::GreenFunc.Green2DLR)
+    @unpack kF, me = param
+
+    kgrid = Σ.spaceGrid
+    kF_label = searchsortedfirst(kgrid.grid, kF)
+    z = zfactor(Σ)
+
+    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    k1, k2 = kF_label, kF_label - 1
+    sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
+    sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
+    ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
+
+    # println("m/kF ds_dk = $(me/kF*ds_dk)")
+    return 1.0 / z / (1 + me / kF * ds_dk)
 end
 
 end

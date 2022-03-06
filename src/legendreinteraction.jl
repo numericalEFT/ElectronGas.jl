@@ -36,18 +36,42 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
+    @unpack dim = param
+    if dim != 2 && dim != 3
+        throw(UndefVarError(dim))
+    end
+
     if int_type == :rpa
-        ks, ka = RPA(q, n, param)
+        if dim == 3
+            ks, ka = RPA(q, n, param)
+        elseif dim == 2
+            ks, ka = RPA(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+        end
     elseif int_type == :ko
-        ks, ka = KO(q, n, param)
+        if dim == 3
+            ks, ka = KO(q, n, param)
+        elseif dim == 2
+            ks, ka = KO(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+        end
     else
         throw(UndefVarError(int_type))
     end
+
     return ks + spin_factor(spin_state) * ka
 end
 
 @inline function interaction_instant(q, param, spin_state)
-    Vs, Va = coulomb(q, param)
+    @unpack dim = param
+    if dim != 2 && dim != 3
+        throw(UndefVarError(dim))
+    end
+
+    if dim == 3
+        Vs, Va = coulomb(q, param)
+    elseif dim == 2
+        Vs, Va = coulomb_2d(q, param)
+    end
+
     return (Vs + spin_factor(spin_state) * Va)
 end
 
@@ -68,6 +92,25 @@ end
     @assert -1 <= legendre_x <= 1 "k=$k,p=$p,q=$q"
 
     return q * Pl(legendre_x, channel) * interaction_instant(q, param, spin_state)
+end
+
+@inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+    x = cos(θ)
+    q2 = k^2 + p^2 - 2k * p * x
+    if x == 1 || q2 <= 0
+        q2 = (k - p)^2 + k * p * θ^2
+    end
+    return cos(channel * θ) * interaction_dynamic(√q2, n, param, int_type, spin_state)
+end
+
+@inline function kernel0_integrand2d(k, p, θ, channel, param, spin_state)
+    x = cos(θ)
+    q2 = k^2 + p^2 - 2k * p * x
+    if x == 1 || q2 <= 0
+        q2 = (k - p)^2 + k * p * θ^2
+        # println("$k, $p, $q2, $((k - p)^2), $x, $θ")
+    end
+    return cos(channel * θ) * interaction_instant(√q2, param, spin_state)
 end
 
 function helper_function(y::Float64, n::Int, W, param; Nk::Int = 40, minK::Float64 = 1e-12 * param.kF, order::Int = 6)
@@ -132,6 +175,58 @@ struct DCKernel
         return new(int_type, spin_state, channel, param, kgrid, qgrids, dlrGrid, kernel_bare, kernel)
     end
 
+end
+
+function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state = :auto)
+    @unpack kF, β = param
+
+    if spin_state == :sigma
+        # for self-energy, always use ℓ=0
+        channel = 0
+    elseif spin_state == :auto
+        # automatically assign spin_state, triplet for even, singlet for odd channel
+        spin_state = (channel % 2 == 0) ? (:triplet) : (:singlet)
+    end
+
+    bdlr = DLRGrid(Euv, β, rtol, false, :ph)
+    kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
+    #println(kgrid.grid)
+    qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
+    qgridmax = maximum([qg.size for qg in qgrids])
+    # θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
+    # θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7, order)
+    θgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, π], [0.0, π], Nk, 1e-7 * kF, order)
+    # println(θgrid.size)
+    # println(θgrid.grid)
+
+    kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
+    kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
+    data = zeros(Float64, length(θgrid.grid))
+    for (ki, k) in enumerate(kgrid.grid)
+        for (pi, p) in enumerate(qgrids[ki].grid)
+            for (θi, θ) in enumerate(θgrid.grid)
+                data[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
+            end
+            kernel_bare[ki, pi] = Interp.integrate1D(data, θgrid) * 2
+            # println("$ki,$pi,  $(kernel_bare[ki,pi])")
+            @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, ($k, $p) with $(kernel_bare[ki,pi]) \n $data"
+            for (ni, n) in enumerate(bdlr.n)
+                for (θi, θ) in enumerate(θgrid.grid)
+                    data[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+                end
+                # data = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
+                kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid) * 2
+                # ni == 1 && println("$ki,$pi, $n  $(kernel[ki, pi, ni])")
+                @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
+            end
+        end
+    end
+
+    return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
+end
+
+function DCKernel_2d(param; Euv = param.EF * 100, rtol = 1e-10, Nk = 8, maxK = param.kF * 10, minK = param.kF * 1e-7, order = 4, int_type = :rpa, channel = 0, spin_state = :auto)
+    return DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state)
 end
 
 function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state = :auto)

@@ -8,6 +8,8 @@ module Parameter
 
 # using Parameters
 using ..Parameters
+using Roots, SpecialFunctions
+# using Polylogarithms
 
 @with_kw struct Para
     WID::Int = 1
@@ -25,8 +27,9 @@ using ..Parameters
 
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
-    Λa::Float64 = 0.0   # Yukawa-type spin-asymmetric interaction ~1/(q^2+Λa)
-    espin::Float64 = 0.0
+    Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)
+    gs::Float64 = 1.0   # spin-symmetric coupling 
+    ga::Float64 = 0.0   # spin-antisymmetric coupling
 
     # derived parameters
     beta::Float64 = β * EF
@@ -37,11 +40,13 @@ using ..Parameters
     a0::Float64 = 4π * ϵ0 / (me * e0^2)
     rs::Float64 = Rs / a0
     kF::Float64 = sqrt(2 * me * EF)
+    espin::Float64 = e0
     e0s::Float64 = e0
     e0a::Float64 = espin
+    NF::Float64 = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π
 end
 
-derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :e0s, :e0a)
+derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF)
 
 """
     function derive(param::Para; kws...)
@@ -54,8 +59,8 @@ could not handle derived parameters correctly.
  - param: only "non-derived" fields that's not mentioned in kws are extracted from param
  - kws...: new values
 """
-derive(param::Para; kws...) = _reconstruct(param,kws)
-derive(param::Para, di::Union{AbstractDict, Tuple{Symbol,Any}}) = _reconstruct(param, di)
+derive(param::Para; kws...) = _reconstruct(param, kws)
+derive(param::Para, di::Union{AbstractDict,Tuple{Symbol,Any}}) = _reconstruct(param, di)
 
 # reconstruct(pp::Para, di) = reconstruct(Para, pp, di)
 # reconstruct(pp; kws...) = reconstruct(pp, kws)
@@ -66,7 +71,7 @@ function _reconstruct(pp::Para, di)
     di = !isa(di, AbstractDict) ? Dict(di) : copy(di)
     ns = fieldnames(Para)
     args = []
-    for (i,n) in enumerate(ns)
+    for (i, n) in enumerate(ns)
         if n ∉ derived_para_names
             # if exist in di, use value from di
             # the default value is from pp
@@ -75,10 +80,10 @@ function _reconstruct(pp::Para, di)
             pop!(di, n, getfield(pp, n))
         end
     end
-    length(di)!=0 && error("Fields $(keys(di)) not in type $T")
+    length(di) != 0 && error("Fields $(keys(di)) not in type $T")
 
     dargs = Dict(args)
-    return Para(;dargs...)
+    return Para(; dargs...)
 end
 
 # function Base.getproperty(obj::Para, sym::Symbol)
@@ -107,6 +112,20 @@ end
 #     end
 # end
 
+# """
+#     function chemical_potential(beta)
+
+# generate chemical potential μ with given beta and density conservation.
+
+# #Arguments:
+#  - beta: dimensionless inverse temperature
+# """
+# function chemical_potential(beta, dim)
+#     f(β, μ) = real(polylog(dim / 2, -exp(β * μ))) + 1 / gamma(1 + dim / 2) * (β)^(dim / 2)
+#     g(μ) = f(beta, μ)
+#     return find_zero(g, (-1e4, 1))
+# end
+
 """
     function fullUnit(ϵ0, e0, me, EF, β)
 
@@ -120,6 +139,13 @@ generate Para with a complete set of parameters, no value presumed.
  - β: inverse temperature
 """
 @inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
+    # μ = try
+    #     chemical_potential(β * EF, dim) * EF
+    # catch e
+    #     # if isa(e, StackOverflowError)
+    #     EF
+    # end
+
     para = Para(dim = dim,
         spin = spin,
         ϵ0 = ϵ0,
@@ -128,6 +154,7 @@ generate Para with a complete set of parameters, no value presumed.
         EF = EF,
         β = β,
         μ = EF
+        # μ = μ
     )
     return reconstruct(para, kwargs...)
 end

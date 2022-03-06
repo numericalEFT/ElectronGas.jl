@@ -28,3 +28,6 @@ docs/site/
 Manifest.toml
 
 *.DS_Store
+
+.ipynb_checkpoints
+example/plot

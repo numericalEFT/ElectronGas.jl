@@ -3,6 +3,8 @@
     @testset "3D Fock" begin
         θ, rs = 0.1, 1.0
         para = Parameter.rydbergUnit(θ, rs, 3)
+        println("$(para.μ), $(para.EF)")
+
         factor = -para.e0^2 * para.kF / π
         #test edge case when k → 0
         @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol = 1e-6)
@@ -21,6 +23,7 @@
     @testset "2D Fock" begin
         θ, rs = 0.1, 1.0
         para = Parameter.rydbergUnit(θ, rs, 2, Λs = 0.1)
+        println("$(para.μ), $(para.EF)")
         #test edge case when k → 0
         f1 = SelfEnergy.Fock0_ZeroTemp(0.0, para)
         f2 = SelfEnergy.Fock0_ZeroTemp(1e-7, para)
@@ -31,50 +34,58 @@
         @test isapprox(SelfEnergy.Fock0_ZeroTemp(para1.kF, para1), SelfEnergy.Fock0_ZeroTemp(para2.kF, para2), rtol = 1e-6)
     end
 
-    @testset "default unit" begin
-        dim = 2
-        θ, rs = 1e-4, 1.0
-        param = SelfEnergy.LegendreInteraction.Parameter.defaultUnit(θ, rs, dim)
-
+    @testset "3D RPA" begin
+        # make sure everything works for different unit sets
+        θ, rs = 1e-3, 1.0
+        param = Parameter.defaultUnit(θ, rs)
         Euv, rtol = 100 * param.EF, 1e-10
-        # set Nk, minK = 8, 1e-7 for β<1e6;  11, 1e-8 for β<1e7
-        # Nk, order, minK = 11, 4, 1e-8
-        Nk, order, minK = 8, 4, 1e-7
+        Nk, order = 8, 4
 
-        Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
+        @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
         Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
 
-        kgrid = Σ.spaceGrid
-        kF = kgrid.panel[3]
-        kF_label = searchsortedfirst(kgrid.grid, kF)
-
-        ΣR = real(Σ.dynamic)
-        ΣI = imag(Σ.dynamic)
-        # println(Σ.instant[1, 1, :])
-        # println(ΣR[1, 1, kF_label, :])
-        # println(ΣI[1, 1, kF_label, :])
         Z0 = (SelfEnergy.zfactor(Σ))
-        # @test isapprox(Z0, 0.862, rtol = 5e-3)
-
+        @test isapprox(Z0, 0.862, rtol = 1e-3)
         println("θ = $θ,  rs= $rs")
-        println("Z-factor = $Z0")
-        G = SelfEnergy.Gwrapped(Σ, param)
-        # println(G.dynamic[1, 1, kF_label, :])
+        println("z-factor = $Z0")
+
+        mratio = SelfEnergy.massratio(param, Σ)
+        println("m*/m = $mratio")
     end
-    # @testset "default unit" begin
-    #     # make sure everything works for different unit sets
-    #     param = SelfEnergy.LegendreInteraction.Parameter.rydbergUnit(1 / 1000.0, 1.0)
-    #     Euv, rtol = 100 * param.EF, 1e-10
-    #     Nk, order = 8, 4
 
-    #     # kernel = SelfEnergy.LegendreInteraction.DCKernel(param, Euv, rtol, 10, 10*param.kF, 1e-7*param.kF, 5, :rpa,0,:sigma)
-    #     # G0 = SelfEnergy.G0wrapped(Euv, rtol, kernel.kgrid, param)
-    #     # Σ = SelfEnergy.calcΣ(G0, kernel)
+    @testset "2D RPA" begin
+        dim = 2
+        θ = 1e-4
+        rslist = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0]
+        zlist = [0.786, 0.662, 0.519, 0.437, 0.383, 0.344, 0.270, 0.240]
+        # rslist = [0.5, 1.0]
+        # zlist = [0.786, 0.662]
+        mlist = [0.981, 1.020, 1.078, 1.117, 1.143, 1.162, 1.196, 1.209]
+        for (ind, rs) in enumerate(rslist)
+            param = Parameter.rydbergUnit(θ, rs, dim)
 
-    #     Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, 1e-7 * param.kF, order, :rpa)
-    #     Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
-    #     Z0 = (SelfEnergy.zfactor(Σ))
-    #     @test isapprox(Z0, 0.862, rtol = 1e-3)
-    #     println("z-factor = $Z0")
-    # end
+            Euv, rtol = 100 * param.EF, 1e-10
+            # set Nk, minK = 8, 1e-7 for β<1e6;  11, 1e-8 for β<1e7
+            # Nk, order, minK = 11, 8, 1e-8
+            Nk, order, minK = 8, 8, 1e-7
+            # Nk, order, minK = 12, 8, 1e-7
+
+            @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, 10 * param.kF, minK * param.kF, order, :rpa)
+            Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
+
+            kgrid = Σ.spaceGrid
+            kF = kgrid.panel[3]
+            Z0 = (SelfEnergy.zfactor(Σ))
+            z = zlist[ind]
+            @test isapprox(Z0, z, atol = 3e-3)
+            println("θ = $θ,  rs= $rs")
+            println("Z-factor = $Z0 ($z)")
+
+            mratio = SelfEnergy.massratio(param, Σ)
+            m = mlist[ind]
+            println("m*/m = $mratio ($m)")
+            # G = SelfEnergy.Gwrapped(Σ, param)
+            # println(G.dynamic[1, 1, kF_label, :])
+        end
+    end
 end

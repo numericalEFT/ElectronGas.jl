@@ -70,7 +70,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
 """
 function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
     @unpack dim, kF, β = param
-    if dim ∉ [2, 3]
+    if dim != 2 && dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
     end
 
@@ -107,7 +107,7 @@ end
 
 function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
     @unpack dim, kF, β = param
-    if dim ∉ [2, 3]
+    if dim != 2 && dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
     end
     # check sign of q, use -q if negative
@@ -229,7 +229,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
  - n: matsubara frequency given in integer s.t. ωn=2πTn
   - param: other system parameters
 """
-function Polarization0_ZeroTemp(q::Float64, n::Int, param)
+function Polarization0_ZeroTemp(q::Float64, n::Int, param; kwargs...)
     @unpack dim = param
 
     if dim == 2
@@ -241,7 +241,7 @@ function Polarization0_ZeroTemp(q::Float64, n::Int, param)
     end
 end
 
-function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param)
+function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param; kwargs...)
     @unpack dim = param
     result = zeros(Float64, length(n))
     if dim == 2
@@ -256,6 +256,9 @@ function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param)
         error("No support for zero-temperature polarization in $dim dimension!")
     end
     return result
+end
+function Polarization0_ZeroTemp_Quasiparticle(q::Float64, n, param; massratio = 1.0, kwargs...)
+    return Polarization0_ZeroTemp(q, n, param; kwargs...) * massratio
 end
 
 """
