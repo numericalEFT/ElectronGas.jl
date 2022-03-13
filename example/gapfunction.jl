@@ -17,7 +17,7 @@ function G02wrapped(fdlr, kgrid, param)
     green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
     for (ki, k) in enumerate(kgrid)
         for (ni, n) in enumerate(fdlr.n)
-            ω = k^2/2/me
+            ω = k^2/2/me - EF
             green_dyn[ki,ni] = 1/(
                 ( (2n + 1) * π / β) ^ 2
                 + (ω) ^ 2
@@ -39,7 +39,7 @@ function G2wrapped(fdlr, kgrid, param, Σ::GreenFunc.Green2DLR)
 
     for (ki, k) in enumerate(kgrid)
         for (ni, n) in enumerate(fdlr.n)
-            ω = k^2/2/me
+            ω = k^2/2/me - EF
             ΣR, ΣI = real(Σ_freq.dynamic[1,1,ki,ni] + Σ_freq.instant[1,1,ki] - Σ_shift), imag(Σ_freq.dynamic[1,1,ki,ni])
             green_dyn[ki,ni] = 1/(
                 ( (2n + 1) * π / β - ΣI) ^ 2
@@ -60,7 +60,7 @@ function ΔFinit(fdlr, kgrid)
     for (ki, k) in enumerate(kgrid)
         delta0[ki] = 1.0
         for (τi, τ) in enumerate(fdlr.τ)
-            delta[ki, τi] = 0.0
+            delta[ki, τi] = 1.0
         end
     end
 
@@ -70,7 +70,8 @@ end
 function dotΔ(fdlr, kgrid, Δ, Δ0, Δ2 = Δ, Δ02 = Δ0)
     # kF_label = searchsortedfirst(kgrid.grid, param.kF)
     # return Δ0[kF_label] + real(Lehmann.tau2matfreq(fdlr, view(Δ, kF_label, :), fdlr.n))[1]
-    return (dot(Δ, Δ2) + dot(Δ0, Δ02))
+    # return (dot(Δ, Δ2) + dot(Δ0, Δ02))
+    return (dot(Δ, Δ2))
 end
 
 function calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
@@ -102,7 +103,7 @@ function calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 end
 
 function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2;
-                      Nstep = 1e2, rtol = 1e-5, shift = 2.0)
+                      Nstep = 1e2, rtol = 1e-6, shift = 2.0)
 
     Δ, Δ0, F = ΔFinit(fdlr, kgrid)
 
@@ -124,7 +125,7 @@ function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2;
 
         calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 
-        lamu = dotΔ(fdlr, kgrid, Δ, Δ0, delta, delta0) ^ 2
+        lamu = dotΔ(fdlr, kgrid, Δ, Δ0, delta, delta0) #  ^ 2
 
         Δ0 = Δ0 .+ shift .* delta0
         Δ = Δ .+ shift .* delta
@@ -147,14 +148,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     #--- parameters ---
 
-    sigmatype = :g0w0
+    sigmatype = :none
 
 
-    param = Parameter.defaultUnit(1/250.0, 4.0)
-    Euv, rtol = 100*param.EF, 1e-10
-    maxK, minK = 10param.kF, 1e-7param.kF
-    Nk, order = 12, 4
+    param = Parameter.defaultUnit(1/1000.0, 4.0)
+    Euv, rtol = 100*param.EF, 1e-12
+    maxK, minK = 20param.kF, 1e-9param.kF
+    Nk, order = 16, 6
     int_type = :rpa
+    print(param)
 
     #--- prepare kernel ---
     W = LegendreInteraction.DCKernel0(param;
@@ -173,8 +175,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     kF_label = searchsortedfirst(kgrid.grid, param.kF)
     qF_label = searchsortedfirst(qgrids[kF_label].grid, param.kF)
 
+    println("static kernel at (kF, kF):$(kernel_bare[kF_label, qF_label])")
     println("dynamic kernel at (kF, kF):")
-    println(view(kernel, kF_label, qF_label, :))
+    println(view(kernel_freq, kF_label, qF_label, :))
 
     #--- prepare Σ ---
     if sigmatype == :g0w0

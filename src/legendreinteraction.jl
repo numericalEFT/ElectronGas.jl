@@ -43,7 +43,7 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
 
     if int_type == :rpa
         if dim == 3
-            ks, ka = RPA(q, n, param)
+            ks, ka = RPA(q, n, param; regular = true)
         elseif dim == 2
             ks, ka = RPA(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
         end
@@ -130,7 +130,7 @@ end
 
 function helper_function_grid(ygrid, intgrid, n::Int, W, param)
     # return the helper function
-    @unpack kF, β = param
+    @unpack kF, β, e0, ϵ0 = param
     # generate a new grid for every calculation
     #kgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, grid[end]], [0.0,min(grid[end],2kF)], Nk, minK, order)
     kgrid = intgrid
@@ -139,7 +139,7 @@ function helper_function_grid(ygrid, intgrid, n::Int, W, param)
 
     integrand = zeros(Float64, kgrid.size)
     for (ki, k) in enumerate(kgrid)
-        integrand[ki] = k^n * W(k)
+        integrand[ki] = k^(n-2) * W(k) * e0^2 / ϵ0
     end
 
     for i in 1:length(grid)
@@ -354,7 +354,8 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     #     helper[yi] = helper_function(y, 1, u->interaction_instant(u,param,spin_state),param)
     # end
 
-    helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_instant(u, param, spin_state), param)
+    # helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_instant(u, param, spin_state), param)
+    helper = helper_function_grid(helper_grid, intgrid, 1, u -> 1.0, param)
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
             Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))

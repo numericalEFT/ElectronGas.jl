@@ -85,4 +85,35 @@
             @test isapprox(helper_old[yi] - helper_old[1], helper_analytic[yi] - helper_analytic[1], rtol = rtol)
         end
     end
+
+    @testset "Test case: r_s=4, β=400" begin
+        param = Parameter.defaultUnit(1/400.0, 4.0) # 3D UEG
+        Euv, rtol = 100*param.EF, 1e-12
+        maxK, minK = 20param.kF, 1e-9param.kF
+        Nk, order = 16, 6
+        int_type = :rpa
+
+        #--- prepare kernel ---
+        W = LegendreInteraction.DCKernel0(param;
+                                          Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
+                                          int_type = int_type)
+
+        fdlr = ElectronGas.Lehmann.DLRGrid(Euv, param.β, rtol, true, :pha)
+        bdlr = W.dlrGrid
+        kgrid = W.kgrid
+        qgrids = W.qgrids
+
+        kernel_bare = W.kernel_bare
+        kernel_freq = W.kernel
+        kernel = real(ElectronGas.Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis = 3))
+        kF_label = searchsortedfirst(kgrid.grid, param.kF)
+        qF_label = searchsortedfirst(qgrids[kF_label].grid, param.kF)
+
+        println("static kernel at (kF, kF):$(kernel_bare[kF_label, qF_label])")
+        @test isapprox(kernel_bare[kF_label, qF_label], 1314.5721928, rtol = 1e-6)
+
+        println("dynamic kernel at (kF, kF):")
+        println(view(kernel, kF_label, qF_label, :))
+
+    end
 end

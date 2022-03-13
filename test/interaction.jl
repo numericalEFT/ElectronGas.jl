@@ -1,6 +1,6 @@
 @testset "Interaction" begin
-    beta = 1e4
-    rs = 2.0
+    beta = 400
+    rs = 4.0
     param = Parameter.defaultUnit(1 / beta, rs)
     @testset "bubble dyson" begin
         @test Interaction.coulombinv(0.0, Parameter.derive(param, gs = 0.0, ga = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
@@ -19,6 +19,7 @@
 
     @testset "RPA and KO" begin
         println(Interaction.RPA(1.0, 1, param))
+        @test isapprox(Interaction.RPA(1.0, 1, param; regular = true)[1], 0.7048076603868958, rtol = 1e-8)
         println(Interaction.KO(1.0, 1, param))
         println(Interaction.RPA(1.0, 1, param; regular = true))
         println(Interaction.KO(1.0, 1, param; regular = true))
