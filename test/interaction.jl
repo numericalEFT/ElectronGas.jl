@@ -19,7 +19,7 @@
 
     @testset "RPA and KO" begin
         println(Interaction.RPA(1.0, 1, param))
-        @test isapprox(Interaction.RPA(1.0, 1, param; regular = true)[1], 0.7048076603868958, rtol = 1e-8)
+        @test isapprox(Interaction.RPA(1.0, 1, param; regular = true)[1], -0.7048076603868958, rtol = 1e-8)
         println(Interaction.KO(1.0, 1, param))
         println(Interaction.RPA(1.0, 1, param; regular = true))
         println(Interaction.KO(1.0, 1, param; regular = true))
