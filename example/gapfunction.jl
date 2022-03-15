@@ -10,17 +10,21 @@ using ElectronGas.Lehmann
 using ElectronGas.CompositeGrids
 using ElectronGas.Convention
 
+const dim = 2
+const beta, rs = 1e3, 1.0
+
 function G02wrapped(fdlr, kgrid, param)
     # return G0(K)G0(-K)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
 
     green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
     for (ki, k) in enumerate(kgrid)
         for (ni, n) in enumerate(fdlr.n)
-            ω = k^2/2/me - EF
-            green_dyn[ki,ni] = 1/(
-                ( (2n + 1) * π / β) ^ 2
-                + (ω) ^ 2
+            ω = k^2 / 2 / me - μ
+            green_dyn[ki, ni] = 1 / (
+                ((2n + 1) * π / β)^2
+                +
+                (ω)^2
             )
         end
     end
@@ -30,20 +34,21 @@ end
 
 function G2wrapped(fdlr, kgrid, param, Σ::GreenFunc.Green2DLR)
     # return G(K)G(-K)
-    @unpack me, kF, β, EF = param
+    @unpack me, kF, β, μ = param
 
     Σ_freq = GreenFunc.toMatFreq(Σ, fdlr.n)
-    Σ_shift = real(GreenFunc.dynamic(Σ_freq, π/β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
+    Σ_shift = real(GreenFunc.dynamic(Σ_freq, π / β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
 
     green_dyn = zeros(Float64, (kgrid.size, fdlr.size))
 
     for (ki, k) in enumerate(kgrid)
         for (ni, n) in enumerate(fdlr.n)
-            ω = k^2/2/me - EF
-            ΣR, ΣI = real(Σ_freq.dynamic[1,1,ki,ni] + Σ_freq.instant[1,1,ki] - Σ_shift), imag(Σ_freq.dynamic[1,1,ki,ni])
-            green_dyn[ki,ni] = 1/(
-                ( (2n + 1) * π / β - ΣI) ^ 2
-                + (ω + ΣR ) ^ 2
+            ω = k^2 / 2 / me - μ
+            ΣR, ΣI = real(Σ_freq.dynamic[1, 1, ki, ni] + Σ_freq.instant[1, 1, ki] - Σ_shift), imag(Σ_freq.dynamic[1, 1, ki, ni])
+            green_dyn[ki, ni] = 1 / (
+                ((2n + 1) * π / β - ΣI)^2
+                +
+                (ω + ΣR)^2
             )
         end
     end
@@ -87,23 +92,42 @@ end
 function calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 
     F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis = 2))
-    F_ins = - real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis = 2))[:, 1]
+    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis = 2))[:, 1]
     for (ki, k) in enumerate(kgrid.grid)
         for (τi, τ) in enumerate(fdlr.τ)
             Fk = CompositeGrids.Interp.interp1DGrid(view(F_tau, :, τi), kgrid, qgrids[ki].grid)
             integrand = view(kernel, ki, 1:qgrids[ki].size, τi) .* Fk
-            Δ[ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])./(-4*π*π)
+            Δ[ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
             if τi == 1
                 Fk = CompositeGrids.Interp.interp1DGrid(F_ins, kgrid, qgrids[ki].grid)
                 integrand = view(kernel_bare, ki, 1:qgrids[ki].size) .* Fk
-                Δ0[ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])./(-4*π*π)
+                Δ0[ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
             end
         end
     end
 end
 
-function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2;
-                      Nstep = 1e2, rtol = 1e-6, shift = 2.0)
+function calcΔ_2d!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
+
+    F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis = 2))
+    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis = 2))[:, 1]
+    for (ki, k) in enumerate(kgrid.grid)
+        for (τi, τ) in enumerate(fdlr.τ)
+            Fk = CompositeGrids.Interp.interp1DGrid(view(F_tau, :, τi), kgrid, qgrids[ki].grid)
+            integrand = view(kernel, ki, 1:qgrids[ki].size, τi) .* Fk .* k
+            Δ[ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
+            if τi == 1
+                Fk = CompositeGrids.Interp.interp1DGrid(F_ins, kgrid, qgrids[ki].grid)
+                integrand = view(kernel_bare, ki, 1:qgrids[ki].size) .* Fk .* k
+                Δ0[ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
+            end
+        end
+    end
+end
+
+function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
+    Nstep = 1e2, rtol = 1e-6, shift = 2.0)
+    @unpack dim = param
 
     Δ, Δ0, F = ΔFinit(fdlr, kgrid)
 
@@ -114,16 +138,20 @@ function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2;
     lamu, lamu0 = 1.0, 2.0
     err = 1.0
 
-    while(n < Nstep && err > rtol)
+    while (n < Nstep && err > rtol)
 
         calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
 
-        n=n+1
+        n = n + 1
 
         delta = copy(Δ)
         delta0 = copy(Δ0)
 
-        calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
+        if dim == 3
+            calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
+        elseif dim == 2
+            calcΔ_2d!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
+        end
 
         lamu = dotΔ(fdlr, kgrid, Δ, Δ0, delta, delta0) #  ^ 2
 
@@ -135,8 +163,8 @@ function gapIteration(param, fdlr, kgrid, qgrids,  kernel, kernel_bare, G2;
 
         Δ = Δ ./ modulus
         Δ0 = Δ0 ./ modulus
-        err=abs(lamu-lamu0)/abs(lamu+EPS)
-        lamu0=lamu
+        err = abs(lamu - lamu0) / abs(lamu + EPS)
+        lamu0 = lamu
         println(lamu)
     end
     return lamu, Δ, Δ0, F
@@ -147,21 +175,30 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
 
     #--- parameters ---
-
     sigmatype = :none
 
-
-    param = Parameter.defaultUnit(1/1000.0, 4.0)
-    Euv, rtol = 100*param.EF, 1e-12
-    maxK, minK = 20param.kF, 1e-9param.kF
-    Nk, order = 16, 6
+    param = Parameter.defaultUnit(1 / beta, rs, dim)
+    # Euv, rtol = 100 * param.EF, 1e-12
+    # maxK, minK = 20param.kF, 1e-9param.kF
+    # Nk, order = 16, 6
+    Euv, rtol = 100 * param.EF, 1e-10
+    maxK, minK = 10param.kF, 1e-7param.kF
+    Nk, order = 8, 8
     int_type = :rpa
-    print(param)
+    # print(param)
 
     #--- prepare kernel ---
-    W = LegendreInteraction.DCKernel0(param;
-                                      Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
-                                      int_type = int_type)
+    if dim == 3
+        @time W = LegendreInteraction.DCKernel0(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
+            int_type = int_type)
+    elseif dim == 2
+        @time W = LegendreInteraction.DCKernel_2d(param;
+            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
+            int_type = int_type)
+    else
+        error("No support for $dim dimension!")
+    end
 
     fdlr = Lehmann.DLRGrid(Euv, param.β, rtol, true, :pha)
     bdlr = W.dlrGrid
@@ -207,7 +244,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
     # println(view(Δ, kF_label, :))
 
-    lamu, Δ, Δ0, F = gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2)
+    lamu, Δ, Δ0, F = gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2; shift = 1.0)
     println("lamu=$lamu")
     println(view(Δ, kF_label, :))
     println(view(F, kF_label, :))
