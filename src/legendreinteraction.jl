@@ -14,6 +14,7 @@ module LegendreInteraction
 # include(srcdir*"/interaction.jl")
 # using .Interaction
 
+using Base.Threads
 using ..Parameter, ..Convention, ..Polarization, ..Interaction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
@@ -96,7 +97,7 @@ end
 
 @inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
     x = cos(θ)
-    q2 = k^2 + p^2 - 2k * p * x
+    q2 = (k - p)^2 + 2k * p * (1 - x)
     if x == 1 || q2 <= 0
         q2 = (k - p)^2 + k * p * θ^2
     end
@@ -105,7 +106,7 @@ end
 
 @inline function kernel0_integrand2d(k, p, θ, channel, param, spin_state)
     x = cos(θ)
-    q2 = k^2 + p^2 - 2k * p * x
+    q2 = (k - p)^2 + 2k * p * (1 - x)
     if x == 1 || q2 <= 0
         q2 = (k - p)^2 + k * p * θ^2
         # println("$k, $p, $q2, $((k - p)^2), $x, $θ")
@@ -202,21 +203,25 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
 
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
-    data = zeros(Float64, length(θgrid.grid))
+    data0 = zeros(Float64, length(θgrid.grid))
+    # data = zeros(Float64, (length(θgrid.grid), length(bdlr.n)))
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
             for (θi, θ) in enumerate(θgrid.grid)
-                data[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
+                data0[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
             end
-            kernel_bare[ki, pi] = Interp.integrate1D(data, θgrid) * 2
+            kernel_bare[ki, pi] = Interp.integrate1D(data0, θgrid) * 2
             # println("$ki,$pi,  $(kernel_bare[ki,pi])")
             @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, ($k, $p) with $(kernel_bare[ki,pi]) \n $data"
+            # @threads for (ni, n) in collect(enumerate(bdlr.n))
             for (ni, n) in enumerate(bdlr.n)
                 for (θi, θ) in enumerate(θgrid.grid)
-                    data[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+                    # data[θi, ni] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+                    data0[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
                 end
-                # data = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
-                kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid) * 2
+                # data[:, ni] = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
+                kernel[ki, pi, ni] = Interp.integrate1D(data0, θgrid) * 2
+                # kernel[ki, pi, ni] = Interp.integrate1D(data[:, ni], θgrid) * 2
                 # ni == 1 && println("$ki,$pi, $n  $(kernel[ki, pi, ni])")
                 @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
             end
