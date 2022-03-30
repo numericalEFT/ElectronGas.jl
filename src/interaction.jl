@@ -343,7 +343,7 @@ function landauParameterMoroni(q, n, param; kwargs...)
     deriv_1 = (E_corr(rs1)-E_corr(rs))/step
     deriv_2 = (E_corr(rs1) + E_corr(rs_1) - 2*E_corr(rs))/step^2
     A = 0.25 - kF^2/4/π/e0^2*( 2*deriv_1 + n0*deriv_2 )
-    println("A=$(A)")
+    #println("A=$(A)")
 
     # Calculate parameter B
     a1=2.15
@@ -351,14 +351,14 @@ function landauParameterMoroni(q, n, param; kwargs...)
     b1 = 1.57
     b2 = 0.409
     B = (1 + a1*x + a2*x^3)/(3 + b1*x + b2*x^3)
-    println("B=$(B)")
+    #println("B=$(B)")
 
     # Calculate parameter C
     step = 0.0000001
     deriv_1 =  (E_corr(rs+step)-E_corr(rs))/step
     #deriv_1 = E_corr_p(rs)
     C = -π/2/kF/e0^2*( E_corr(rs) + rs*deriv_1 )
-    println("C=$(C)")
+    #println("C=$(C)")
 
     D = B/(A - C)
     α = 1.5/rs^0.25*A/B/D
