@@ -200,6 +200,33 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
     return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
 end
 
+
+"""
+    function atomicUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
+
+assume 4πϵ0=1, me=1, e0=1
+
+#Arguments:
+ - Θ: dimensionless temperature. beta could be different from β
+ - rs: Wigner-Seitz radius over Bohr radius.
+ - dim: dimension of the system
+ - spin: spin = 1 or 2
+ - kwargs: user may explicity set other paramters using the key/value pairs
+"""
+@inline function atomicUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
+    ϵ0 = 1 / (4π)
+    e0 = 1
+    me = 1
+    kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
+    EF = kF^2 / (2me)
+    β = 1 / Θ / EF
+    return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
+end
+
+
+
+
+
 """
     isZeroT(para) = (para.β == Inf)
 

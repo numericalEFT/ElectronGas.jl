@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d,  landauParameterMoroni 
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -296,6 +296,79 @@ function landauParameterTakada(q, n, param; kwargs...)
     F_a = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
     return F_s, F_a
 end
+
+"""
+    function landauParameterMoroni(q, n, param)
+
+Analytic expression of G+ factor from diffusion Monte Carlo.(doi:10.1103/PhysRevB.57.14569).
+Return Landau parameter F+=(G+)*V
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+ - param: other system parameters
+"""
+function landauParameterMoroni(q, n, param; kwargs...)
+    @unpack me, kF, rs, e0s, e0, e0a, β, ϵ0, a0 = param
+
+    n0 = (kF)^3/3/π^2
+    if e0 ≈ 0.0
+        return 0.0, 0.0
+    end
+    xc = -0.10498
+    bc = 3.72744
+    cc = 12.9352
+    Ac = 0.0621814
+    function E_corr(rs_dum)
+        result=0
+        x=sqrt(rs_dum)
+        X=(x^2+bc*x+cc)
+        X0 = (xc^2+bc*xc+cc)
+        Q = sqrt(4*cc - bc^2)
+        #print("x^2/X=",x^2/X,"\n")
+        #print("x-xc^2/X=",(x-xc)^2/X, "\n")
+        result = Ac*( log(x^2/X) + 2*bc/Q * atan(Q / (2*x + bc)) - bc*xc/X0 * ( log((x-xc)^2/X) + 2*(bc + 2*xc)/Q * atan(Q/(2*x + bc)) ) )
+        # This expression is in Rydberg unit
+        result = result /(2*me*a0^2) 
+        return result
+    end
+
+    # step for numerical derivatives 
+    step = 0.0000001
+    x = sqrt(rs)
+    # Calculate parameter A
+   
+    rs1 = ( n0/(n0+step) )^(1.0/3.0)*rs
+    rs_1 =  ( n0/(n0-step) )^(1.0/3.0)*rs
+    deriv_1 = (E_corr(rs1)-E_corr(rs))/step
+    deriv_2 = (E_corr(rs1) + E_corr(rs_1) - 2*E_corr(rs))/step^2
+    A = 0.25 - kF^2/4/π/e0^2*( 2*deriv_1 + n0*deriv_2 )
+    #println("A=$(A)")
+
+    # Calculate parameter B
+    a1=2.15
+    a2 = 0.435
+    b1 = 1.57
+    b2 = 0.409
+    B = (1 + a1*x + a2*x^3)/(3 + b1*x + b2*x^3)
+    #println("B=$(B)")
+
+    # Calculate parameter C
+    step = 0.0000001
+    deriv_1 =  (E_corr(rs+step)-E_corr(rs))/step
+    #deriv_1 = E_corr_p(rs)
+    C = -π/2/kF/e0^2*( E_corr(rs) + rs*deriv_1 )
+    #println("C=$(C)")
+
+    D = B/(A - C)
+    α = 1.5/rs^0.25*A/B/D
+    β_0 = 1.2/B/D
+    Q = q/kF
+    G_s = C*Q^2 + B*Q^2/(D+Q^2) + α*Q^4*exp(-β_0*Q^2)
+    F_s = 4*π*e0^2*G_s/q^2
+    return F_s
+end
+
 
 @inline function landauParameter0(q, n, param; kwargs...)
     return 0.0, 0.0
