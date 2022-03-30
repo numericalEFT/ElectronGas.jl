@@ -20,6 +20,7 @@ makedocs(;
             "manual/polarization.md",
             "manual/polarization_2D.md",
             "manual/legendreinteraction.md",
+            "manual/G_plus_Moroni.md",
         ],
     ]
 )

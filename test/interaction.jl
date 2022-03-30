@@ -1,7 +1,7 @@
 @testset "Interaction" begin
     beta = 400
-    rs = 4.0
-    param = Parameter.defaultUnit(1 / beta, rs)
+    rs = 2.0
+    param = Parameter.atomicUnit(1 / beta, rs)
     @testset "bubble dyson" begin
         @test Interaction.coulombinv(0.0, Parameter.derive(param, gs = 0.0, ga = 0.0, Λs = 0.0, Λa = 0.0)) == (Inf, Inf)
         @test Interaction.coulomb(0.0, Parameter.derive(param, gs = 0.0, ga = 0.0, Λs = 0.0, Λa = 0.0)) == (0.0, 0.0)
@@ -32,5 +32,6 @@
         KOs, KOa = Interaction.KOwrapped(100 * param.EF, 1e-8, [1e-8, 0.5, 1.0, 2.0, 10.0], param)
         # println(KOs.dynamic)
         # println(KOs.instant)
+        F_s = Interaction.landauParameterMoroni(1.0, 0, param)
     end
 end
