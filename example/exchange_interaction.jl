@@ -5,13 +5,14 @@ In this demo, we analysis the contribution of the exchange KO interaction to the
 using ElectronGas, Parameters
 using Lehmann, GreenFunc, CompositeGrids
 
-const rs = 5.3
-const beta = 1000.0
+const rs = 5.0
+const beta = 25.0
 const mass2 = 1e-8
 const dim = 3
+const z = 1.0
 
-Fp = -1.0
-Fm = -0.5
+Fp = -0.0
+Fm = -0.0
 # U = -0.456
 
 U = 0.0
@@ -43,8 +44,8 @@ function exchange_interaction(Fp, Fm, massratio, Cp = 0.0, Cm = 0.0)
         # instantS[qi] = Interaction.coulombinv(q, para)[1]
         # println(q, " -> ", Wp[qi] * NF, ", ", Wm[qi] * NF)
     end
-    Wp *= -NF # additional minus sign because the interaction is exchanged
-    Wm *= -NF
+    Wp *= -NF * z^2 # additional minus sign because the interaction is exchanged
+    Wm *= -NF * z^2
     return Wp, Wm, θgrid
 end
 
@@ -59,37 +60,42 @@ function Legrendre(l, func, θgrid)
 end
 
 # exchange interaction (Ws + Wa \sigma\sigma)_ex to a direct interaction Ws'+Wa' \sigma\sigma 
+# # exchange S/A interaction projected to the spin-symmetric and antisymmetric parts
 function exchange2direct(Wse, Wae)
     Ws = (Wse + 3 * Wae) / 2
     Wa = (Wse - Wae) / 2
     return Ws, Wa
 end
 
-# Wp0 = Interp.integrate1D(Wp .* sin.(θgrid.grid), θgrid) / 2
-# Wm0 = Interp.integrate1D(Wm .* sin.(θgrid.grid), θgrid) / 2
-println("l=0:")
-# println("F0+=", Ws0 + Fp)
-# println("F0-=", Wa0 + Fm)
-Wse, Wae, θgrid = exchange_interaction(Fp, Fm, massratio)
-Wse0 = Legrendre(0, Wse, θgrid)
-Wae0 = Legrendre(0, Wae, θgrid)
-println("Wse_l=0=", Wse0)
-println("Wae_l=0=", Wae0)
+function projected_exchange_interaction(l, Fp, Fm, massratio, verbose = 1)
+    println("l=$l:")
+    Wse, Wae, θgrid = exchange_interaction(Fp, Fm, massratio)
+    Wse0 = Legrendre(l, Wse, θgrid)
+    Wae0 = Legrendre(l, Wae, θgrid)
+    verbose > 1 && println("Wse_l=$l=", Wse0)
+    verbose > 1 && println("Wae_l=$l=", Wae0)
 
-Ws0, Wa0 = exchange2direct(Wse0, Wae0)
-println("Ws_l=0=", Ws0)
-println("Wa_l=0=", Wa0)
+    Ws0, Wa0 = exchange2direct(Wse0, Wae0)
+    verbose > 0 && println("Ws_l=$l=", Ws0)
+    verbose > 0 && println("Wa_l=$l=", Wa0)
+    return Ws0, Wa0
+end
 
-# # exchange KO interaction projected to the spin-symmetric and antisymmetric parts
-# Ws, Wa = -(Wp + 3 * Wm) / 2, -(Wp - Wm) / 2
+# projected_exchange_interaction(0, Fp, Fm, massratio)
+# projected_exchange_interaction(1, Fp, Fm, massratio)
 
-# Ws0 = Interp.integrate1D(Ws .* sin.(θgrid.grid), θgrid) / 2
-# Wa0 = Interp.integrate1D(Wa .* sin.(θgrid.grid), θgrid) / 2
-# println("l=0:")
-# # println("F0+=", Ws0 + Fp)
-# # println("F0-=", Wa0 + Fm)
-# println("F0+ - Fp=", Ws0)
-# println("F0- - Fm=", Wa0)
+Fs, Fa = Fp, Fm
+mix = 0.2
+for i = 1:100
+    println("iteration: $i")
+    global Fs, Fa
+    nFs, nFa = projected_exchange_interaction(0, Fs, Fa, massratio)
+    Fs = Fs * (1 - mix) + 2 * nFs * mix
+    Fa = Fa * (1 - mix) + nFa * mix
+    Fa = 0.0
+end
+println("Fs = ", Fs)
+println("Fa = ", Fa)
 
 # Ws1 = Interp.integrate1D(Ws .* cos.(θgrid.grid) .* sin.(θgrid.grid), θgrid) / 2
 # Wa1 = Interp.integrate1D(Wa .* cos.(θgrid.grid) .* sin.(θgrid.grid), θgrid) / 2
