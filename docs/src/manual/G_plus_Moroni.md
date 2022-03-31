@@ -1,4 +1,4 @@
-# Analytic Expression of Moroni's $G_{+}$
+# Analytic Expression of $G_{+}$ extracted from DMC
 
 ## Exchange-correlation Energy
 
