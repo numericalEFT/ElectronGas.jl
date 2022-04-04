@@ -8,7 +8,7 @@ module Parameter
 
 # using Parameters
 using ..Parameters
-using Roots, SpecialFunctions
+# using Roots, SpecialFunctions
 # using Polylogarithms
 
 @with_kw struct Para
@@ -138,23 +138,23 @@ generate Para with a complete set of parameters, no value presumed.
  - EF: Fermi energy
  - β: inverse temperature
 """
-@inline function fullUnit(ϵ0, e0, me, EF, β, dim = 3, spin = 2; kwargs...)
+@inline function fullUnit(ϵ0, e0, me, EF, β, dim=3, spin=2; kwargs...)
     # μ = try
     #     chemical_potential(β * EF, dim) * EF
     # catch e
     #     # if isa(e, StackOverflowError)
     #     EF
     # end
+    μ = EF
 
-    para = Para(dim = dim,
-        spin = spin,
-        ϵ0 = ϵ0,
-        e0 = e0,
-        me = me,
-        EF = EF,
-        β = β,
-        μ = EF
-        # μ = μ
+    para = Para(dim=dim,
+        spin=spin,
+        ϵ0=ϵ0,
+        e0=e0,
+        me=me,
+        EF=EF,
+        β=β,
+        μ=μ
     )
     return reconstruct(para, kwargs...)
 end
@@ -168,7 +168,7 @@ assume 4πϵ0=1, me=0.5, EF=1
  - Θ: dimensionless temperature. Since EF=1 we have β=beta
  - rs: Wigner-Seitz radius over Bohr radius.
 """
-@inline function defaultUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
+@inline function defaultUnit(Θ, rs, dim=3, spin=2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = (dim == 3) ? sqrt(2 * rs / (9π / (2spin))^(1 / 3)) : sqrt(sqrt(2) * rs)
     me = 0.5
@@ -190,7 +190,7 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
  - spin: spin = 1 or 2
  - kwargs: user may explicity set other paramters using the key/value pairs
 """
-@inline function rydbergUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
+@inline function rydbergUnit(Θ, rs, dim=3, spin=2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = sqrt(2)
     me = 0.5
