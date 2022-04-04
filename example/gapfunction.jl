@@ -11,7 +11,7 @@ using ElectronGas.CompositeGrids
 using ElectronGas.Convention
 
 const dim = 2
-const beta, rs = 1e3, 1.0
+# const beta, rs = 1e5, 1.5
 
 function G02wrapped(fdlr, kgrid, param)
     # return G0(K)G0(-K)
@@ -56,7 +56,6 @@ function G2wrapped(fdlr, kgrid, param, Σ::GreenFunc.Green2DLR)
 end
 
 function ΔFinit(fdlr, kgrid)
-    @unpack me, kF, β, EF = param
 
     delta = zeros(Float64, (kgrid.size, fdlr.size))
     F = zeros(Float64, (kgrid.size, fdlr.size))
@@ -72,7 +71,7 @@ function ΔFinit(fdlr, kgrid)
     return delta, delta0, F
 end
 
-function dotΔ(fdlr, kgrid, Δ, Δ0, Δ2 = Δ, Δ02 = Δ0)
+function dotΔ(fdlr, kgrid, Δ, Δ0, Δ2=Δ, Δ02=Δ0)
     # kF_label = searchsortedfirst(kgrid.grid, param.kF)
     # return Δ0[kF_label] + real(Lehmann.tau2matfreq(fdlr, view(Δ, kF_label, :), fdlr.n))[1]
     # return (dot(Δ, Δ2) + dot(Δ0, Δ02))
@@ -80,7 +79,7 @@ function dotΔ(fdlr, kgrid, Δ, Δ0, Δ2 = Δ, Δ02 = Δ0)
 end
 
 function calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
-    Δ_freq = real(Lehmann.tau2matfreq(fdlr, Δ, fdlr.n; axis = 2))
+    Δ_freq = real(Lehmann.tau2matfreq(fdlr, Δ, fdlr.n; axis=2))
     for (ki, k) in enumerate(kgrid.grid)
         for (ni, n) in enumerate(fdlr.n)
             F[ki, ni] = (Δ_freq[ki, ni] + Δ0[ki]) * G2[ki, ni]
@@ -91,8 +90,8 @@ end
 
 function calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 
-    F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis = 2))
-    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis = 2))[:, 1]
+    F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis=2))
+    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis=2))[:, 1]
     for (ki, k) in enumerate(kgrid.grid)
         for (τi, τ) in enumerate(fdlr.τ)
             Fk = CompositeGrids.Interp.interp1DGrid(view(F_tau, :, τi), kgrid, qgrids[ki].grid)
@@ -109,8 +108,8 @@ end
 
 function calcΔ_2d!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 
-    F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis = 2))
-    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis = 2))[:, 1]
+    F_tau = real(Lehmann.matfreq2tau(fdlr, F, fdlr.τ; axis=2))
+    F_ins = -real(tau2tau(fdlr, F_tau, [fdlr.β,]; axis=2))[:, 1]
     for (ki, k) in enumerate(kgrid.grid)
         for (τi, τ) in enumerate(fdlr.τ)
             Fk = CompositeGrids.Interp.interp1DGrid(view(F_tau, :, τi), kgrid, qgrids[ki].grid)
@@ -126,7 +125,7 @@ function calcΔ_2d!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
 end
 
 function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
-    Nstep = 1e2, rtol = 1e-6, shift = 2.0)
+    Nstep=1e2, rtol=1e-6, shift=2.0)
     @unpack dim = param
 
     Δ, Δ0, F = ΔFinit(fdlr, kgrid)
@@ -153,7 +152,8 @@ function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
             calcΔ_2d!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
         end
 
-        lamu = dotΔ(fdlr, kgrid, Δ, Δ0, delta, delta0) #  ^ 2
+        lamu = dotΔ(fdlr, kgrid, Δ, Δ0, delta, delta0)
+        # dotΔ(fdlr, kgrid, Δ, Δ0, Δ2 = Δ, Δ02 = Δ0)
 
         Δ0 = Δ0 .+ shift .* delta0
         Δ = Δ .+ shift .* delta
@@ -165,22 +165,20 @@ function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
         Δ0 = Δ0 ./ modulus
         err = abs(lamu - lamu0) / abs(lamu + EPS)
         lamu0 = lamu
-        println(lamu)
+        # println(lamu)
     end
     return lamu, Δ, Δ0, F
 end
 
 
 
-if abspath(PROGRAM_FILE) == @__FILE__
-
+# if abspath(PROGRAM_FILE) == @__FILE__
+function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
     #--- parameters ---
-    sigmatype = :none
-
     param = Parameter.defaultUnit(1 / beta, rs, dim)
-    # Euv, rtol = 100 * param.EF, 1e-12
-    # maxK, minK = 20param.kF, 1e-9param.kF
-    # Nk, order = 16, 6
+    # Euv, rtol = 100 * param.EF, 1e-11
+    # maxK, minK = 20param.kF, 1e-8param.kF
+    # Nk, order = 12, 10
     Euv, rtol = 100 * param.EF, 1e-10
     maxK, minK = 10param.kF, 1e-7param.kF
     Nk, order = 8, 8
@@ -190,12 +188,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
     #--- prepare kernel ---
     if dim == 3
         @time W = LegendreInteraction.DCKernel0(param;
-            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
-            int_type = int_type)
+            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order,
+            int_type=int_type, channel=channel)
     elseif dim == 2
         @time W = LegendreInteraction.DCKernel_2d(param;
-            Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order,
-            int_type = int_type)
+            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order,
+            int_type=int_type, channel=channel)
     else
         error("No support for $dim dimension!")
     end
@@ -207,14 +205,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     kernel_bare = W.kernel_bare
     kernel_freq = W.kernel
-    kernel = real(Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis = 3))
+    kernel = real(Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis=3))
 
     kF_label = searchsortedfirst(kgrid.grid, param.kF)
     qF_label = searchsortedfirst(qgrids[kF_label].grid, param.kF)
 
     println("static kernel at (kF, kF):$(kernel_bare[kF_label, qF_label])")
-    println("dynamic kernel at (kF, kF):")
-    println(view(kernel_freq, kF_label, qF_label, :))
+    # println("dynamic kernel at (kF, kF):")
+    # println(view(kernel_freq, kF_label, qF_label, :))
 
     #--- prepare Σ ---
     if sigmatype == :g0w0
@@ -228,25 +226,32 @@ if abspath(PROGRAM_FILE) == @__FILE__
         G2 = G2wrapped(fdlr, kgrid, param, Σ)
     end
 
+    # println("G2 at kF:")
+    # println(view(G2, kF_label, :))
 
-    println("G2 at kF:")
-    println(view(G2, kF_label, :))
+    lamu, Δ, Δ0, F = gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2; shift=4.0)
+    println("beta = $beta,    rs = $rs")
+    println("channel = $channel")
+    println("lamu = $lamu")
 
-    # #--- prepare Δ ---
-    # Δ, Δ0, F = ΔFinit(fdlr, kgrid)
-    # norm = dotΔ(fdlr, kgrid, Δ, Δ0)
-    # println("norm=$norm")
-    # println(view(Δ, kF_label, :))
-
-    # calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
+    Δ_freq = real(Lehmann.tau2matfreq(fdlr, Δ, fdlr.n; axis=2))
+    println(fdlr.ωn ./ param.EF)
+    println(view(Δ_freq, kF_label, :))
     # println(view(F, kF_label, :))
+end
 
-    # calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
-    # println(view(Δ, kF_label, :))
+if abspath(PROGRAM_FILE) == @__FILE__
+    # sigmatype = :none
+    sigmatype = :g0w0
 
-    lamu, Δ, Δ0, F = gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2; shift = 1.0)
-    println("lamu=$lamu")
-    println(view(Δ, kF_label, :))
-    println(view(F, kF_label, :))
+    rs = 2.0
+    # rs = 0.5
+    channel = 0
+    # blist = [1e2, 1e3, 1e4, 1e5, 2e5]
+    blist = [5e5]
+    # blist = [1e2, 1e3, 5e3, 1e4]
 
+    for (ind, beta) in enumerate(blist)
+        gapfunction(beta, rs, channel, dim, sigmatype)
+    end
 end
