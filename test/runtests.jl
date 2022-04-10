@@ -1,6 +1,7 @@
 using ElectronGas
 using CompositeGrids
 using Test
+using GreenFunc, Lehmann
 
 @testset "ElectronGas.jl" begin
     # Write your tests here.

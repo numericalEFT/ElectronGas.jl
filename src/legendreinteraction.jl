@@ -14,6 +14,7 @@ module LegendreInteraction
 # include(srcdir*"/interaction.jl")
 # using .Interaction
 
+using Base.Threads
 using ..Parameter, ..Convention, ..Polarization, ..Interaction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..LegendrePolynomials, ..CompositeGrids
 
@@ -43,15 +44,18 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
 
     if int_type == :rpa
         if dim == 3
-            ks, ka = RPA(q, n, param) #; regular = true)
+            # ks, ka = RPA(q, n, param)
+            ks, ka = RPA(q, n, param; regular=true) .* Interaction.coulomb(q, param)
         elseif dim == 2
-            ks, ka = RPA(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+            # ks, ka = RPA(q, n, param; Vinv_Bare=Interaction.coulombinv_2d)
+            ks, ka = RPA(q, n, param; Vinv_Bare=Interaction.coulombinv_2d, regular=true) .* Interaction.coulomb_2d(q, param)
         end
     elseif int_type == :ko
         if dim == 3
-            ks, ka = KO(q, n, param)
+            # ks, ka = KO(q, n, param)
+            ks, ka = KO(q, n, param; regular=true) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterTakada(q, n, param))
         elseif dim == 2
-            ks, ka = KO(q, n, param; Vinv_Bare = Interaction.coulombinv_2d)
+            ks, ka = KO(q, n, param; Vinv_Bare=Interaction.coulombinv_2d)
         end
     else
         throw(UndefVarError(int_type))
@@ -96,7 +100,7 @@ end
 
 @inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
     x = cos(θ)
-    q2 = k^2 + p^2 - 2k * p * x
+    q2 = (k - p)^2 + 2k * p * (1 - x)
     if x == 1 || q2 <= 0
         q2 = (k - p)^2 + k * p * θ^2
     end
@@ -105,7 +109,7 @@ end
 
 @inline function kernel0_integrand2d(k, p, θ, channel, param, spin_state)
     x = cos(θ)
-    q2 = k^2 + p^2 - 2k * p * x
+    q2 = (k - p)^2 + 2k * p * (1 - x)
     if x == 1 || q2 <= 0
         q2 = (k - p)^2 + k * p * θ^2
         # println("$k, $p, $q2, $((k - p)^2), $x, $θ")
@@ -113,7 +117,7 @@ end
     return cos(channel * θ) * interaction_instant(√q2, param, spin_state)
 end
 
-function helper_function(y::Float64, n::Int, W, param; Nk::Int = 40, minK::Float64 = 1e-12 * param.kF, order::Int = 6)
+function helper_function(y::Float64, n::Int, W, param; Nk::Int=40, minK::Float64=1e-12 * param.kF, order::Int=6)
     # return the helper function
     @unpack kF, β = param
     # generate a new grid for every calculation
@@ -178,7 +182,7 @@ struct DCKernel
 
 end
 
-function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state = :auto)
+function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -202,21 +206,25 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
 
     kernel_bare = zeros(Float64, (length(kgrid.grid), (qgridmax)))
     kernel = zeros(Float64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
-    data = zeros(Float64, length(θgrid.grid))
+    data0 = zeros(Float64, length(θgrid.grid))
+    # data = zeros(Float64, (length(θgrid.grid), length(bdlr.n)))
     for (ki, k) in enumerate(kgrid.grid)
         for (pi, p) in enumerate(qgrids[ki].grid)
             for (θi, θ) in enumerate(θgrid.grid)
-                data[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
+                data0[θi] = kernel0_integrand2d(k, p, θ, channel, param, spin_state)
             end
-            kernel_bare[ki, pi] = Interp.integrate1D(data, θgrid) * 2
+            kernel_bare[ki, pi] = Interp.integrate1D(data0, θgrid) * 2
             # println("$ki,$pi,  $(kernel_bare[ki,pi])")
             @assert isfinite(kernel_bare[ki, pi]) "fail kernel_bare at $ki,$pi, ($k, $p) with $(kernel_bare[ki,pi]) \n $data"
+            # @threads for (ni, n) in collect(enumerate(bdlr.n))
             for (ni, n) in enumerate(bdlr.n)
                 for (θi, θ) in enumerate(θgrid.grid)
-                    data[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+                    # data[θi, ni] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
+                    data0[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
                 end
-                # data = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
-                kernel[ki, pi, ni] = Interp.integrate1D(data, θgrid) * 2
+                # data[:, ni] = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
+                kernel[ki, pi, ni] = Interp.integrate1D(data0, θgrid) * 2
+                # kernel[ki, pi, ni] = Interp.integrate1D(data[:, ni], θgrid) * 2
                 # ni == 1 && println("$ki,$pi, $n  $(kernel[ki, pi, ni])")
                 @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
             end
@@ -226,11 +234,11 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
-function DCKernel_2d(param; Euv = param.EF * 100, rtol = 1e-10, Nk = 8, maxK = param.kF * 10, minK = param.kF * 1e-7, order = 4, int_type = :rpa, channel = 0, spin_state = :auto)
+function DCKernel_2d(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, channel=0, spin_state=:auto)
     return DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state)
 end
 
-function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state = :auto)
+function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -300,15 +308,15 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
-function DCKernel_old(param; Euv = param.EF * 100, rtol = 1e-10, Nk = 8, maxK = param.kF * 10, minK = param.kF * 1e-7, order = 4, int_type = :rpa, channel = 0, spin_state = :auto)
+function DCKernel_old(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, channel=0, spin_state=:auto)
     return DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state)
 end
 
-function DCKernel0(param; Euv = param.EF * 100, rtol = 1e-10, Nk = 8, maxK = param.kF * 10, minK = param.kF * 1e-7, order = 4, int_type = :rpa, spin_state = :auto)
+function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto)
     return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state)
 end
 
-function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state = :auto)
+function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto)
     # use helper function
     @unpack kF, β = param
     channel = 0
