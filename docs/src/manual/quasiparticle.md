@@ -3,14 +3,14 @@
 
 ## Renormalization factor
  The renormalization constant $Z$ gives the strength of the quasiparticle pole, and can be obtained from the frequency dependence of the self-energy as
- ```math
+```math
 Z=\frac{1}{1-\left.\frac{1}{\hbar} \frac{\partial \operatorname{Im} \Sigma(k, i\omega_n)}{\partial \omega_n}\right|_{k=k_{F}, \omega_n=0^+}}
- ```
+```
 
  ## Effective mass
- ```math
+```math
 \frac{m^{*}}{m}= \frac{Z^{-1}}{1+\frac{m}{\hbar^{2} k_{F}} \left. \frac{\partial \operatorname{Re} \Sigma(k, i\omega_n)}{\partial k}\right|_{k=k_{F}, \omega_n=0^+}} 
- ```
+```
 
  ## Benchmark 
 ### 2D UEG
@@ -37,7 +37,7 @@ Z=\frac{1}{1-\left.\frac{1}{\hbar} \frac{\partial \operatorname{Im} \Sigma(k, i\
 
 
  
-[**References**]
+**References**
 1. [H.-J. Schulze, P. Schuck, and N. Van Giai, Two-dimensional electron gas in the random-phase approximation with exchange and self-energy corrections. *Phys. Rev. B 61, 8026* (2000).](https://link.aps.org/doi/10.1103/PhysRevB.61.8026)
 2. [Simion, G. E. & Giuliani, G. F., Many-body local fields theory of quasiparticle properties in a three-dimensional electron liquid. *Phys. Rev. B 77, 035131* (2008).](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.77.035131)
 3. G. D Mahan, *Many-Particle Physics* (Plenum, New York, 1991), Chap. 5. 
