@@ -1,6 +1,7 @@
 using ElectronGas
 using CompositeGrids
 using Test
+using GreenFunc, Lehmann
 
 @testset "ElectronGas.jl" begin
     # Write your tests here.
@@ -9,7 +10,7 @@ using Test
         include("polarization.jl")
         include("interaction.jl")
         include("legendreinteraction.jl")
-        include("selfenergy.jl")
+        # include("selfenergy.jl")
     else
         include(ARGS[1])
     end
