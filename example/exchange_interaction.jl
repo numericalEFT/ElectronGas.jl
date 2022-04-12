@@ -5,13 +5,13 @@ In this demo, we analysis the contribution of the exchange KO interaction to the
 using ElectronGas, Parameters
 using Lehmann, GreenFunc, CompositeGrids
 
-const rs = 5.0
+const rs = 7.0
 const beta = 25.0
 const mass2 = 1e-8
 const dim = 3
 const z = 1.0
 
-Fp = -0.0
+Fp = -1.5
 Fm = -0.0
 # U = -0.456
 
@@ -81,8 +81,12 @@ function projected_exchange_interaction(l, Fp, Fm, massratio, verbose = 1)
     return Ws0, Wa0
 end
 
-# projected_exchange_interaction(0, Fp, Fm, massratio)
+Ws0, Wa0 = projected_exchange_interaction(0, Fp, Fm, massratio)
+Wsc, Wac = exchange2direct(Fp, Fm)
+println(Ws0 + Wsc)
+println(Wa0 + Wac)
 # projected_exchange_interaction(1, Fp, Fm, massratio)
+exit(0)
 
 Fs, Fa = Fp, Fm
 mix = 0.2
