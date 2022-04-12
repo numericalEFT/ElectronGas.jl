@@ -57,6 +57,13 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
         elseif dim == 2
             ks, ka = KO(q, n, param; Vinv_Bare=Interaction.coulombinv_2d)
         end
+    elseif int_type == :ko_const
+        if dim == 3
+            # ks, ka = KO(q, n, param)
+            ks, ka = KO(q, n, param; regular=true, landaufunc=landauParameterConst) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param))
+        elseif dim == 2
+            error("not implemented!")
+        end
     else
         throw(UndefVarError(int_type))
     end

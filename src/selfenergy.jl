@@ -257,15 +257,21 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     return Z0
 end
 
-function massratio(param, Σ::GreenFunc.Green2DLR)
+function massratio(param, Σ::GreenFunc.Green2DLR, δK=1e-6)
+    # one can achieve ~1e-4 accuracy with δK = 1e-5
     @unpack kF, me = param
 
+    δK *= kF
     kgrid = Σ.spaceGrid
     kF_label = searchsortedfirst(kgrid.grid, kF)
     z = zfactor(Σ)
 
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
-    k1, k2 = kF_label, kF_label - 1
+    k1, k2 = kF_label, kF_label + 1
+    while abs(kgrid.grid[k2] - kgrid.grid[k1]) < δK
+        k2 += 1
+    end
+    @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
     sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
     sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
     ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])

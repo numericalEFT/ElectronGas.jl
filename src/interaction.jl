@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d,  landauParameterMoroni 
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -195,7 +195,7 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
+    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, regular=false, kwargs...)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param; kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
@@ -241,23 +241,23 @@ otherwise, return
     \\frac{(v_q^{\\pm})^2 Π_0} {1 - v_q^{\\pm} Π_0}.
 ```
 """
-function RPA(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, regular = false)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landauParameter0, Vinv_Bare = Vinv_Bare, regular = regular)
+function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulombinv, regular=false)
+    return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landauParameter0, Vinv_Bare=Vinv_Bare, regular=regular)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv) where {SGT}
+    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv) where {SGT}
 
     @unpack β = param
-    green_s = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    green_a = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_s = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
+    green_a = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
     green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
     green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
     green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
     green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green_s.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc = pifunc, Vinv_Bare = Vinv_Bare, regular = true)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
@@ -311,7 +311,7 @@ Return Landau parameter F+=(G+)*V
 function landauParameterMoroni(q, n, param; kwargs...)
     @unpack me, kF, rs, e0s, e0, e0a, β, ϵ0, a0 = param
 
-    n0 = (kF)^3/3/π^2
+    n0 = (kF)^3 / 3 / π^2
     if e0 ≈ 0.0
         return 0.0, 0.0
     end
@@ -320,16 +320,16 @@ function landauParameterMoroni(q, n, param; kwargs...)
     cc = 12.9352
     Ac = 0.0621814
     function E_corr(rs_dum)
-        result=0
-        x=sqrt(rs_dum)
-        X=(x^2+bc*x+cc)
-        X0 = (xc^2+bc*xc+cc)
-        Q = sqrt(4*cc - bc^2)
+        result = 0
+        x = sqrt(rs_dum)
+        X = (x^2 + bc * x + cc)
+        X0 = (xc^2 + bc * xc + cc)
+        Q = sqrt(4 * cc - bc^2)
         #print("x^2/X=",x^2/X,"\n")
         #print("x-xc^2/X=",(x-xc)^2/X, "\n")
-        result = Ac*( log(x^2/X) + 2*bc/Q * atan(Q / (2*x + bc)) - bc*xc/X0 * ( log((x-xc)^2/X) + 2*(bc + 2*xc)/Q * atan(Q/(2*x + bc)) ) )
+        result = Ac * (log(x^2 / X) + 2 * bc / Q * atan(Q / (2 * x + bc)) - bc * xc / X0 * (log((x - xc)^2 / X) + 2 * (bc + 2 * xc) / Q * atan(Q / (2 * x + bc))))
         # This expression is in Rydberg unit
-        result = result /(2*me*a0^2) 
+        result = result / (2 * me * a0^2)
         return result
     end
 
@@ -337,35 +337,35 @@ function landauParameterMoroni(q, n, param; kwargs...)
     step = 0.0000001
     x = sqrt(rs)
     # Calculate parameter A
-   
-    rs1 = ( n0/(n0+step) )^(1.0/3.0)*rs
-    rs_1 =  ( n0/(n0-step) )^(1.0/3.0)*rs
-    deriv_1 = (E_corr(rs1)-E_corr(rs))/step
-    deriv_2 = (E_corr(rs1) + E_corr(rs_1) - 2*E_corr(rs))/step^2
-    A = 0.25 - kF^2/4/π/e0^2*( 2*deriv_1 + n0*deriv_2 )
+
+    rs1 = (n0 / (n0 + step))^(1.0 / 3.0) * rs
+    rs_1 = (n0 / (n0 - step))^(1.0 / 3.0) * rs
+    deriv_1 = (E_corr(rs1) - E_corr(rs)) / step
+    deriv_2 = (E_corr(rs1) + E_corr(rs_1) - 2 * E_corr(rs)) / step^2
+    A = 0.25 - kF^2 / 4 / π / e0^2 * (2 * deriv_1 + n0 * deriv_2)
     #println("A=$(A)")
 
     # Calculate parameter B
-    a1=2.15
+    a1 = 2.15
     a2 = 0.435
     b1 = 1.57
     b2 = 0.409
-    B = (1 + a1*x + a2*x^3)/(3 + b1*x + b2*x^3)
+    B = (1 + a1 * x + a2 * x^3) / (3 + b1 * x + b2 * x^3)
     #println("B=$(B)")
 
     # Calculate parameter C
     step = 0.0000001
-    deriv_1 =  (E_corr(rs+step)-E_corr(rs))/step
+    deriv_1 = (E_corr(rs + step) - E_corr(rs)) / step
     #deriv_1 = E_corr_p(rs)
-    C = -π/2/kF/e0^2*( E_corr(rs) + rs*deriv_1 )
+    C = -π / 2 / kF / e0^2 * (E_corr(rs) + rs * deriv_1)
     #println("C=$(C)")
 
-    D = B/(A - C)
-    α = 1.5/rs^0.25*A/B/D
-    β_0 = 1.2/B/D
-    Q = q/kF
-    G_s = C*Q^2 + B*Q^2/(D+Q^2) + α*Q^4*exp(-β_0*Q^2)
-    F_s = 4*π*e0^2*G_s/q^2
+    D = B / (A - C)
+    α = 1.5 / rs^0.25 * A / B / D
+    β_0 = 1.2 / B / D
+    Q = q / kF
+    G_s = C * Q^2 + B * Q^2 / (D + Q^2) + α * Q^4 * exp(-β_0 * Q^2)
+    F_s = 4 * π * e0^2 * G_s / q^2
     return F_s
 end
 
@@ -374,7 +374,7 @@ end
     return 0.0, 0.0
 end
 
-@inline function landauParameterConst(q, n, param; Fs = 0.0, Fa = 0.0, massratio = 1.0, kwargs...)
+@inline function landauParameterConst(q, n, param; Fs=0.0, Fa=0.0, massratio=1.0, kwargs...)
     return Fs / param.NF / massratio, Fa / param.NF / massratio
 end
 
@@ -383,7 +383,7 @@ end
     return fs, fa
 end
 
-@inline function countertermConst(q, n, param; landaufunc, Cs = 0.0, Ca = 0.0, massratio = 1.0, kwargs...)
+@inline function countertermConst(q, n, param; landaufunc, Cs=0.0, Ca=0.0, massratio=1.0, kwargs...)
     return Cs / param.NF / massratio, Ca / param.NF / massratio
 end
 
@@ -412,23 +412,23 @@ otherwise, return
     \\frac{(v_q^{\\pm} - f_q^{\\pm})^2 Π_0} {1 - (v_q^{\\pm} - f_q^{\\pm}) Π_0}.
 ```
 """
-function KO(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
-    return bubblecorrection(q, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, regular = regular, kwargs...)
+function KO(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, regular=false, kwargs...)
+    return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landaufunc, Vinv_Bare=Vinv_Bare, regular=regular, kwargs...)
 end
 
-function KOwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, kwargs...) where {SGT}
+function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
+    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
 
     @unpack β = param
-    green_s = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
-    green_a = GreenFunc.Green2DLR{Float64}(:ko, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green_s = GreenFunc.Green2DLR{Float64}(int_type, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
+    green_a = GreenFunc.Green2DLR{Float64}(int_type, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
     green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
     green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
     green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
     green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green_s.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc = pifunc, landaufunc = landaufunc, Vinv_Bare = Vinv_Bare, kwargs...)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc=pifunc, landaufunc=landaufunc, Vinv_Bare=Vinv_Bare, kwargs...)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end
@@ -460,7 +460,7 @@ Return the total effective interaction
 ```
 which reduces to the convential KO interaction if ``C_q^{\\pm} \\equiv f_q^{\\pm}``
 """
-function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, counter_term = counterterm, kwargs...)
+function KO_total(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, counter_term=counterterm, kwargs...)
     @unpack spin = param
 
     if abs(q) < EPS
@@ -470,7 +470,7 @@ function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = lan
     Π::Float64 = spin * pifunc(q, n, param; kwargs...)
 
     fs, fa = landaufunc(q, n, param; kwargs...)
-    Cs, Ca = counter_term(q, n, param; landaufunc = landaufunc, kwargs...)
+    Cs, Ca = counter_term(q, n, param; landaufunc=landaufunc, kwargs...)
     Vinvs, Vinva = Vinv_Bare(q, param)
 
     if param.gs ≈ 0.0
@@ -486,7 +486,7 @@ function KO_total(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = lan
     return Ks, Ka
 end
 
-function RPA_total(q, n, param; pifunc = Polarization0_ZeroTemp, Vinv_Bare = coulombinv, kwargs...)
+function RPA_total(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulombinv, kwargs...)
     @unpack spin = param
 
     if abs(q) < EPS
