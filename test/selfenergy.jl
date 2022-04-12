@@ -18,6 +18,7 @@
         #test edge case when Λs → 0
         para = Parameter.rydbergUnit(θ, rs, 3, Λs=1e-12)
         @test isapprox(SelfEnergy.Fock0_ZeroTemp(0.0, para) / factor, 2.0, rtol=1e-6)
+
     end
 
     @testset "2D Fock" begin
@@ -36,12 +37,14 @@
 
     @testset "3D RPA" begin
         # make sure everything works for different unit sets
-        θ = 1e-5
-        rslist = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
-        zlist = [0.859, 0.764, 0.700, 0.645, 0.602, 0.568]
-        mlist = [0.970, 0.992, 1.016, 1.039, 1.059, 1.078]
+        θ = 0.001
+        # rslist = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+        # zlist = [0.859, 0.764, 0.700, 0.645, 0.602, 0.568]
+        # mlist = [0.970, 0.992, 1.016, 1.039, 1.059, 1.078]
         ## our results: zlist = [0.859, 0.764, 0.693, 0.637, 0.591]
-        # rslist = [1.0, 2.0]
+        rslist = [5.0,]
+        zlist = [0.5913,]
+        mlist = [1.059,]
         # zlist = [0.859, 0.764]
         # mlist = [0.970, 0.992]
 
@@ -53,7 +56,7 @@
             # maxK, minK = 10kF, 1e-7kF
             # Nk, order = 11, 8
             maxK, minK = 20kF, 1e-8kF
-            Nk, order = 16, 12
+            Nk, order = 12, 6
             # maxK, minK = 10kF, 1e-9kF
             # Euv, rtol = 1000 * param.EF, 1e-11
             # maxK, minK = 20param.kF, 1e-9param.kF
@@ -79,9 +82,11 @@
             Z0 = (SelfEnergy.zfactor(Σ))
             z = zlist[ind]
             # @test isapprox(Z0, z, rtol=3e-3)
-            mratio = SelfEnergy.massratio(param, Σ)
+            mratio = SelfEnergy.massratio(param, Σ, 1e-6)
+            mratio1 = SelfEnergy.massratio(param, Σ, 1e-5)
             m = mlist[ind]
             # @test isapprox(mratio, m, rtol=3e-3)
+            @test isapprox(mratio, mratio1, rtol=1e-3)
 
             println("θ = $θ,  rs= $rs")
             println("Z-factor = $Z0 ($z), rtol=$(Z0/z-1)")
@@ -105,10 +110,12 @@
     @testset "2D RPA" begin
         dim = 2
         θ = 1e-5
-        rslist = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0]
-        zlist = [0.786, 0.662, 0.519, 0.437, 0.383, 0.344, 0.270, 0.240]
-        mlist = [0.981, 1.020, 1.078, 1.117, 1.143, 1.162, 1.196, 1.209]
-        # rslist = [0.5, 1.0, 2.0]
+        # rslist = [0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0]
+        # zlist = [0.786, 0.662, 0.519, 0.437, 0.383, 0.344, 0.270, 0.240]
+        # mlist = [0.981, 1.020, 1.078, 1.117, 1.143, 1.162, 1.196, 1.209]
+        rslist = [1.0,]
+        zlist = [0.662,]
+        mlist = [1.02,]
         # zlist = [0.786, 0.662, 0.519]
         # mlist = [0.981, 1.020, 1.078]
         for (ind, rs) in enumerate(rslist)
