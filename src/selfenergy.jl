@@ -214,7 +214,7 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     return Σ
 end
 
-function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
     @unpack dim = param
     # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
     # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
@@ -223,12 +223,12 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
     # G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
     if dim == 2
         kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
-            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma)
+            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
         G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_2d(G0, kernel)
     elseif dim == 3
         kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma)
+            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
         G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
         Σ = calcΣ_3d(G0, kernel)
     else
@@ -238,8 +238,8 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
     return Σ
 end
 
-function G0W0(param; Euv=10 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=4, int_type=:rpa)
-    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
+function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa, kwargs...)
+    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
 end
 
 function zfactor(Σ::GreenFunc.Green2DLR)
@@ -257,15 +257,21 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     return Z0
 end
 
-function massratio(param, Σ::GreenFunc.Green2DLR)
+function massratio(param, Σ::GreenFunc.Green2DLR, δK=1e-6)
+    # one can achieve ~1e-4 accuracy with δK = 1e-5
     @unpack kF, me = param
 
+    δK *= kF
     kgrid = Σ.spaceGrid
     kF_label = searchsortedfirst(kgrid.grid, kF)
     z = zfactor(Σ)
 
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
-    k1, k2 = kF_label, kF_label - 1
+    k1, k2 = kF_label, kF_label + 1
+    while abs(kgrid.grid[k2] - kgrid.grid[k1]) < δK
+        k2 += 1
+    end
+    @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
     sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
     sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
     ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])

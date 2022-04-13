@@ -7,6 +7,7 @@
     # print(param)
 
     @testset "Helper function" begin
+        println("Test helper function")
         # test helper function
         # test with known result: bare coulomb interaction
         H1 = LegendreInteraction.helper_function(
@@ -39,6 +40,7 @@
     end
 
     @testset "DCKernel_2d" begin
+        println("Test DCKernel_2d")
         # set parameters
         param = LegendreInteraction.Parameter.defaultUnit(1 / beta, 1.0, dim=2)
         kF = param.kF
@@ -74,6 +76,7 @@
     end
 
     @testset "Test case: r_s=4, β=400, 3D" begin
+        println("Test 3D, rs=4, beta=400")
         param = Parameter.defaultUnit(1 / beta, 4.0) # 3D UEG
         Euv, rtol = 100 * param.EF, 1e-12
         maxK, minK = 20param.kF, 1e-9param.kF
