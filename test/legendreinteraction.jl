@@ -45,12 +45,12 @@
         param = LegendreInteraction.Parameter.defaultUnit(1 / beta, 1.0, dim=2)
         kF = param.kF
         println("kF = $kF")
-        # Euv, rtol = 100 * param.EF, 1e-10
-        # Nk, minK, order, maxK = 8, 1e-7kF, 8, 10kF
+        Euv, rtol = 100 * param.EF, 1e-10
+        Nk, minK, order, maxK = 8, 1e-7kF, 8, 10kF
 
-        Euv, rtol = 100 * param.EF, 1e-12
-        maxK, minK = 20param.kF, 1e-9param.kF
-        Nk, order = 16, 6
+        # Euv, rtol = 100 * param.EF, 1e-12
+        # maxK, minK = 20param.kF, 1e-9param.kF
+        # Nk, order = 16, 6
         int_type = :rpa
 
         W = LegendreInteraction.DCKernel_2d(param;

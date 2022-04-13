@@ -82,11 +82,11 @@
             Z0 = (SelfEnergy.zfactor(Σ))
             z = zlist[ind]
             # @test isapprox(Z0, z, rtol=3e-3)
-            mratio = SelfEnergy.massratio(param, Σ, 1e-6)
+            mratio = SelfEnergy.massratio(param, Σ)
             mratio1 = SelfEnergy.massratio(param, Σ, 1e-5)
             m = mlist[ind]
             # @test isapprox(mratio, m, rtol=3e-3)
-            @test isapprox(mratio, mratio1, rtol=1e-3)
+            @test isapprox(mratio, mratio1, rtol=1e-4)
 
             println("θ = $θ,  rs= $rs")
             println("Z-factor = $Z0 ($z), rtol=$(Z0/z-1)")

@@ -257,8 +257,8 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     return Z0
 end
 
-function massratio(param, Σ::GreenFunc.Green2DLR, δK=1e-6)
-    # one can achieve ~1e-4 accuracy with δK = 1e-5
+function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6)
+    # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
 
     δK *= kF
