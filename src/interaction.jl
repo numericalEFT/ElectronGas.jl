@@ -288,12 +288,13 @@ function landauParameterTakada(q, n, param; kwargs...)
     C1 = 1 - r_s_dl * r_s_dl / 4.0 * (1 + 0.07671 * r_s_dl * r_s_dl * ((1 + 12.05 * r_s_dl) * (1 + 12.05 * r_s_dl) + 4.0 * 4.254 / 3.0 * r_s_dl * r_s_dl * (1 + 7.0 / 8.0 * 12.05 * r_s_dl) + 1.5 * 1.363 * r_s_dl * r_s_dl * r_s_dl * (1 + 8.0 / 9.0 * 12.05 * r_s_dl)) / (1 + 12.05 * r_s_dl + 4.254 * r_s_dl * r_s_dl + 1.363 * r_s_dl * r_s_dl * r_s_dl) / (1 + 12.05 * r_s_dl + 4.254 * r_s_dl * r_s_dl + 1.363 * r_s_dl * r_s_dl * r_s_dl))
     C2 = 1 - r_s_dl * r_s_dl / 4.0 * (1 + r_s_dl * r_s_dl / 8.0 * (log(r_s_dl * r_s_dl / (r_s_dl * r_s_dl + 0.990)) - (1.122 + 1.222 * r_s_dl * r_s_dl) / (1 + 0.533 * r_s_dl * r_s_dl + 0.184 * r_s_dl * r_s_dl * r_s_dl * r_s_dl)))
     D = inf_sum(r_s_dl, 100)
-    A1 = (2.0 - C1 - C2) / 4.0 / e0^2 * π
-    A2 = (C2 - C1) / 4.0 / e0^2 * π
+    #A1 = (2.0 - C1 - C2) / 4.0 / e0^2 * π
+    A1 = (2.0-C1-C2)*(kF*ϵ0*π^2)/(2*e0^2*me)
+    A2 = (C2 - C1)*(kF*ϵ0*π^2)/(2*e0^2*me)
     B1 = 6 * A1 / (D + 1.0)
     B2 = 2 * A2 / (1.0 - D)
-    F_s = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) + A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
-    F_a = A1 * e0^2 / ϵ0 / (1.0 + B1 * q^2) - A2 * e0^2 / ϵ0 / (1.0 + B2 * q^2)
+    F_s = A1 * e0^2 / ϵ0 / (kF^2 + B1 * q^2) + A2 * e0^2 / ϵ0 / (kF^2 + B2 * q^2)
+    F_a = A1 * e0^2 / ϵ0 / (kF^2 + B1 * q^2) - A2 * e0^2 / ϵ0 / (kF^2 + B2 * q^2)
     return F_s, F_a
 end
 
