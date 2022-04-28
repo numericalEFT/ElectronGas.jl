@@ -26,14 +26,14 @@ Z=\frac{1}{1-\left.\frac{1}{\hbar} \frac{\partial \operatorname{Im} \Sigma(k, i\
 | 10.0  |   0.240   |       0.240        |               |         1.209          |
 
  ### 3D UEG
-| $r_s$ | $Z$ (RPA) |       $Z$ ($G_0W_0$)        | $m^*/m$ (RPA) | $m^*/m$ ($G_0W_0$ [2]) |
-| :---: | :-------: | :-------------------------: | :-----------: | :--------------------: |
-|  1.0  |  0.8601   |        0.859 [**3**]        |               |         0.970          |
-|  2.0  |  0.7642   | 0.768 [**3**] 0.764 [**4**] |               |         0.992          |
-|  3.0  |  0.6927   |        0.700 [**3**]        |               |         1.016          |
-|  4.0  |  0.6367   | 0.646 [**3**] 0.645 [**4**] |               |         1.039          |
-|  5.0  |  0.5913   |        0.602 [**3**]        |               |         1.059          |
-|  6.0  |  0.5535   |        0.568 [**3**]        |               |         1.078          |
+| $r_s$ | $Z$ (RPA) |       $Z$ ($G_0W_0$)        | $m^*/m$ (RPA) [5] | $m^*/m$ ($G_0W_0$ [2]) |
+| :---: | :-------: | :-------------------------: | :---------------: | :--------------------: |
+|  1.0  |  0.8601   |        0.859 [**3**]        |     0.9716(5)     |         0.970          |
+|  2.0  |  0.7642   | 0.768 [**3**] 0.764 [**4**] |     0.9932(9)     |         0.992          |
+|  3.0  |  0.6927   |        0.700 [**3**]        |    1.0170(13)     |         1.016          |
+|  4.0  |  0.6367   | 0.646 [**3**] 0.645 [**4**] |    1.0390(10)     |         1.039          |
+|  5.0  |  0.5913   |        0.602 [**3**]        |    1.0587(13)     |         1.059          |
+|  6.0  |  0.5535   |        0.568 [**3**]        |    1.0759(12)     |         1.078          |
 
 
  
@@ -42,3 +42,4 @@ Z=\frac{1}{1-\left.\frac{1}{\hbar} \frac{\partial \operatorname{Im} \Sigma(k, i\
 2. [Simion, G. E. & Giuliani, G. F., Many-body local fields theory of quasiparticle properties in a three-dimensional electron liquid. *Phys. Rev. B 77, 035131* (2008).](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.77.035131)
 3. G. D Mahan, *Many-Particle Physics* (Plenum, New York, 1991), Chap. 5. 
 4. [B. Holm and U. von Barth, Fully self-consistent GW self-energy of the electron gas. *Phys. Rev. B 57, 2108* (1998).](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.57.2108)
+5. Calculated at the temperature $T=T_F/1000$

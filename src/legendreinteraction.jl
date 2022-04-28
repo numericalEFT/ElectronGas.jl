@@ -33,7 +33,7 @@ export DCKernel
     return factor
 end
 
-function interaction_dynamic(q, n, param, int_type, spin_state)
+function interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
@@ -56,6 +56,13 @@ function interaction_dynamic(q, n, param, int_type, spin_state)
             ks, ka = KO(q, n, param; regular=true) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterTakada(q, n, param))
         elseif dim == 2
             ks, ka = KO(q, n, param; Vinv_Bare=Interaction.coulombinv_2d)
+        end
+    elseif int_type == :ko_const
+        if dim == 3
+            # ks, ka = KO(q, n, param)
+            ks, ka = KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param))
+        elseif dim == 2
+            error("not implemented!")
         end
     else
         throw(UndefVarError(int_type))
@@ -312,11 +319,11 @@ function DCKernel_old(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF
     return DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state)
 end
 
-function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto)
-    return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state)
+function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto, kwargs...)
+    return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
 end
 
-function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto)
+function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto; kwargs...)
     # use helper function
     @unpack kF, β = param
     channel = 0
@@ -348,7 +355,7 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
         # for (yi, y) in enumerate(helper_grid)
         #     helper[yi] = helper_function(y, 1, u->interaction_dynamic(u,n,param,int_type,spin_state),param)
         # end
-        helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, int_type, spin_state), param)
+        helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, int_type, spin_state; kwargs...), param)
         for (ki, k) in enumerate(kgrid.grid)
             for (pi, p) in enumerate(qgrids[ki].grid)
                 Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
