@@ -50,7 +50,7 @@ The other part of the integrand could also be decomposed as
 ```math
    \begin{aligned}   
    F(\vec p) &= \sum_{\ell m} f_{\ell m}(p) Y_{\ell m}(\hat p)\,, \\
-f_{lm}(p) &= \int d\hat{k}Y^*_{lm}(\hat{p})F(\vec{p})
+f_{lm}(p) &= \int d\hat{k}Y^*_{lm}(\hat{p})F(p, \hat{p})
    \end{aligned}
 ```
 
@@ -63,13 +63,13 @@ Projecting Eq.(1), on the spherical harmonic ``Y_{\ell m}(\hat k)``, we have
 ```
 which leads to the decoupled equations with channels.
 
-For gap-function equation, we have
+For gap-function equation independent of ``\phi`` (``m=0``), we have
 ```math
    \begin{aligned}
-\Delta_l(k) = \frac{\Omega_d}{2}  \int \frac{p^{d-1} {\rm d}p}{(2\pi)^d} w_l(k, p) f_l(p) \,.
+\Delta_{\ell}(k) = \frac{\Omega_d}{2}  \int \frac{p^{d-1} {\rm d}p}{(2\pi)^d} w_l(k, p) f_l(p) \,.
    \end{aligned}
 ```
-For ``GW`` self-energy symmertric with ``\hat k``, we have
+For ``GW`` self-energy symmertric with ``\hat k`` (``\ell=m=0``), we have
 ```math
    \begin{aligned}
 \Sigma(k) = \frac{\Omega_d}{2}  \int \frac{p^{d-1} {\rm d}p}{(2\pi)^d} w_0(k, p) G(p).

@@ -10,7 +10,7 @@ using ElectronGas.Lehmann
 using ElectronGas.CompositeGrids
 using ElectronGas.Convention
 
-const dim = 2
+const dim = 3
 # const beta, rs = 1e5, 1.5
 
 function G02wrapped(fdlr, kgrid, param)
@@ -83,7 +83,6 @@ function calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
     for (ki, k) in enumerate(kgrid.grid)
         for (ni, n) in enumerate(fdlr.n)
             F[ki, ni] = (Δ_freq[ki, ni] + Δ0[ki]) * G2[ki, ni]
-
         end
     end
 end
@@ -129,7 +128,6 @@ function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
     @unpack dim = param
 
     Δ, Δ0, F = ΔFinit(fdlr, kgrid)
-
     delta = zeros(Float64, (kgrid.size, fdlr.size))
     delta0 = zeros(Float64, (kgrid.size))
 
@@ -138,14 +136,11 @@ function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
     err = 1.0
 
     while (n < Nstep && err > rtol)
-
-        calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
-
         n = n + 1
-
         delta = copy(Δ)
         delta0 = copy(Δ0)
 
+        calcF!(F, fdlr, kgrid, Δ, Δ0, G2)
         if dim == 3
             calcΔ!(Δ, Δ0, fdlr, kgrid, qgrids, F, kernel, kernel_bare)
         elseif dim == 2
@@ -165,7 +160,7 @@ function gapIteration(param, fdlr, kgrid, qgrids, kernel, kernel_bare, G2;
         Δ0 = Δ0 ./ modulus
         err = abs(lamu - lamu0) / abs(lamu + EPS)
         lamu0 = lamu
-        # println(lamu)
+        println(lamu)
     end
     return lamu, Δ, Δ0, F
 end
@@ -241,14 +236,14 @@ function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    # sigmatype = :none
-    sigmatype = :g0w0
+    sigmatype = :none
+    # sigmatype = :g0w0
 
-    rs = 2.0
+    rs = 1.0
     # rs = 0.5
     channel = 0
     # blist = [1e2, 1e3, 1e4, 1e5, 2e5]
-    blist = [5e5]
+    blist = [1e5]
     # blist = [1e2, 1e3, 5e3, 1e4]
 
     for (ind, beta) in enumerate(blist)
