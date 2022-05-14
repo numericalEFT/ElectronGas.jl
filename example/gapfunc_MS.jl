@@ -289,7 +289,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # channels = [0, 1, 2, 3]
 
     if !isempty(ARGS)
-        rs = parse(Float, ARGS[1])
+        rs = parse(Float64, ARGS[1])
         channel = parse(Int, ARGS[2])
     end
 
