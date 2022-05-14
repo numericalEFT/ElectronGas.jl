@@ -62,7 +62,7 @@ function ΔFinit(Euv, rtol, sgrid, param)
     Δ = GreenFunc.Green2DLR{Float64}(:delta, GreenFunc.IMTIME, β, true, Euv, sgrid, 1; timeSymmetry=:pha, rtol=rtol)
     F = GreenFunc.Green2DLR{Float64}(:F, GreenFunc.IMFREQ, β, true, Euv, sgrid, 1; timeSymmetry=:pha, rtol=rtol)
 
-    Δ_ins = zeros(Float64, (Δ.color, Δ.color, Δ.spaceGrid.size))
+    Δ_ins = ones(Float64, (Δ.color, Δ.color, Δ.spaceGrid.size))
     Δ_dyn = ones(Float64, (Δ.color, Δ.color, Δ.spaceGrid.size, Δ.timeGrid.size))
     F_dyn = zeros(Float64, (F.color, F.color, F.spaceGrid.size, F.timeGrid.size))
 
@@ -74,7 +74,7 @@ function ΔFinit(Euv, rtol, sgrid, param)
     end
     Δ_dyn = real(matfreq2tau(Δ.dlrGrid, Δ_dyn, Δ.dlrGrid.τ, F.timeGrid.grid; axis=4))
 
-    Δ.dynamic, Δ.instant = Δ_dyn, Δ_ins
+    Δ.dynamic, Δ.instant = Δ_dyn .* 0.0, Δ_ins
     F.dynamic = F_dyn
     return Δ, F
 end
@@ -104,8 +104,9 @@ function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, ke
     lamu, lamu0 = 1.0, 2.0
     err = 1.0
     kF_label = searchsortedfirst(kgrid.grid, kF)
-    α = 0.6
+    α = 0.8
 
+    printn = 10
     while (true)
         n = n + 1
         delta = copy(Δ.dynamic[1, 1, :, :])
@@ -140,10 +141,13 @@ function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, ke
         if n > Ntherm
             lamu = 1 - 1 / (1 + Δ_kF / kF)
             err = abs(lamu - lamu0) / abs(lamu + EPS)
-            lamu > lamu0 > 0 && err < rtol && break
+            # lamu > lamu0 > 0 && err < rtol && break
+            err < rtol && break
             lamu0 = lamu
         end
-        println(1 - kF / Δ0)
+        if n%printn == 0
+            println(1 - kF / Δ0)
+        end
     end
     println("α = $α, iteration step: $n")
     lamu = 1 - kF / Δ0
@@ -193,7 +197,7 @@ function gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv;
 end
 
 
-function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
+function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa)
     #--- parameters ---
     param = Parameter.defaultUnit(1 / beta, rs, dim)
     # param = Parameter.rydbergUnit(1 / beta, rs, dim)
@@ -203,7 +207,6 @@ function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
     Euv, rtol = 100 * param.EF, 1e-10
     maxK, minK = 10param.kF, 1e-7param.kF
     Nk, order = 8, 8
-    int_type = :rpa
 
     #--- prepare kernel ---
     if dim == 3
@@ -250,8 +253,15 @@ function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
     # println("G2 at kF:")
     # println(view(G2, kF_label, :))
 
-    lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
-    # lamu, Δ, F = gapIteration_Renorm(param, channel, G2, kernel, kernel_bare, qgrids, Euv; rtol=rtol)
+    if methodtype == :explicit
+        lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
+    elseif methodtype == :minisub
+        lamu, Δ, F = gapIteration_Renorm(param, channel, G2, kernel, kernel_bare, qgrids, Euv;
+                                         rtol=rtol, Ntherm=Ntherm)
+    else
+        error("method $(methodtype) not implemented!")
+    end
+
     println("lamu = $lamu")
 
     Δ_freq = GreenFunc.toMatFreq(Δ)
@@ -260,27 +270,39 @@ function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype)
     # println(view(F, kF_label, :))
 
     data = [beta lamu channel rs]
-    open("./plot/gapExplicit_rs$(rs).txt", "a+") do io
+
+    dir = "./run/"
+    fname = "gap_$(methodtype)_rs$(rs)_l$(channel).txt"
+    open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     sigmatype = :none
+    methodtype = :minisub
     # sigmatype = :g0w0
 
-    rs = 3.0
-    # channel = 1
-    channels = [0, 1, 2, 3]
-    # num = 11
-    # blist = [800 * 2^i for i in LinRange(0, num - 1, num)]
-    # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
-    blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
+    rs = 1.0
+    channel = 0
+    # channels = [0, 0, 0]
+    # channels = [0, 1, 2, 3]
 
-    # for (ind, beta) in enumerate(blist)
-    for (channel, beta) in zip(channels, blist)
+    if !isempty(ARGS)
+        rs = parse(Float, ARGS[1])
+        channel = parse(Int, ARGS[2])
+    end
+
+    num = 9
+    # blist = [400, 800, 1600, 3200, 6400]
+    blist = [400 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
+    # blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
+
+    for (ind, beta) in enumerate(blist)
+    # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim, sigmatype)
+        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype)
     end
 end
