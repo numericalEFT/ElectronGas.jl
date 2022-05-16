@@ -36,10 +36,10 @@ function G2wrapped(Σ::GreenFunc.Green2DLR, param)
     # return G(K)G(-K)
     @unpack me, kF, β, μ = param
 
-    Σ_freq = GreenFunc.toMatFreq(Σ)
     green = Green2DLR{Float64}(
-        :g2, GreenFunc.IMFREQ, Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
-        timeSymmetry=Σ_freq.timeSymmetry, rtol=Σ_freq.dlrGrid.rtol)
+        :g2, GreenFunc.IMFREQ, β, true, Σ.dlrGrid.Euv, Σ.spaceGrid, 1;
+        timeSymmetry=:pha, rtol=Σ.dlrGrid.rtol)
+    Σ_freq = GreenFunc.toMatFreq(Σ, green.dlrGrid.n)
 
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     Σ_shift = real(GreenFunc.dynamic(Σ_freq, π / β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
@@ -74,7 +74,7 @@ function ΔFinit(Euv, rtol, sgrid, param)
     end
     Δ_dyn = real(matfreq2tau(Δ.dlrGrid, Δ_dyn, Δ.dlrGrid.τ, F.timeGrid.grid; axis=4))
 
-    Δ.dynamic, Δ.instant = Δ_dyn .* 0.0, Δ_ins
+    Δ.dynamic, Δ.instant = Δ_dyn, Δ_ins
     F.dynamic = F_dyn
     return Δ, F
 end
@@ -204,7 +204,7 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
     # Euv, rtol = 100 * param.EF, 1e-11
     # maxK, minK = 20param.kF, 1e-8param.kF
     # Nk, order = 12, 10
-    Euv, rtol = 100 * param.EF, 1e-10
+    Euv, rtol = 1000 * param.EF, 1e-10
     maxK, minK = 10param.kF, 1e-7param.kF
     Nk, order = 8, 8
 
@@ -250,8 +250,8 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
         Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
         G2 = G2wrapped(Σ, param)
     end
-    # println("G2 at kF:")
-    # println(view(G2, kF_label, :))
+    println("G2 at kF:")
+    println(view(G2.dynamic,1, 1, kF_label, :))
 
     if methodtype == :explicit
         lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
@@ -279,11 +279,11 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    sigmatype = :none
+    # sigmatype = :none
     methodtype = :minisub
-    # sigmatype = :g0w0
+    sigmatype = :g0w0
 
-    rs = 1.0
+    rs = 6.0
     channel = 0
     # channels = [0, 0, 0]
     # channels = [0, 1, 2, 3]
