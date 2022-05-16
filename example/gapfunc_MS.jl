@@ -282,6 +282,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # sigmatype = :none
     methodtype = :minisub
     sigmatype = :g0w0
+    int_type = :ko
 
     rs = 6.0
     channel = 0
@@ -290,7 +291,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     if !isempty(ARGS)
         rs = parse(Float64, ARGS[1])
-        channel = parse(Int, ARGS[2])
+        channel = parse(Int, ARGS[2]) - 1
     end
 
     num = 9
@@ -303,6 +304,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype)
+        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type)
     end
 end
