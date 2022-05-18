@@ -280,4 +280,16 @@ function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6)
     return 1.0 / z / (1 + me / kF * ds_dk)
 end
 
+function chemicalpotential(param, Σ::GreenFunc.Green2DLR)
+    # one can achieve ~1e-5 accuracy with δK = 5e-6
+    @unpack kF, me = param
+
+    kgrid = Σ.spaceGrid
+    kidx = searchsortedfirst(kgrid.grid, kF)
+    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+
+    dmu = real(Σ_freq.dynamic[1, 1, kidx, 1] + Σ_freq.instant[1, 1, kidx])
+    return dmu
+end
+
 end
