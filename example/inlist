@@ -1,0 +1,3 @@
+0.2 102400 5 10 10 2 2
+
+#rs beta0 num_beta Minchannel Maxchannel dimension(2 or 3) sigmatype(1:RPA 2:G0W0)
