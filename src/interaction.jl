@@ -195,8 +195,8 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, regular=false, kwargs...)
-    Fs::Float64, Fa::Float64 = landaufunc(q, n, param; kwargs...)
+    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, regular=false, massratio=1.0, kwargs...)
+    Fs::Float64, Fa::Float64 = landaufunc(q, n, param; massratio=massratio, kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
     @unpack spin = param
@@ -205,8 +205,8 @@ function bubblecorrection(q::Float64, n::Int, param;
         q = EPS
     end
 
-    Πs::Float64 = spin * pifunc(q, n, param)
-    Πa::Float64 = spin * pifunc(q, n, param)
+    Πs::Float64 = spin * pifunc(q, n, param) * massratio
+    Πa::Float64 = spin * pifunc(q, n, param) * massratio
     if regular
         Ks = bubbledysonreg(Vinvs, Fs, Πs)
         Ka = bubbledysonreg(Vinva, Fa, Πa)
@@ -289,8 +289,8 @@ function landauParameterTakada(q, n, param; kwargs...)
     C2 = 1 - r_s_dl * r_s_dl / 4.0 * (1 + r_s_dl * r_s_dl / 8.0 * (log(r_s_dl * r_s_dl / (r_s_dl * r_s_dl + 0.990)) - (1.122 + 1.222 * r_s_dl * r_s_dl) / (1 + 0.533 * r_s_dl * r_s_dl + 0.184 * r_s_dl * r_s_dl * r_s_dl * r_s_dl)))
     D = inf_sum(r_s_dl, 100)
     #A1 = (2.0 - C1 - C2) / 4.0 / e0^2 * π
-    A1 = (2.0-C1-C2)*(kF*ϵ0*π^2)/(2*e0^2*me)
-    A2 = (C2 - C1)*(kF*ϵ0*π^2)/(2*e0^2*me)
+    A1 = (2.0 - C1 - C2) * (kF * ϵ0 * π^2) / (2 * e0^2 * me)
+    A2 = (C2 - C1) * (kF * ϵ0 * π^2) / (2 * e0^2 * me)
     B1 = 6 * A1 / (D + 1.0)
     B2 = 2 * A2 / (1.0 - D)
     F_s = A1 * e0^2 / ϵ0 / (kF^2 + B1 * q^2) + A2 * e0^2 / ϵ0 / (kF^2 + B2 * q^2)
