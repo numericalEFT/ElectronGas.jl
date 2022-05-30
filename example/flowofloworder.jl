@@ -74,7 +74,7 @@ function ΔFinit(Euv, rtol, sgrid, param)
     end
     Δ_dyn = real(matfreq2tau(Δ.dlrGrid, Δ_dyn, Δ.dlrGrid.τ, F.timeGrid.grid; axis=4))
 
-    Δ.dynamic, Δ.instant = Δ_dyn, Δ_ins
+    Δ.dynamic, Δ.instant = Δ_dyn .* 0.0, Δ_ins
     F.dynamic = F_dyn
     return Δ, F
 end
@@ -87,7 +87,7 @@ function dotΔ(Δ, Δ0, Δ2=Δ, Δ02=Δ0)
 end
 
 function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, kernel_bare, qgrids, Euv;
-    Ntherm=200, rtol=1e-10)
+    Ntherm=200, rtol=1e-10, Nstop=1000)
     @unpack dim, kF = param
 
     kgrid = G2.spaceGrid
@@ -138,12 +138,15 @@ function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, ke
         println("Δ(kF, ω0) = $Δ_kF, Δ0 = $Δ0  ($(kF + Δ_kF))")
         # n > Ntherm && lamu > lamu0 > 0 && break
         # n > Ntherm && lamu < lamu0 < 0 && break
-        if n > Ntherm
-            lamu = 1 - 1 / (1 + Δ_kF / kF)
+        if Ntherm < n < Nstop
+            # lamu = 1 - 1 / (1 + Δ_kF / kF)
+            lamu = (1 + Δ_kF / kF)
             err = abs(lamu - lamu0) / abs(lamu + EPS)
             # lamu > lamu0 > 0 && err < rtol && break
             err < rtol && break
             lamu0 = lamu
+        elseif n > Nstop
+            break
         end
         if n%printn == 0
             println(1 - kF / Δ0)
@@ -197,7 +200,7 @@ function gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv;
 end
 
 
-function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa)
+function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa, Nstop = 400)
     #--- parameters ---
     param = Parameter.defaultUnit(1 / beta, rs, dim)
     # param = Parameter.rydbergUnit(1 / beta, rs, dim)
@@ -257,7 +260,7 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
         lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
     elseif methodtype == :minisub
         lamu, Δ, F = gapIteration_Renorm(param, channel, G2, kernel, kernel_bare, qgrids, Euv;
-                                         rtol=rtol, Ntherm=Ntherm)
+                                         rtol=rtol, Ntherm=Ntherm, Nstop=Nstop)
     else
         error("method $(methodtype) not implemented!")
     end
@@ -272,7 +275,7 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
     data = [beta lamu channel rs]
 
     dir = "./run/"
-    fname = "gap_$(methodtype)_rs$(rs)_l$(channel).txt"
+    fname = "flow_$(methodtype)_rs$(rs)_l$(channel)_N$(Nstop).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -284,8 +287,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     sigmatype = :none
     int_type = :rpa
 
-    rs = 1.9
+    rs = 3.0
     channel = 0
+    Nloop = 2
     # channels = [0, 0, 0]
     # channels = [0, 1, 2, 3]
 
@@ -294,9 +298,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
         channel = parse(Int, ARGS[2]) - 1
     end
 
-    num = 21
+    num = 25
     # blist = [400, 800, 1600, 3200, 6400]
-    blist = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    blist = [25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
     # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
     # blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
@@ -305,6 +309,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type)
+        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type, Ntherm=Nloop, Nstop=Nloop)
     end
 end

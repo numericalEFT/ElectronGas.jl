@@ -197,9 +197,9 @@ function gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv;
 end
 
 
-function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa)
+function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa, Λs = 0.0)
     #--- parameters ---
-    param = Parameter.defaultUnit(1 / beta, rs, dim)
+    param = Parameter.defaultUnit(1 / beta, rs, dim; Λs = Λs)
     # param = Parameter.rydbergUnit(1 / beta, rs, dim)
     # Euv, rtol = 100 * param.EF, 1e-11
     # maxK, minK = 20param.kF, 1e-8param.kF
@@ -272,7 +272,7 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
     data = [beta lamu channel rs]
 
     dir = "./run/"
-    fname = "gap_$(methodtype)_rs$(rs)_l$(channel).txt"
+    fname = "gap_$(methodtype)_rs$(rs)_l$(channel)_lam$(Λs).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -284,8 +284,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     sigmatype = :none
     int_type = :rpa
 
-    rs = 1.9
+    rs = 2.0
     channel = 0
+    Λs = 0.0003
     # channels = [0, 0, 0]
     # channels = [0, 1, 2, 3]
 
@@ -294,10 +295,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
         channel = parse(Int, ARGS[2]) - 1
     end
 
-    num = 21
+    num = 3
     # blist = [400, 800, 1600, 3200, 6400]
-    blist = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-    # blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
+    # blist = [400 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
     # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
     # blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
 
@@ -305,6 +306,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type)
+        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type, Λs=Λs)
     end
 end
