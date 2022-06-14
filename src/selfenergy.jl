@@ -251,7 +251,9 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
 
     ΣI = imag(Σ_freq.dynamic[1, 1, kF_label, :])
-    Z0 = 1 / (1 - (ΣI[2] - ΣI[1]) / 2 / π * β)
+    ds_dw = (ΣI[2] - ΣI[1]) / 2 / π * β
+    Z0 = 1 / (1 - ds_dw)
+    # println("ds/dw = ", ds_dw)
     # Z0 = 1 / (1 - imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
 
     return Z0

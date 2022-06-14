@@ -146,6 +146,7 @@ generate Para with a complete set of parameters, no value presumed.
     #     EF
     # end
     μ = EF
+    println(kwargs)
 
     para = Para(dim=dim,
         spin=spin,
@@ -156,7 +157,8 @@ generate Para with a complete set of parameters, no value presumed.
         β=β,
         μ=μ
     )
-    return reconstruct(para, kwargs...)
+    # return para
+    return derive(para, kwargs)
 end
 
 """
@@ -213,7 +215,7 @@ assume 4πϵ0=1, me=1, e0=1
  - spin: spin = 1 or 2
  - kwargs: user may explicity set other paramters using the key/value pairs
 """
-@inline function atomicUnit(Θ, rs, dim = 3, spin = 2; kwargs...)
+@inline function atomicUnit(Θ, rs, dim=3, spin=2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = 1
     me = 1
