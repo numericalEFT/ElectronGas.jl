@@ -11,12 +11,12 @@ using Lehmann
 
 const steps = 1e7
 # include("parameter.jl")
-dim = 3
-beta = 100.0
-rs = 5.0
-mass2 = 1.e-3
+dim = 2
+beta = 1000.0
+rs = 1.0
+mass2 = 1.e-6
 # const para = Parameter.rydbergUnit(1.0 / beta, rs, dim, Λs = mass2)
-const para = Parameter.defaultUnit(1.0 / beta, rs, dim, Λs=mass2)
+const para = Parameter.defaultUnit(1.0 / beta, rs, dim, Λs = mass2)
 const kF = para.kF
 const EF = para.EF
 const β = para.β
@@ -35,7 +35,7 @@ qgrid = CompositeGrid.LogDensedGrid(:uniform, [0.0, 6 * kF], [0.0, 2kF], 16, 1e-
 # end
 # const dW0 = matfreq2tau(dlr, W, τgrid.grid, axis = 2)
 Ws, Wa = Interaction.RPAwrapped(10EF, 1e-10, qgrid.grid, para)
-const dW0 = real.(matfreq2tau(Ws.dlrGrid, Ws.dynamic, τgrid.grid, axis=4))[1, 1, :, :]
+const dW0 = real.(matfreq2tau(Ws.dlrGrid, Ws.dynamic, τgrid.grid, axis = 4))[1, 1, :, :]
 
 function integrand(config)
     if config.curr == 1
@@ -97,8 +97,8 @@ function fock(extn)
     dof = [[1, 1],] # degrees of freedom of the Fock diagram
     obs = zeros(2) # observable for the Fock diagram 
 
-    config = MCIntegration.Configuration(steps, (K, T), dof, obs; para=para)
-    avg, std = MCIntegration.sample(config, integrand, measure; print=0, Nblock=16)
+    config = MCIntegration.Configuration(steps, (K, T), dof, obs; para = para)
+    avg, std = MCIntegration.sample(config, integrand, measure; print = 0, Nblock = 16)
 
     if isnothing(avg) == false
         @printf("%10.6f   %10.6f ± %10.6f\n", -1.0, avg[1], std[1])

@@ -14,7 +14,7 @@ const steps = 1e7
 dim = 3
 beta = 100.0
 rs = 5.0
-mass2 = 1.e-3
+mass2 = 1.e-6
 # const para = Parameter.rydbergUnit(1.0 / beta, rs, dim, Λs = mass2)
 const para = Parameter.defaultUnit(1.0 / beta, rs, dim, Λs=mass2)
 const kF = para.kF

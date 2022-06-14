@@ -146,7 +146,6 @@ generate Para with a complete set of parameters, no value presumed.
     #     EF
     # end
     μ = EF
-    println(kwargs)
 
     para = Para(dim=dim,
         spin=spin,
@@ -157,8 +156,7 @@ generate Para with a complete set of parameters, no value presumed.
         β=β,
         μ=μ
     )
-    # return para
-    return derive(para, kwargs)
+    return reconstruct(para, kwargs...)
 end
 
 """
@@ -193,6 +191,16 @@ assume 4πϵ0=1, me=0.5, e0=sqrt(2)
  - kwargs: user may explicity set other paramters using the key/value pairs
 """
 @inline function rydbergUnit(Θ, rs, dim=3, spin=2; kwargs...)
+    ϵ0 = 1 / (4π)
+    e0 = sqrt(2)
+    me = 0.5
+    kF = (dim == 3) ? (9π / (2spin))^(1 / 3) / rs : sqrt(4 / spin) / rs
+    EF = kF^2 / (2me)
+    β = 1 / Θ / EF
+    return fullUnit(ϵ0, e0, me, EF, β, dim, spin; kwargs...)
+end
+
+@inline function test_rydbergUnit(ϵ0, Θ, rs, dim=3, spin=2; kwargs...)
     ϵ0 = 1 / (4π)
     e0 = sqrt(2)
     me = 0.5

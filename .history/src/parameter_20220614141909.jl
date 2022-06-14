@@ -155,10 +155,11 @@ generate Para with a complete set of parameters, no value presumed.
         me=me,
         EF=EF,
         β=β,
-        μ=μ
+        μ=μ,
+        kwargs...
     )
-    # return para
-    return derive(para, kwargs)
+    return para
+    # return reconstruct(para, kwargs...)
 end
 
 """

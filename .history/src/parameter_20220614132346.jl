@@ -146,7 +146,6 @@ generate Para with a complete set of parameters, no value presumed.
     #     EF
     # end
     μ = EF
-    println(kwargs)
 
     para = Para(dim=dim,
         spin=spin,
@@ -157,8 +156,7 @@ generate Para with a complete set of parameters, no value presumed.
         β=β,
         μ=μ
     )
-    # return para
-    return derive(para, kwargs)
+    return reconstruct(para, kwargs...)
 end
 
 """

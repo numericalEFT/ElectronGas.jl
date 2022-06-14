@@ -159,6 +159,7 @@ generate Para with a complete set of parameters, no value presumed.
     )
     # return para
     return derive(para, kwargs)
+    # return reconstruct(para, kwargs...)
 end
 
 """
