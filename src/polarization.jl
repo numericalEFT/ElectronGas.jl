@@ -45,7 +45,7 @@ end
     # end
 end
 
-function finitetemp_kgrid(q::Float64, kF::Float64, maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+function finitetemp_kgrid(q::Float64, kF::Float64, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
     kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
     return kgrid
@@ -68,7 +68,7 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
  - minterval: optional, actual minterval of grid is this value times min(q,kF)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
 """
-function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     @unpack dim, kF, β = param
     if dim != 2 && dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
@@ -105,7 +105,7 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk = 20, scaleN =
     return Interp.integrate1D(integrand, kgrid)
 end
 
-function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk = 20, scaleN = 20, minterval = 1e-6, gaussN = 10)
+function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     @unpack dim, kF, β = param
     if dim != 2 && dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
@@ -135,7 +135,7 @@ function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk = 2
         end
     end
 
-    return Interp.integrate1D(integrand, kgrid; axis = 1)
+    return Interp.integrate1D(integrand, kgrid; axis=1)
 end
 
 @inline function Polarization0_2dZeroTemp(q, n, param)
@@ -257,7 +257,7 @@ function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param; kwargs...)
     end
     return result
 end
-function Polarization0_ZeroTemp_Quasiparticle(q::Float64, n, param; massratio = 1.0, kwargs...)
+function Polarization0_ZeroTemp_Quasiparticle(q::Float64, n, param; massratio=1.0, kwargs...)
     return Polarization0_ZeroTemp(q, n, param; kwargs...) * massratio
 end
 
@@ -276,10 +276,10 @@ Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
  - param: other system parameters
  - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
 """
-function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc = Polarization0_ZeroTemp) where {SGT}
+function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc=Polarization0_ZeroTemp) where {SGT}
     @unpack β = param
 
-    green = GreenFunc.Green2DLR{Float64}(:polarization, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry = :ph, rtol = rtol)
+    green = GreenFunc.Green2DLR{Float64}(:polarization, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
     green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
     for (ki, k) in enumerate(sgrid)
         # for (ni, n) in enumerate(green.dlrGrid.n)
