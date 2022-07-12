@@ -273,6 +273,9 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
 
     dir = "./run/"
     fname = "gap_$(methodtype)_rs$(rs)_l$(channel).txt"
+    if Λs != 0
+        fname = "gap_$(methodtype)_rs$(rs)_l$(channel)_lam$(Λs).txt"
+    end
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
