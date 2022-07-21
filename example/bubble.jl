@@ -66,8 +66,8 @@ function run(steps)
     dof = [[2, 1, 1],] # degrees of freedom of the normalization diagram and the bubble
     obs = zeros(Float64, Qsize) # observable for the normalization diagram and the bubble
 
-    config = MCIntegration.Configuration(steps, (T, K, Ext), dof, obs; para = para)
-    avg, std = MCIntegration.sample(config, integrand, measure; print = 0, Nblock = 16)
+    config = MCIntegration.Configuration(steps, (T, K, Ext), dof, obs; para=para)
+    avg, std = MCIntegration.sample(config, integrand, measure; print=0, Nblock=16)
     # @profview MonteCarlo.sample(config, integrand, measure; print=0, Nblock=1)
     # sleep(100)
 
