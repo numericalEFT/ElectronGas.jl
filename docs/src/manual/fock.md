@@ -24,7 +24,7 @@ v(r)=\frac{e^2 \exp(-\lambda r)}{r}\rightarrow v_q=\frac{4\pi e^2}{q^2+\lambda^2
 \Sigma_x(k)=\frac{e^2}{2\pi\,k}\int_0^{\infty} dq n_q q \ln\left(\frac{\lambda^2+(k-q)^2}{\lambda^2+(k+q)^2}\right)
 ```
 
-- Next we introduce new variables  $x=k/\lambda$  and  $y=q/\lambda$  and  $x_F=k_F\lambda$  to obtain
+- Next we introduce new variables  $x=k/\lambda$  and  $y=q/\lambda$  and  $x_F=k_F/\lambda$  to obtain
 ```math
 \Sigma_x(k=\lambda x)=-\frac{\lambda e^2}{2\pi x}\int_0^{x_F} dy y \ln\left(\frac{1+(x+y)^2}{1+(x-y)^2}\right)
 ```
