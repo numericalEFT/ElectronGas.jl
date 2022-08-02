@@ -7,6 +7,7 @@ using Random
     T::Float64 = 2e-2
     E_c::Float64 = π
     Ω::Float64 = 0.1
+    f::Float64 = 1.0
 end
 
 para = Para()
@@ -15,7 +16,8 @@ print(para)
 function Veffsim(ω1, ω2; para=para)
     ωsqp = (ω1 + ω2)^2
     ωsqm = (ω1 - ω2)^2
-    return para.g * π * (ωsqp / (ωsqp + para.Ω^2) + ωsqm / (ωsqm + para.Ω^2))
+    # return para.g * π * (ωsqp / (ωsqp + para.Ω^2) + ωsqm / (ωsqm + para.Ω^2))
+    return para.g * π * (2*para.f - para.Ω^2*(1 / (ωsqp + para.Ω^2) + 1 / (ωsqm + para.Ω^2)))
 end
 
 println("Veffsim(1.0, 2.0)=$(Veffsim(1.0, 2.0))")
@@ -172,15 +174,31 @@ function flow(lnbetas; para=para, iter=iterate_num)
     return lnbetas, lams, b, Tc
 end
 
-delta, λ = iterate_num(para=para)
-println("λ=$λ")
+lnbetas = [2.6:0.1:3.2;]
+plt = plot(xlims=(0.0, 4.0))
+for i in 1:length(lnbetas)
+    beta = 10^(lnbetas[i])
+    # critical at 3.0<f<3.5
+    param = Para(T=1 / beta, f=3.2)
+    delta, λ = iterate_num(para=param)
+    println("λ=$(λ)")
+    ωn = [π*param.T*(2*n-1) for n in 1:length(delta)]
+    plot!(plt, ωn, delta)
+    # display(plt)
+    # readline()
+end
+display(plt)
+readline()
+
+# delta, λ = iterate_num(para=para)
+# println("λ=$λ")
 # println(delta)
 
 
-it=MC_Iterator(para=para)
-iterate!(it; Niter = 1e7, reweightn = 1e3)
-λ = 1-1/Δ(it, 1)
-println("λ=$λ")
+# it=MC_Iterator(para=para)
+# iterate!(it; Niter = 1e7, reweightn = 1e3)
+# λ = 1-1/Δ(it, 1)
+# println("λ=$λ")
 # println(it.Δ0hist)
 # println(it.Δhist)
 
