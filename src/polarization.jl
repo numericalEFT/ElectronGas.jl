@@ -217,6 +217,106 @@ end
 end
 
 """
+    @inline function Polarization0_3dZeroTemp_LinearDispersion(q, n, param)
+
+Polarization for electrons with dispersion linearized near the Fermi surface. See "Condensed Matter Field Theory" by Altland, Eq. (5.30).
+```math
+Π_{q, ω_n}=-\\frac{1}{2} N_F \\left[1-\\frac{i ω_n}{2 v_F q} \\operatorname{ln} \\left(\\frac{i ω_n+v_F q}{i ω_n-v_F q}\\right)\\right]
+```
+The log function can be replaced with arctan,
+
+```math
+\\operatorname{arctan}(x) = \\frac{i}{2} \\ln \\frac{i+x}{i-x}
+```
+"""
+@inline function Polarization0_3dZeroTemp_LinearDispersion(q, n, param)
+
+    @unpack me, kF, β = param
+    density = me * kF / (2π^2) #spinless density of states
+    vF = kF / me
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    Π = 0.0
+    ω_n = 2 * π * n / β
+    x = q * vF / ω_n
+    y = ω_n / (q * vF)
+
+    if n == 0
+        Π = density
+    else
+        if abs(x) > 1e-6
+            Π = density * (1 - atan(x) / x)
+        else
+            Π = density * (x^2 / 3 - x^4 / 5)
+        end
+    end
+    # initially derived for spin=1/2
+    return -Π
+end
+
+"""
+    @inline function Polarization0_3dZeroTemp_Q(q, n, param)
+
+Polarization for electrons ansatz inspired by "Condensed Matter Field Theory" by Altland, Problem 6.7.
+```math
+Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}{\\left(\\frac{2ω_n}{v_F q} \\right)^2+π^2}\\right)
+```
+This ansatz is asymtotically exact in the large q limit, and is only qualitatively correct in the small q limit.
+
+# Remark:
+
+For the exact free-electron polarization, we expect
+In the limit q ≫ ω_n,
+```math
+Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{ω_n}{v_F q}\\right)
+```
+and in the limit q ≪ ω_n, 
+```math
+Π(q, iω_n) → -\\frac{1}{2} N_F \\frac{1}{3}\\left(\\frac{v_F q}{ω_n}\\right)^2
+```
+
+The above ansatz has the right large-q behavior, while its small-q is slightly different (prefactor 1/3 is modified to 2/π^2≈0.2026)
+"""
+@inline function Polarization0_3dZeroTemp_Q(q, n, param)
+    @unpack me, kF, β = param
+    density = me * kF / (2π^2)
+    vF = kF / me
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    Π = 0.0
+    ω_n = 2 * π * n / β
+    x = q * vF / ω_n
+
+    if n == 0
+        Π = density
+    else
+        Π = density * (1 - π / sqrt(π^2 + 4 * x^2))
+    end
+    # initially derived for spin=1/2
+    return -Π
+end
+
+"""
     function Polarization0_ZeroTemp(q, n, param)
 
 Zero temperature one-spin Π0 function for matsubara frequency and momentum. For low temperature the finite temperature
