@@ -44,9 +44,11 @@ using ..Parameters
     e0s::Float64 = e0
     e0a::Float64 = espin
     NF::Float64 = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π
+    ωp::Float64 = (dim == 3) ? sqrt(4π * e0^2 * n / me) : 0.0 # plasma frequency
+    qTF::Float64 = (dim == 3) ? sqrt(4π * e0^2 * NF) : 0.0 # inverse thomas-fermi screening length
 end
 
-derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF)
+derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF, :ωp)
 
 """
     function derive(param::Para; kws...)

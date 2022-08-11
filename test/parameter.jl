@@ -12,14 +12,17 @@
     @test param.gs == 1.0
     @test param.ga == 0.0
 
+    @test param.ωp ≈ sqrt(4 * param.kF^3 * param.e0^2 / 3 / param.me / π)
+
     newbeta = 1e3
     ga = 1.0
-    newparam = Parameter.derive(param, β = newbeta, ga = ga)
+    newparam = Parameter.derive(param, β=newbeta, ga=ga)
 
     @test newparam.me == 0.5
     @test newparam.EF == 1.0
     @test newparam.kF == 1.0
     @test newparam.β == newbeta
     @test newparam.ga == ga
+
 
 end

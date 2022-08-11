@@ -311,6 +311,51 @@ The above ansatz has the right large-q behavior, while its small-q is slightly d
         Π = density
     else
         Π = density * (1 - π / sqrt(π^2 + 4 * x^2))
+        # Π = density * (1 - π / sqrt(π^2 + 4 * x^2 + 0.3 * abs(x)))
+        # Π = density * (1 - π / sqrt(π^2 + 0 * x^2 + 4.0 * x^4))
+        # Π = density * (1 - π / sqrt(π^2 + 4 * x^2 + 0.01 * q^2 / kF^2))
+    end
+    # initially derived for spin=1/2
+    return -Π
+end
+
+"""
+    @inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+
+This polarization ansatz preserves the plasma frequency and the static limit.
+```math
+Π(q, iω_n) = -\\frac{1}{2} \\frac{q^2}{4πe^2} \\frac{ω_p^2}{ω_n^2 + ω_p^2\\cdot (q/q_{TF})^2} = -\\frac{N_F}{2}\\left(1-\\frac{3}{3+(q \\cdot vF/ω_n)^2}\\right)
+```
+"""
+@inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+    @unpack me, kF, β, ωp, qTF, e0, NF = param
+    density = me * kF / (2π^2)
+    vF = kF / me
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    Π = 0.0
+    ω_n = 2 * π * n / β
+    x = q * vF / ω_n
+
+    if n == 0
+        Π = density
+    else
+        # Π = q^2 / (4 * π * e0^2) * ωp^2 / (ω_n^2 + ωp^2 * (q / qTF)^2)
+        # Π = density * (1 - 3 / (3 + x^2))
+
+        # Π = density * (x^4 / (3 + x^4))
+        # Π = density * ((x)^2 / (3 + x^2))
+        Π = density * (x^2.0 / (3 + x^2.0))
     end
     # initially derived for spin=1/2
     return -Π
