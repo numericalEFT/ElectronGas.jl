@@ -11,8 +11,6 @@ using ElectronGas.CompositeGrids
 using ElectronGas.Convention
 using DelimitedFiles
 using Plots
-using JLD2, FileIO
-using CodecZlib
 
 include("./eigen.jl")
 
@@ -283,9 +281,8 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
         writedlm(io, data, ' ')
     end
 
-    return real(Δ_freq.dynamic[1,1,kF_label,:] .+ Δ_freq.instant[1,1,kF_label]), fdlr.ωn ./ param.EF, Δ_freq
+    return real(Δ_freq.dynamic[1,1,kF_label,:] .+ Δ_freq.instant[1,1,kF_label]), fdlr.ωn ./ param.EF
 end
-
 
 if abspath(PROGRAM_FILE) == @__FILE__
     # sigmatype = :none
@@ -293,7 +290,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     sigmatype = :g0w0
     int_type = :rpa
 
-    rs = 2.2
+    rs = 2.5
     channel = 0
     # channels = [0, 0, 0]
     # channels = [0, 1, 2, 3]
@@ -308,28 +305,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
     end
 
     num = 9
-    blist = [400, 800, 1600, 3200, 6400, 12800, 25600, 51200, 102400]
+    blist = [400, 800, 1600, 3200, 6400]
     # blist = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # blist = [400 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
     # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
     # blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
     plt = plot(xlims=(0, 10.0))
-    deltas = []
     for (ind, beta) in enumerate(blist)
         # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        ΔkF, ωn, Δ_freq = gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type=int_type, Λs=Λs)
-        # plot!(plt, ωn, ΔkF)
+        ΔkF, ωn = gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type=int_type, Λs=Λs)
+        plot!(plt, ωn, ΔkF)
         # display(plt)
         # readline()
-        push!(deltas, Δ_freq)
     end
 
-    dir = "./run/"
-    fname = "gap_$(methodtype)_rs$(rs)_l$(channel).jld2"
-    save(dir * fname, Dict("deltas" => deltas), compress = true)
-    # display(plt)
-    # readline()
+    display(plt)
+    readline()
 end
