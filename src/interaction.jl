@@ -241,12 +241,12 @@ otherwise, return
     \\frac{(v_q^{\\pm})^2 Π_0} {1 - v_q^{\\pm} Π_0}.
 ```
 """
-function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulombinv, regular=false)
-    return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landauParameter0, Vinv_Bare=Vinv_Bare, regular=regular)
+function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulombinv, regular=false, kwargs...)
+    return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landauParameter0, Vinv_Bare=Vinv_Bare, regular=regular, kwargs...)
 end
 
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
-    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv) where {SGT}
+    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
 
     @unpack β = param
     green_s = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
@@ -257,7 +257,7 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(green_s.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true)
+            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true, kwargs...)
         end
         green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
     end

@@ -183,7 +183,6 @@ end
     Π = 0.0
     x = q / 2 / kF
     ω_n = 2 * π * n / β
-    y = me * ω_n / q / kF
 
     if n == 0
         if abs(q - 2 * kF) > EPS
@@ -192,6 +191,7 @@ end
             Π = density
         end
     else
+        y = me * ω_n / q / kF
         if abs(q - 2 * kF) > EPS
             if y^2 < 1e-4 / EPS
                 theta = atan(2 * y / (y^2 + x^2 - 1))
@@ -214,6 +214,151 @@ end
     end
     # initially derived for spin=1/2
     return -Π / 2
+end
+
+"""
+    @inline function Polarization0_3dZeroTemp_LinearDispersion(q, n, param)
+
+Polarization for electrons with dispersion linearized near the Fermi surface. See "Condensed Matter Field Theory" by Altland, Eq. (5.30).
+```math
+Π_{q, ω_n}=-\\frac{1}{2} N_F \\left[1-\\frac{i ω_n}{2 v_F q} \\operatorname{ln} \\left(\\frac{i ω_n+v_F q}{i ω_n-v_F q}\\right)\\right]
+```
+The log function can be replaced with arctan,
+
+```math
+\\operatorname{arctan}(x) = \\frac{i}{2} \\ln \\frac{i+x}{i-x}
+```
+"""
+@inline function Polarization0_3dZeroTemp_LinearDispersion(q, n, param)
+
+    @unpack me, kF, β = param
+    density = me * kF / (2π^2) #spinless density of states
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    Π = 0.0
+
+    if n == 0
+        Π = density
+    else
+        vF = kF / me
+        ω_n = 2 * π * n / β
+        x = q * vF / ω_n
+        # y = ω_n / (q * vF)
+        if abs(x) > 1e-6
+            Π = density * (1 - atan(x) / x)
+        else
+            Π = density * (x^2 / 3 - x^4 / 5)
+        end
+    end
+    # initially derived for spin=1/2
+    return -Π
+end
+
+"""
+    @inline function Polarization0_3dZeroTemp_Q(q, n, param)
+
+Polarization for electrons ansatz inspired by "Condensed Matter Field Theory" by Altland, Problem 6.7.
+```math
+Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}{\\left(\\frac{2ω_n}{v_F q} \\right)^2+π^2}\\right)
+```
+This ansatz is asymtotically exact in the large q limit, and is only qualitatively correct in the small q limit.
+
+# Remark:
+
+For the exact free-electron polarization, we expect
+In the limit q ≫ ω_n,
+```math
+Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{ω_n}{v_F q}\\right)
+```
+and in the limit q ≪ ω_n, 
+```math
+Π(q, iω_n) → -\\frac{1}{2} N_F \\frac{1}{3}\\left(\\frac{v_F q}{ω_n}\\right)^2
+```
+
+The above ansatz has the right large-q behavior, while its small-q is slightly different (prefactor 1/3 is modified to 2/π^2≈0.2026)
+"""
+@inline function Polarization0_3dZeroTemp_Q(q, n, param)
+    @unpack me, kF, β = param
+    density = me * kF / (2π^2)
+    vF = kF / me
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    if n == 0
+        Π = density
+    else
+        Π = 0.0
+        ω_n = 2 * π * n / β
+        x = q * vF / ω_n
+
+        Π = density * (1 - π / sqrt(π^2 + 4 * x^2))
+        # Π = density * (1 - π / sqrt(π^2 + 4 * x^2 + 0.3 * abs(x)))
+        # Π = density * (1 - π / sqrt(π^2 + 0 * x^2 + 4.0 * x^4))
+        # Π = density * (1 - π / sqrt(π^2 + 4 * x^2 + 0.01 * q^2 / kF^2))
+    end
+    # initially derived for spin=1/2
+    return -Π
+end
+
+"""
+    @inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+
+This polarization ansatz preserves the plasma frequency and the static limit.
+```math
+Π(q, iω_n) = -\\frac{1}{2} \\frac{q^2}{4πe^2} \\frac{ω_p^2}{ω_n^2 + ω_p^2\\cdot (q/q_{TF})^2} = -\\frac{N_F}{2}\\left(1-\\frac{3}{3+(q \\cdot vF/ω_n)^2}\\right)
+```
+"""
+@inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+    @unpack me, kF, β, ωp, qTF, e0, NF = param
+    density = me * kF / (2π^2)
+    vF = kF / me
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+    if n < 0
+        n = -n
+    end
+    # if q is too small, set to 1000eps
+    if q < eps(0.0) * 1e6
+        q = eps(0.0) * 1e6
+    end
+
+    Π = 0.0
+    ω_n = 2 * π * n / β
+    x = q * vF / ω_n
+
+    if n == 0
+        Π = density
+    else
+        # Π = q^2 / (4 * π * e0^2) * ωp^2 / (ω_n^2 + ωp^2 * (q / qTF)^2)
+        # Π = density * (1 - 3 / (3 + x^2))
+
+        # Π = density * (x^4 / (3 + x^4))
+        # Π = density * ((x)^2 / (3 + x^2))
+        Π = density * (x^2.0 / (3 + x^2.0))
+    end
+    # initially derived for spin=1/2
+    return -Π
 end
 
 """

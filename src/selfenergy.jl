@@ -242,15 +242,15 @@ function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, m
     return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
 end
 
-function zfactor(Σ::GreenFunc.Green2DLR)
+function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
     kgrid = Σ.spaceGrid
     kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
-    kF_label = searchsortedfirst(kgrid.grid, kF)
+    k_label = searchsortedfirst(kgrid.grid, kamp)
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
 
-    ΣI = imag(Σ_freq.dynamic[1, 1, kF_label, :])
+    ΣI = imag(Σ_freq.dynamic[1, 1, k_label, :])
     ds_dw = (ΣI[2] - ΣI[1]) / 2 / π * β
     Z0 = 1 / (1 - ds_dw)
     # println("ds/dw = ", ds_dw)
@@ -259,27 +259,27 @@ function zfactor(Σ::GreenFunc.Green2DLR)
     return Z0
 end
 
-function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6)
+function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
 
     δK *= kF
     kgrid = Σ.spaceGrid
-    kF_label = searchsortedfirst(kgrid.grid, kF)
-    z = zfactor(Σ)
+    k_label = searchsortedfirst(kgrid.grid, kamp)
+    z = zfactor(param, Σ; kamp=kamp)
 
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
-    k1, k2 = kF_label, kF_label + 1
+    k1, k2 = k_label, k_label + 1
     while abs(kgrid.grid[k2] - kgrid.grid[k1]) < δK
         k2 += 1
     end
-    @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
+    # @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
     sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
     sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
     ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
 
     # println("m/kF ds_dk = $(me/kF*ds_dk)")
-    return 1.0 / z / (1 + me / kF * ds_dk)
+    return 1.0 / z / (1 + me / kamp * ds_dk)
 end
 
 function chemicalpotential(param, Σ::GreenFunc.Green2DLR)
