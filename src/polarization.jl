@@ -183,7 +183,6 @@ end
     Π = 0.0
     x = q / 2 / kF
     ω_n = 2 * π * n / β
-    y = me * ω_n / q / kF
 
     if n == 0
         if abs(q - 2 * kF) > EPS
@@ -192,6 +191,7 @@ end
             Π = density
         end
     else
+        y = me * ω_n / q / kF
         if abs(q - 2 * kF) > EPS
             if y^2 < 1e-4 / EPS
                 theta = atan(2 * y / (y^2 + x^2 - 1))
@@ -233,7 +233,6 @@ The log function can be replaced with arctan,
 
     @unpack me, kF, β = param
     density = me * kF / (2π^2) #spinless density of states
-    vF = kF / me
     # check sign of q, use -q if negative
     if q < 0
         q = -q
@@ -247,13 +246,14 @@ The log function can be replaced with arctan,
     end
 
     Π = 0.0
-    ω_n = 2 * π * n / β
-    x = q * vF / ω_n
-    y = ω_n / (q * vF)
 
     if n == 0
         Π = density
     else
+        vF = kF / me
+        ω_n = 2 * π * n / β
+        x = q * vF / ω_n
+        # y = ω_n / (q * vF)
         if abs(x) > 1e-6
             Π = density * (1 - atan(x) / x)
         else
@@ -303,13 +303,13 @@ The above ansatz has the right large-q behavior, while its small-q is slightly d
         q = eps(0.0) * 1e6
     end
 
-    Π = 0.0
-    ω_n = 2 * π * n / β
-    x = q * vF / ω_n
-
     if n == 0
         Π = density
     else
+        Π = 0.0
+        ω_n = 2 * π * n / β
+        x = q * vF / ω_n
+
         Π = density * (1 - π / sqrt(π^2 + 4 * x^2))
         # Π = density * (1 - π / sqrt(π^2 + 4 * x^2 + 0.3 * abs(x)))
         # Π = density * (1 - π / sqrt(π^2 + 0 * x^2 + 4.0 * x^4))
