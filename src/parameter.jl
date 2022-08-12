@@ -48,7 +48,7 @@ using ..Parameters
     qTF::Float64 = (dim == 3) ? sqrt(4π * e0^2 * NF) : 0.0 # inverse thomas-fermi screening length
 end
 
-derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF, :ωp)
+derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF, :ωp, :qTF)
 
 """
     function derive(param::Para; kws...)
