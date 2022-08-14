@@ -13,7 +13,7 @@
             for n in testn
                 PZ = Polarization.Polarization0_ZeroTemp(q, n, param)
                 PF = Polarization.Polarization0_FiniteTemp(q, n, param)
-                # @test abs((PZ - PF) / (PZ + 1e-6)) < 1e-6
+                @test abs((PZ - PF) / (PZ + 1e-6)) < 1e-6
                 # println("q=$q, n=$n")
                 # println(Polarization.Polarization0_ZeroTemp(q, n, param), "\n")
                 # println(Polarization.Polarization0_FiniteTemp(q, n, param))
@@ -57,7 +57,7 @@
                 @test isapprox(
                     Polarization.Polarization0_ZeroTemp(q, n, param),
                     Polarization.Polarization0_FiniteTemp(q, n, param),
-                    rtol = 1e-6
+                    rtol=1e-6
                 )
             end
         end
@@ -73,7 +73,7 @@
                 @test isapprox(
                     Polarization.Polarization0_ZeroTemp(q, n, param),
                     Polarization.Polarization0_FiniteTemp(q, n, param),
-                    rtol = 1e-4
+                    rtol=1e-4
                 )
             end
         end
@@ -86,8 +86,8 @@
 
         qgrid = [0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
 
-        PZ = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc = Polarization.Polarization0_ZeroTemp)
-        PF = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc = Polarization.Polarization0_FiniteTemp)
+        PZ = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_ZeroTemp)
+        PF = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_FiniteTemp)
 
     end
 
