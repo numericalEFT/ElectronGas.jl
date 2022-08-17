@@ -269,7 +269,7 @@ end
 
 Polarization for electrons ansatz inspired by "Condensed Matter Field Theory" by Altland, Problem 6.7.
 ```math
-Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}{\\left(\\frac{2ω_n}{v_F q} \\right)^2+π^2}\\right)
+Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}\\sqrt{\\left(\\frac{2v_F q}{ω_n} \\right)^2+π^2}\\right)
 ```
 This ansatz is asymtotically exact in the large q limit, and is only qualitatively correct in the small q limit.
 
