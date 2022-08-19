@@ -356,6 +356,14 @@ This polarization ansatz preserves the plasma frequency and the static limit.
         # Π = density * (x^4 / (3 + x^4))
         # Π = density * ((x)^2 / (3 + x^2))
         Π = density * (x^2.0 / (3 + x^2.0))
+        # Π = density * (x^2.0 / (3))
+
+        # if x < π / 2 + 1e-6
+        #     Π = density
+        # else
+        #     Π = density * (1.0 - π / 2 / x)
+        # end
+        # Π = density * (x^2.0 / (3 + x^2.0))
     end
     # initially derived for spin=1/2
     return -Π

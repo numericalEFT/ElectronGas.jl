@@ -242,13 +242,14 @@ function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, m
     return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
 end
 
-function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
     kgrid = Σ.spaceGrid
     kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
     k_label = searchsortedfirst(kgrid.grid, kamp)
-    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    # Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    Σ_freq = GreenFunc.toMatFreq(Σ, ngrid[1:2])
 
     ΣI = imag(Σ_freq.dynamic[1, 1, k_label, :])
     ds_dw = (ΣI[2] - ΣI[1]) / 2 / π * β

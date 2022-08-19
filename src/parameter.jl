@@ -46,6 +46,7 @@ using ..Parameters
     NF::Float64 = (dim == 3) ? spin * me * kF / 2 / π^2 : spin * me / 2 / π
     ωp::Float64 = (dim == 3) ? sqrt(4π * e0^2 * n / me) : 0.0 # plasma frequency
     qTF::Float64 = (dim == 3) ? sqrt(4π * e0^2 * NF) : 0.0 # inverse thomas-fermi screening length
+    # for spin-2 and 3d case, ω_p=v_F*q_TF/sqrt(3)
 end
 
 derived_para_names = (:beta, :Θ, :T, :n, :Rs, :a0, :rs, :kF, :espin, :e0s, :e0a, :NF, :ωp, :qTF)
