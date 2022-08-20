@@ -278,7 +278,7 @@ This ansatz is asymtotically exact in the large q limit, and is only qualitative
 For the exact free-electron polarization, we expect
 In the limit q ≫ ω_n,
 ```math
-Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{ω_n}{v_F q}\\right)
+Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{|ω_n|}{v_F q}\\right)
 ```
 and in the limit q ≪ ω_n, 
 ```math
@@ -350,20 +350,7 @@ This polarization ansatz preserves the plasma frequency and the static limit.
     if n == 0
         Π = density
     else
-        # Π = q^2 / (4 * π * e0^2) * ωp^2 / (ω_n^2 + ωp^2 * (q / qTF)^2)
-        # Π = density * (1 - 3 / (3 + x^2))
-
-        # Π = density * (x^4 / (3 + x^4))
-        # Π = density * ((x)^2 / (3 + x^2))
         Π = density * (x^2.0 / (3 + x^2.0))
-        # Π = density * (x^2.0 / (3))
-
-        # if x < π / 2 + 1e-6
-        #     Π = density
-        # else
-        #     Π = density * (1.0 - π / 2 / x)
-        # end
-        # Π = density * (x^2.0 / (3 + x^2.0))
     end
     # initially derived for spin=1/2
     return -Π
