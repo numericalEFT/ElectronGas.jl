@@ -11,6 +11,7 @@ Cluster = "local"
 inlist = open("./inlist", "r")
 rootdir = os.getcwd()
 execute = "gapfunc_MS.jl"
+# execute = "gapfunc_critical.jl"
 execute1 = "eigen.jl"
 # assert len(sys.argv)==2, "Number of jobs is needed."
 # Number=int(sys.argv[1])
@@ -23,13 +24,15 @@ for index, eachline in enumerate(inlist):
     rs = float(para[0])
     beta0 = float(para[1])
     num = int(para[2])
-    minchan = int(para[3])
-    maxchan = int(para[4])
-    dim = int(para[5])
+    mass2 = float(para[3])
+    minchan = int(para[4])
+    maxchan = int(para[5])
+    dim = int(para[6])
     sigmatype = int(para[-1])
 
     print("Creating {0} jobs...".format(maxchan-minchan+1))
-    fname = "rs{0}_sigtype{1}".format(rs, sigmatype)
+    fname = "rs{0}_ms{1}_sigtype{2}".format(rs, mass2, sigmatype)
+    # fname = "rs{0}_msMax{1}_sigtype{2}".format(rs, mass2, sigmatype)
     homedir = os.getcwd() + "/"+fname
 
     if(os.path.exists(homedir) != True):
@@ -57,9 +60,9 @@ for index, eachline in enumerate(inlist):
 
         pname = "para"+str(pid)
         with open(homedir+"/"+pname, "w") as file:
-            parameters = ' '.join(para[:3])+' '+str(dim)+' '+str(pid)
+            parameters = ' '.join(para[:4])+' '+str(dim)+' '+str(pid)
             file.write(parameters+"\n\n")
-            file.write("#rs, Beta0, num_beta, dim, channel")
+            file.write("#rs, Beta0, num_beta, mass2, dim, channel")
 
         if Cluster == "local":
             os.chdir(homedir)

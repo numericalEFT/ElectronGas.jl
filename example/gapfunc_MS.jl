@@ -144,8 +144,8 @@ function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, ke
             # lamu < 0 && error("beta = $beta is too small!")
 
             err = abs(lamu - lamu0) / abs(lamu + EPS)
-            lamu > lamu0 > 0 && err < rtol && break
-            lamu0 < lamu < 0 && err < rtol && break
+            lamu >= lamu0 > 0 && err < rtol && break
+            lamu0 <= lamu < 0 && err < rtol && break
             lamu0 = lamu
         end
         println(1 - kF / Δ0)
@@ -198,9 +198,9 @@ function gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv;
 end
 
 
-function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype, gaptype)
+function gapfunction(beta, rs, mass2, channel::Int, dim::Int, sigmatype, gaptype)
     #--- parameters ---
-    param = Parameter.defaultUnit(1 / beta, rs, dim)
+    param = Parameter.defaultUnit(1 / beta, rs, dim, Λs=mass2)
     # param = Parameter.rydbergUnit(1 / beta, rs, dim)
     # Euv, rtol = 100 * param.EF, 1e-11
     # maxK, minK = 20param.kF, 1e-8param.kF
@@ -257,17 +257,34 @@ function gapfunction(beta, rs, channel::Int, dim::Int, sigmatype, gaptype)
 
     if gaptype == :explicit
         lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
-        fname = "./gap$(dim)DExplicit_rs$(rs)_l$channel.txt"
+        fname = "./gap$(dim)DExplicit_rs$(rs)_ms$(mass2)_l$channel.txt"
     elseif gaptype == :msrenorm
         lamu, Δ, F = gapIteration_Renorm(param, channel, G2, kernel, kernel_bare, qgrids, Euv; rtol=rtol, α=0.7)
+        fnam1 = "./Deltadyn_rs$(rs)_l$(channel)_b$beta.txt"
+        fnam2 = "./Deltains0_rs$(rs)_l$(channel).txt"
+        fnam3 = "./Deltains_rs$(rs)_l$(channel)_b$beta.txt"
         fname = "./gap$(dim)D_rs$(rs)_l$channel.txt"
     end
     println("lamu = $lamu")
 
     Δ_freq = GreenFunc.toMatFreq(Δ)
+
     println(fdlr.ωn ./ param.EF)
     println(view(real(Δ_freq.dynamic), 1, 1, kF_label, :))
     # println(view(F, kF_label, :))
+
+    data = [fdlr.ωn ./ param.EF real(Δ_freq.dynamic[1, 1, kF_label, :])]
+    open(fnam, "w") do io
+        writedlm(io, data, ' ')
+    end
+    data = [beta real(Δ.instant[1, 1, kF_label]) channel rs]
+    open(fnam2, "a+") do io
+        writedlm(io, data, ' ')
+    end
+    data = [G2.spaceGrid.grid real(�~T.instant[1, 1, :])]
+    open(fnam3, "w") do io
+        writedlm(io, data, ' ')
+    end
 
     data = [beta lamu channel rs]
     open(fname, "a+") do io
@@ -294,16 +311,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     if !isempty(ARGS[2])
         para = split(readline(ARGS[2]))
-        rs, beta0, num, dim, channel = parse(Float64, para[1]), parse(Float64, para[2]), parse(Int, para[3]), parse(Int, para[4]), parse(Int, para[end])
+        rs, beta0, num, mass2, dim, channel = parse(Float64, para[1]), parse(Float64, para[2]), parse(Int, para[3]), parse(Float64, para[4]), parse(Int, para[5]), parse(Int, para[end])
     end
     blist = [beta0 * 2^i for i in LinRange(0, num - 1, num)]
 
     # for channel in channels
     for beta in blist
         # for (channel, beta) in zip(channels, blist)
-        println("beta = $beta,    rs = $rs,    Dim=$dim")
+        println("beta = $beta,  rs = $rs,  Mass2 = $mass2,  Dim=$dim")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim, sigmatype, gaptype)
+        gapfunction(beta, rs, mass2, channel, dim, sigmatype, gaptype)
     end
     # end
 end

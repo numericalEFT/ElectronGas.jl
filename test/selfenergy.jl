@@ -139,7 +139,7 @@
             G_ins = tau2tau(G_tau.dlrGrid, G_tau.dynamic, [β,], G_tau.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
             integrand = real(G_ins) .* kgrid.grid
             density0 = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π
-            # @test isapprox(param.n, density0, rtol=3e-5)
+            @test isapprox(param.n, density0, rtol=3e-5)
 
             @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, :rpa)
             Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
@@ -148,7 +148,7 @@
             kF = kgrid.panel[3]
             Z0 = (SelfEnergy.zfactor(Σ))
             z = zlist[ind]
-            # @test isapprox(Z0, z, rtol=3e-3)
+            @test isapprox(Z0, z, rtol=3e-3)
             mratio = SelfEnergy.massratio(param, Σ)
             m = mlist[ind]
             # @test isapprox(mratio, m, rtol=3e-3)
@@ -166,7 +166,7 @@
             # println(real(G_ins))
             integrand = real(G_ins) .* kgrid.grid
             density = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π
-            # @test isapprox(param.n, density, rtol=2e-4)
+            @test isapprox(param.n, density, rtol=2e-4)
             println("density n, from G0, from G_RPA: $(param.n),  $density0 (rtol=$(density0/param.n-1)),  $density (rtol=$(density/param.n-1))")
         end
     end
