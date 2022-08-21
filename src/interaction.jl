@@ -205,8 +205,8 @@ function bubblecorrection(q::Float64, n::Int, param;
         q = EPS
     end
 
-    Πs::Float64 = spin * pifunc(q, n, param) * massratio
-    Πa::Float64 = spin * pifunc(q, n, param) * massratio
+    Πs::Float64 = spin * pifunc(q, n, param; kwargs...) * massratio
+    Πa::Float64 = spin * pifunc(q, n, param; kwargs...) * massratio
     if regular
         Ks = bubbledysonreg(Vinvs, Fs, Πs)
         Ka = bubbledysonreg(Vinva, Fa, Πa)

@@ -269,7 +269,7 @@ end
 
 Polarization for electrons ansatz inspired by "Condensed Matter Field Theory" by Altland, Problem 6.7.
 ```math
-Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}{\\left(\\frac{2ω_n}{v_F q} \\right)^2+π^2}\\right)
+Π(q, iω_n) = -\\frac{1}{2} N_F \\left(1-\\frac{π}\\sqrt{\\left(\\frac{2v_F q}{ω_n} \\right)^2+π^2}\\right)
 ```
 This ansatz is asymtotically exact in the large q limit, and is only qualitatively correct in the small q limit.
 
@@ -278,7 +278,7 @@ This ansatz is asymtotically exact in the large q limit, and is only qualitative
 For the exact free-electron polarization, we expect
 In the limit q ≫ ω_n,
 ```math
-Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{ω_n}{v_F q}\\right)
+Π(q, iω_n) → -\\frac{1}{2} N_F \\left(1-\\frac{π}{2}\\frac{|ω_n|}{v_F q}\\right)
 ```
 and in the limit q ≪ ω_n, 
 ```math
@@ -320,14 +320,20 @@ The above ansatz has the right large-q behavior, while its small-q is slightly d
 end
 
 """
-    @inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+    @inline function Polarization0_3dZeroTemp_Plasma(q, n, param; factor = 3.0)
 
 This polarization ansatz preserves the plasma frequency and the static limit.
 ```math
 Π(q, iω_n) = -\\frac{1}{2} \\frac{q^2}{4πe^2} \\frac{ω_p^2}{ω_n^2 + ω_p^2\\cdot (q/q_{TF})^2} = -\\frac{N_F}{2}\\left(1-\\frac{3}{3+(q \\cdot vF/ω_n)^2}\\right)
 ```
+where ω_p is the plasma frequency, and 
+```math
+ω_p = v_F q_{TF}/\\sqrt{3}
+```
+
+User may change change the parameter `factor` to be different form 3 to change the ansatz.
 """
-@inline function Polarization0_3dZeroTemp_Plasma(q, n, param)
+@inline function Polarization0_3dZeroTemp_Plasma(q, n, param; factor=3.0)
     @unpack me, kF, β, ωp, qTF, e0, NF = param
     density = me * kF / (2π^2)
     vF = kF / me
@@ -350,12 +356,7 @@ This polarization ansatz preserves the plasma frequency and the static limit.
     if n == 0
         Π = density
     else
-        # Π = q^2 / (4 * π * e0^2) * ωp^2 / (ω_n^2 + ωp^2 * (q / qTF)^2)
-        # Π = density * (1 - 3 / (3 + x^2))
-
-        # Π = density * (x^4 / (3 + x^4))
-        # Π = density * ((x)^2 / (3 + x^2))
-        Π = density * (x^2.0 / (3 + x^2.0))
+        Π = density * (x^2.0 / (factor + x^2.0))
     end
     # initially derived for spin=1/2
     return -Π
