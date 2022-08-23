@@ -331,7 +331,7 @@ where ω_p is the plasma frequency, and
 ω_p = v_F q_{TF}/\\sqrt{3}
 ```
 
-User may change change the parameter `factor` to be different form 3 to change the ansatz.
+User may change the parameter `factor` to modify the plasma frequency in this ansatz.
 """
 @inline function Polarization0_3dZeroTemp_Plasma(q, n, param; factor=3.0)
     @unpack me, kF, β, ωp, qTF, e0, NF = param
