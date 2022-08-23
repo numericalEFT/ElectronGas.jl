@@ -17,8 +17,9 @@ makedocs(;
         "Home" => "index.md",
         "Manual" => [
             "manual/fock.md",
-            "manual/polarization.md",
+            "manual/polarization_3D.md",
             "manual/polarization_2D.md",
+            "manual/polarization_approx.md",
             "manual/legendreinteraction.md",
             "manual/G_plus_Moroni.md",
             "manual/quasiparticle.md",
