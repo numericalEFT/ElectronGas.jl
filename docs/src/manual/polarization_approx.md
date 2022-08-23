@@ -11,7 +11,7 @@ The original polarization is given by,
 &=-S\int \frac{d^d \vec k}{{(2\pi)}^d} n(\epsilon_{\vec k}) \left[ \frac{1}{i\Omega+\epsilon_{\vec k}-\epsilon_{\vec k+\vec q}}-\frac{1}{i\Omega+\epsilon_{\vec k-\vec q}-\epsilon_{\vec k}}\right].
 \end{aligned}
 ```
-One possible approximation is to replace the kinetic energy with a dispersion linearized near the Fermi surface,
+One possible approximation is to replace the kinetic energy with a dispersion linearized near the Fermi surface, 
 ```math
 \xi_{\mathbf{p}+\mathbf{q}}-\xi_{\mathbf{p}}=(1 / m) \mathbf{p} \cdot \mathbf{q}+\mathcal{O}\left(q^{2}\right)
 ```
@@ -31,7 +31,7 @@ Evaluate the integral gives
 &=-\frac{N_F}{2} \int_{-1}^{1} d x \frac{v_{\mathrm{F}} x q}{i \omega_{m}+v_{\mathrm{F}} x q}=-N_F\left[1-\frac{i \omega_{m}}{2 v_{\mathrm{F}} q} \ln \left(\frac{i \omega_{m}+v_{\mathrm{F}} q}{i \omega_{m}-v_{\mathrm{F}} q}\right)\right] .
 \end{aligned}
 ```
-
+The above derivation is adapted from the A. Altland and B. Simons' book "Condensed Matter Field Theory" Chapter 5.2, Eq. (5.30).
 ### Two limits:
 
 For the exact free-electron polarization, we expect
