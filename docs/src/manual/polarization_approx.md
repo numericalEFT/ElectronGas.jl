@@ -53,7 +53,7 @@ where we use the Taylor expansion for ``\text{Log}\left[\frac{1+i x}{-1+i x}\rig
 
 and in the limit ``q ≪ ω_m``, 
 ```math
-Π_0(q, iω_m) \rightarrow -\frac{N_F}{3}\left(\frac{v_F q}{ω_m}\right)^2 = -N_F \left(\frac{q}{q_{TF}}\frac{\omega_p}{\omega}\right)^2
+Π_0(q, iω_m) \rightarrow -\frac{N_F}{3}\left(\frac{v_F q}{ω_m}\right)^2 = -N_F \left(\frac{q}{q_{TF}}\frac{\omega_p}{\omega_m}\right)^2
 ```
 where the plasma-frequency and the Thomas-Fermi screening momentum is connected by ``ω_p=v_F q_{TF}/\sqrt{3}``.
 
