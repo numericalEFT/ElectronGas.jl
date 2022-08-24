@@ -32,3 +32,6 @@ Manifest.toml
 .ipynb_checkpoints
 example/plot
 example/variation
+.history
+
+*.pdf
