@@ -55,7 +55,7 @@ and in the limit ``q ≪ ω_m``,
 ```math
 Π_0(q, iω_m) \rightarrow -\frac{N_F}{3}\left(\frac{v_F q}{ω_m}\right)^2 = -N_F \left(\frac{q}{q_{TF}}\frac{\omega_p}{\omega_m}\right)^2
 ```
-where the plasma-frequency and the Thomas-Fermi screening momentum is connected by ``ω_p=v_F q_{TF}/\sqrt{3}``.
+where the plasma-frequency and the Thomas-Fermi screening momentum is related by ``ω_p=v_F q_{TF}/\sqrt{3}``.
 
 
 ## Plasma Approximation 
