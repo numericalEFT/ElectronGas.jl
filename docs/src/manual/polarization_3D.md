@@ -62,3 +62,49 @@ which could be handled with one dimensional integral of ``k``.
    where ``N_F=Smk_F/(2\pi^2)`` is the density of states, and ``F(x)=\frac{1}{2}-\frac{x^2-1}{4x}\ln \left|\frac{1+x}{1-x}\right|`` is the Lindhard function. 
    
    The weak logarithmic singularity near ``2k_F`` is the cause of the Friedel oscillation and Kohn-Luttinger superconductivity.
+  
+## Polarization in the large frequency limit ``\Omega \gg q v_F``
+As derived in [[polarization (free electron)#Generic formalism]]
+- In the Matsubara representation,
+```math
+P_{q, \Omega}=S\int \frac{d^D k}{(2\pi)^D} \frac{n(\epsilon_k)-n(\epsilon_{k+q})}{i\Omega+\epsilon_k-\epsilon_{k+q}}
+```
+
+```math
+P_{q, \Omega}=S\int \frac{d^D k}{(2\pi)^D} n(\epsilon_k) \left[ \frac{1}{i\Omega+\epsilon_k-\epsilon_{k+q}}-\frac{1}{i\Omega+\epsilon_{k-q}-\epsilon_{k}}\right]
+```
+
+Consider the limit ``\Omega \gg q v_F``,
+
+```math
+P_{q, \Omega}=\frac{S}{i\Omega}\int \frac{d^D k}{(2\pi)^D} n(\epsilon_k) \left[ \frac{1}{1-\Lambda_q/i\Omega}-\frac{1}{1+\Lambda_q/i\Omega}\right]
+```
+
+where ``\Lambda_q=\epsilon_{k+q}-\epsilon_k=(2k \cdot q+q^2)/2m``
+   
+```math
+P_{q, \Omega}=\frac{2S}{(i\Omega)^2}\int \frac{d^D k}{(2\pi)^D} n(\epsilon_k) \left[\Lambda_q+\Lambda_q^3/(i\Omega)^2+...\right]=\frac{n}{m}\frac{q^2}{(i\Omega)^2}\left[1+O\left(\frac{q^2}{(i\Omega)^2}\right)\right]
+```
+
+where is exact in arbitrary dimensions and the electron density ``n=S\int \frac{d^D k}{(2\pi)^D} n(\epsilon_k)``.
+ 
+- The correction term is ``\left[\frac{3}{5}(q v_F)^2+\epsilon_q^2\right]/(i\Omega)^2`` for 3D.
+ 
+ In real frequency, 
+
+```math
+\operatorname{Re} P_{q, \omega} = \frac{n}{m}\frac{q^2}{\omega^2}\left[1+O\left(\frac{q^2}{\omega^2}\right)\right]
+```
+
+### Plasmon frequency
+Plasmon dispersion is the zeros of the dynamic dielectric function,
+```math
+\epsilon=1-v_q P_{q, \omega}=0
+```
+where ``v_q=4\pi e^2/q^2``. 
+The dispersion of the plasmon is,
+```math
+\omega_p^2=\frac{4\pi e^2n}{m}\left[1+O\left(\frac{q^2}{\omega^2}\right)\right]
+```
+
+Plasmon emerges only if ``\epsilon_q \cdot v_q \sim \text{constant}``.
