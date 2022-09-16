@@ -10,7 +10,7 @@ using GreenFunc, Lehmann
         include("polarization.jl")
         include("interaction.jl")
         include("legendreinteraction.jl")
-        # include("selfenergy.jl")
+        include("selfenergy.jl")
     else
         include(ARGS[1])
     end

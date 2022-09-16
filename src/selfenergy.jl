@@ -242,13 +242,24 @@ function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, m
     return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
 end
 
-function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+"""
+    function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
+    
+calculate the z-factor of the self-energy at the momentum kamp
+```math
+    z_k=\\frac{1}{1-\\frac{\\partial Im\\Sigma(k, 0^+)}{\\partial \\omega}}
+```
+"""
+function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
     kgrid = Σ.spaceGrid
     kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
     k_label = searchsortedfirst(kgrid.grid, kamp)
-    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    kamp = kgrid.grid[k_label]
+
+    # Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    Σ_freq = GreenFunc.toMatFreq(Σ, ngrid[1:2])
 
     ΣI = imag(Σ_freq.dynamic[1, 1, k_label, :])
     ds_dw = (ΣI[2] - ΣI[1]) / 2 / π * β
@@ -256,9 +267,17 @@ function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
     # println("ds/dw = ", ds_dw)
     # Z0 = 1 / (1 - imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
 
-    return Z0
+    return Z0, kamp
 end
 
+"""
+    function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
+    
+calculate the effective mass of the self-energy at the momentum kamp
+```math
+    \\frac{m^*_k}{m}=\\frac{1}{z_k} \\cdot \\left(1+\\frac{m}{k}\\frac{\\partial Re\\Sigma(k, 0)}{\\partial k}\\right)^{-1}
+```
+"""
 function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
@@ -266,7 +285,8 @@ function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
     δK *= kF
     kgrid = Σ.spaceGrid
     k_label = searchsortedfirst(kgrid.grid, kamp)
-    z = zfactor(param, Σ; kamp=kamp)
+    kamp = kgrid.grid[k_label]
+    z = zfactor(param, Σ; kamp=kamp)[1]
 
     Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
     k1, k2 = k_label, k_label + 1
@@ -279,14 +299,45 @@ function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
     ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
 
     # println("m/kF ds_dk = $(me/kF*ds_dk)")
-    return 1.0 / z / (1 + me / kamp * ds_dk)
+    return 1.0 / z / (1 + me / kamp * ds_dk), kamp
 end
 
-function chemicalpotential(param, Σ::GreenFunc.Green2DLR)
+"""
+    function bandmassratio(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+    
+calculate the effective band mass of the self-energy at the momentum kamp
+```math
+    \\frac{m^*}{m}=z(kamp)^{-1}/\\left(1+\\frac{Re\\Sigma(kamp, 0) - Re\\Sigma(0, 0)}{k^2/2m}\\right)
+```
+"""
+function bandmassratio(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+    # one can achieve ~1e-5 accuracy with δK = 5e-6
+    @unpack kF, me = param
+
+    z = zfactor(param, Σ; kamp=kamp)[1]
+
+    kgrid = Σ.spaceGrid
+    k_label = searchsortedfirst(kgrid.grid, kamp)
+    kamp = kgrid.grid[k_label]
+
+    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    # @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
+    # sigma1 = real(dynamic(Σ_freq, 0, kamp, 1, 1) + instant(Σ_freq, kamp, 1, 1))
+    # sigma2 = real(dynamic(Σ_freq, 0, 0.0, 1, 1) + instant(Σ_freq, 0.0, 1, 1))
+    sigma1 = real(Σ_freq.dynamic[1, 1, k_label, 1] + Σ_freq.instant[1, 1, k_label])
+    sigma2 = real(Σ_freq.dynamic[1, 1, 1, 1] + Σ_freq.instant[1, 1, 1])
+    ds_dk = (sigma1 - sigma2) / (kamp^2 / 2 / me)
+
+    # println("m/kF ds_dk = $(me/kF*ds_dk)")
+    return 1.0 / z / (1 + ds_dk), kamp
+end
+
+function chemicalpotential(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
     kgrid = Σ.spaceGrid
     kidx = searchsortedfirst(kgrid.grid, kF)
+    kamp = kgrid.grid[k_label]
 
     Σ_freq = GreenFunc.toMatFreq(Σ, [-1, 0]) #n=-1 and 0 should have the same real part
 
