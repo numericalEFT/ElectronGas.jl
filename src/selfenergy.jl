@@ -252,7 +252,7 @@ calculate the z-factor of the self-energy at the momentum kamp
 """
 function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
     kgrid = Σ.spaceGrid
-    kF = kgrid.panel[3]
+    # kF = kgrid.panel[3]
     β = Σ.dlrGrid.β
 
     k_label = searchsortedfirst(kgrid.grid, kamp)
