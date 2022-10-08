@@ -263,6 +263,7 @@ Return dynamic part and instant part of RPA-interaction Green's function separat
 """
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+    # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as RPA and Vinv_Bare should be fixed with inner state as argument.  
     @unpack β = param
 
     wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
@@ -446,7 +447,7 @@ Return dynamic part and instant part of KO-interaction Green's function separate
 """
 function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
     pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
-
+    # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
     @unpack β = param
     wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
     green_dyn = GreenFunc.MeshArray(1:2, wn_mesh, sgrid; dtype=ComplexF64)
