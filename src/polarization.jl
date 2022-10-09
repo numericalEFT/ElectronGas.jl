@@ -52,7 +52,7 @@ function finitetemp_kgrid(q::Float64, kF::Float64, maxk=20, scaleN=20, minterval
 end
 
 """
-    function Polarization0_FiniteTemp(q, n, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+    function Polarization0_FiniteTemp(q::Float64, n::Int, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
 
 Finite temperature one-spin Π0 function for matsubara frequency and momentum. Analytically sum over transfer frequency and angular
 dependence of momentum, and numerically calculate integration of magnitude of momentum.
@@ -105,6 +105,23 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk=20, scaleN=20,
     return Interp.integrate1D(integrand, kgrid)
 end
 
+"""
+    function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+
+Finite temperature one-spin Π0 function for matsubara frequency and momentum. Analytically sum over transfer frequency and angular
+dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Slower(~200μs) than Polarization0_ZeroTemp.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
+
+#Arguments:
+ - q: momentum
+ - n: Matsubara frequencies given in an AbstractVector s.t. ωn=2πTn
+ - param: other system parameters
+ - maxk: optional, upper limit of integral -> maxk*kF
+ - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - minterval: optional, actual minterval of grid is this value times min(q,kF)
+ - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
+"""
 function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     @unpack dim, kF, β = param
     if dim != 2 && dim != 3
@@ -136,6 +153,42 @@ function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param; maxk=20,
     end
 
     return Interp.integrate1D(integrand, kgrid; axis=1)
+end
+
+"""
+    function Polarization0_FiniteTemp!(obj::MeshArray{T,N,MT}, param; massratio=1.0, maxk=20, scaleN=20, minterval=1e-6, gaussN=10) where {T,N,MT}
+
+Store the finite-temperature one-spin Π0 function for Matsubara frequencies and momenta from `obj.mesh` within `obj.data` 
+as specified by given parameters `param`. Analytically sum over transfer frequency and angular dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
+
+#Arguments:
+ - `obj`: MeshArray with ImFreq TemporalGrid and transfer-momentum grid (two-dimensional mesh) for polarization function.
+ - `param`: other system parameters. `param.β` must be equal to `β` from `obj.mesh`.
+ - `massratio`: optional, effective mass ratio. By default, `massratio=1.0`. 
+ - `maxk`: optional, upper limit of integral -> maxk*kF
+ - `scaleN`: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - `minterval`: optional, actual minterval of grid is this value times min(q,kF)
+ - `gaussN`: optional, N of GaussLegendre grid in LogDensedGrid.
+"""
+function Polarization0_FiniteTemp!(obj::MeshArray{T,N,MT}, param; massratio=1.0, maxk=20, scaleN=20, minterval=1e-6, gaussN=10) where {T,N,MT}
+    @unpack β = param
+    dn = GreenFunc._find_mesh(MT, ImFreq)
+    @assert dn > 0 "No ImFreq in MeshArray for polarization."
+    # @assert dn <= N "Dimension must be <= $N."
+    @assert N == 2 "Polarization's mesh dimension must be 2."
+
+    dk = 3 - dn
+    @assert β ≈ obj.mesh[dn].β "Target grid has to have the same inverse temperature as param.β."
+    for (qi, q) in enumerate(obj.mesh[dk])
+        if dn == 1
+            obj[:, qi] = Polarization0_FiniteTemp(q, obj.mesh[dn].grid, param, maxk=maxk,
+                scaleN=scaleN, minterval=minterval, gaussN=gaussN) * massratio
+        elseif dn == 2
+            obj[qi, :] = Polarization0_FiniteTemp(q, obj.mesh[dn].grid, param, maxk=maxk,
+                scaleN=scaleN, minterval=minterval, gaussN=gaussN) * massratio
+        end
+    end
 end
 
 @inline function Polarization0_2dZeroTemp(q, n, param)
@@ -363,7 +416,7 @@ User may change the parameter `factor` to modify the plasma frequency in this an
 end
 
 """
-    function Polarization0_ZeroTemp(q, n, param)
+    function Polarization0_ZeroTemp(q::Float64, n::Int, param)
 
 Zero temperature one-spin Π0 function for matsubara frequency and momentum. For low temperature the finite temperature
 polarization could be approximated with this function to run faster(~200ns).
@@ -387,6 +440,19 @@ function Polarization0_ZeroTemp(q::Float64, n::Int, param; kwargs...)
     end
 end
 
+"""
+    function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param)
+
+Zero temperature one-spin Π0 function for Matsubara-frequency grid `n` and momentum `q`. For low temperature the finite temperature
+polarization could be approximated with this function to run faster(~200ns).
+Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
+
+
+#Arguments:
+ - `q`: momentum
+ - `n`: Matsubara frequencies given in a AbstractVector s.t. ωn=2πTn
+  - `param`: other system parameters
+"""
 function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param; kwargs...)
     @unpack dim = param
     result = zeros(Float64, length(n))
@@ -403,6 +469,45 @@ function Polarization0_ZeroTemp(q::Float64, n::AbstractVector, param; kwargs...)
     end
     return result
 end
+
+"""
+    function Polarization0_ZeroTemp!(obj::MeshArray{T,N,MT}, param; massratio=1.0, kwargs...) where {T,N,MT}
+
+Store the zero-temperature one-spin Π0 function for Matsubara frequencies and momenta from `obj.mesh` within `obj.data` 
+as specified by given parameters `param`.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
+
+#Arguments:
+ - `obj`: MeshArray with ImFreq TemporalGrid and transfer-momentum grid (two-dimensional mesh) for polarization function.
+ - `param`: other system parameters. `param.β` must be equal to `β` from `obj.mesh`.
+ - `massratio`: optional, effective mass ratio. By default, `massratio=1.0`. 
+"""
+function Polarization0_ZeroTemp!(obj::MeshArray{T,N,MT}, param; massratio=1.0, kwargs...) where {T,N,MT}
+    @unpack dim, β = param
+    dn = GreenFunc._find_mesh(MT, ImFreq)
+    @assert dn > 0 "No ImFreq in MeshArray for polarization."
+    # @assert dn <= N "Dimension must be <= $N."
+    @assert N == 2 "Polarization's mesh dimension must be 2."
+
+    dk = 3 - dn
+    @assert β ≈ obj.mesh[dn].β "Target grid has to have the same inverse temperature as param.β."
+    if dim == 2
+        for ind in eachindex(obj)
+            q = obj.mesh[dk][ind[dk]]
+            n = obj.mesh[dn].grid[ind[dn]]
+            obj[ind] = Polarization0_2dZeroTemp(q, n, param) * massratio
+        end
+    elseif dim == 3
+        for ind in eachindex(obj)
+            q = obj.mesh[dk][ind[dk]]
+            n = obj.mesh[dn].grid[ind[dn]]
+            obj[ind] = Polarization0_3dZeroTemp(q, n, param) * massratio
+        end
+    else
+        error("No support for zero-temperature polarization in $dim dimension!")
+    end
+end
+
 function Polarization0_ZeroTemp_Quasiparticle(q::Float64, n, param; massratio=1.0, kwargs...)
     return Polarization0_ZeroTemp(q, n, param; kwargs...) * massratio
 end
@@ -411,29 +516,24 @@ end
     function Polarization0wrapped(Euv, rtol, sgrid::SGT, param, pifunc = Polarization0_ZeroTemp) where{TGT, SGT}
 
 Π0 function for matsubara frequency and momentum. Use Polarization0_ZeroTemp by default,
-Polarization0_FiniteTemp when pifunc is specified.
+`Polarization0_ZeroTemp!` when pifunc is specified.
 Assume G_0^{-1} = iω_n - (k^2/(2m) - E_F).
-Return full polarization0 function stored in GreenFunc.GreenBasic.Green2DLR.
+Return full polarization0 function stored in GreenFunc.MeshArray.
 
 #Arguments:
  - Euv: Euv of DLRGrid
  - rtol: rtol of DLRGrid
  - sgrid: momentum grid
  - param: other system parameters
- - pifunc: single point Π0 function used. Require form with pifunc(k, n, param).
+ - pifunc: single point Π0 function used. Require form with pifunc(::MeshArray, param).
 """
-function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc=Polarization0_ZeroTemp) where {SGT}
+function Polarization0wrapped(Euv, rtol, sgrid::SGT, param; pifunc=Polarization0_ZeroTemp!) where {SGT}
     @unpack β = param
 
-    green = GreenFunc.Green2DLR{Float64}(:polarization, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
-    green_dyn = zeros(Float64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    for (ki, k) in enumerate(sgrid)
-        # for (ni, n) in enumerate(green.dlrGrid.n)
-        #     green_dyn[1, 1, ki, ni] = pifunc(k, n, param)
-        # end
-        green_dyn[1, 1, ki, :] = pifunc(k, green.dlrGrid.n, param)
-    end
-    green.dynamic = green_dyn
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
+    pifunc(green, param)
+
     return green
 end
 
