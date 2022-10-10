@@ -1,7 +1,7 @@
 name = "ElectronGas"
 uuid = "8c98e03e-8755-48b1-a5ef-1e2e7812a7c9"
 authors = ["Kun Chen"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CompositeGrids = "b5136c89-beeb-4521-9139-60d2cac8be56"
