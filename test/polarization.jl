@@ -1,94 +1,60 @@
 # using Gaston
 
 @testset "Polarization" begin
-    dim = 2
-    beta, rs = 1e2, 1.0
-    param = Parameter.defaultUnit(1 / beta, rs, dim)
-    @testset "Single Point Polarization" begin
-        # for low temp, Π from zero temp and finite temp should be close
-        testq = [-1.0, 0.0, 1e-160, 1e-8, 0.5, 1.0, 2.0, 10.0]
-        testn = [0, 1, 100]
-
-        for q in testq
-            for n in testn
-                PZ = Polarization.Polarization0_ZeroTemp(q, n, param)
-                PF = Polarization.Polarization0_FiniteTemp(q, n, param)
-                @test abs((PZ - PF) / (PZ + 1e-6)) < 1e-6
-                # println("q=$q, n=$n")
-                # println(Polarization.Polarization0_ZeroTemp(q, n, param), "\n")
-                # println(Polarization.Polarization0_FiniteTemp(q, n, param))
-            end
-        end
-    end
-
-    @testset "Polarization vs. q" begin
-        qgrid = [0.0, 1e-160, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
-        polar = similar(qgrid)
-        n = 2
-        println("n = $n,  ω_n = $(2π*n/param.β)")
-        for (qi, q) in enumerate(qgrid)
-            polar[qi] = Polarization.Polarization0_ZeroTemp(q, n, param)
-            # println("q=$q, Π0=$(polar[qi])")
-        end
-    end
-
-    @testset "Polarization vs. n" begin
-        q = 1.0
-        ngrid = [n for n in -5:20]
-        polar = zeros(Float64, size(ngrid))
-
-        println("q = $q")
-        for (i, n) in enumerate(ngrid)
-            polar[i] = Polarization.Polarization0_ZeroTemp(q, n, param)
-            # println("n=$n, Π0=$(polar[i]) \n")
-        end
-    end
+    beta, rs = 1e8, 1.0
+    param3d = Parameter.defaultUnit(1 / beta, rs, 3)
+    param2d = Parameter.defaultUnit(1 / beta, rs, 2)
 
     @testset "Polarization: ZeroTemp vs. FiniteTemp" begin
-        dim = 3
-        beta, rs = 1e8, 1.0
-        param = Parameter.defaultUnit(1 / beta, rs, dim)
-
-        qgrid = [0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
+        # for low temp, Π from zero temp and finite temp should be close
+        qgrid = [-1.0, 0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
         ngrid = [n for n in -5:20]
         for (qi, q) in enumerate(qgrid)
             for (ni, n) in enumerate(ngrid)
                 # println("q=$q, n=$n")
                 @test isapprox(
-                    Polarization.Polarization0_ZeroTemp(q, n, param),
-                    Polarization.Polarization0_FiniteTemp(q, n, param),
+                    Polarization.Polarization0_ZeroTemp(q, n, param3d),
+                    Polarization.Polarization0_FiniteTemp(q, n, param3d),
                     rtol=1e-6
                 )
             end
         end
 
-        dim = 2
-        beta, rs = 1e8, 1.0
-        param = Parameter.defaultUnit(1 / beta, rs, dim)
-
-        qgrid = [0.0, 1e-160, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
-        ngrid = [n for n in -5:20]
         for (qi, q) in enumerate(qgrid)
             for (ni, n) in enumerate(ngrid)
                 @test isapprox(
-                    Polarization.Polarization0_ZeroTemp(q, n, param),
-                    Polarization.Polarization0_FiniteTemp(q, n, param),
+                    Polarization.Polarization0_ZeroTemp(q, n, param2d),
+                    Polarization.Polarization0_FiniteTemp(q, n, param2d),
                     rtol=1e-4
                 )
             end
         end
     end
 
+    qgrid = [-1.0, 0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
+    ngrid = [n for n in -5:20]
+
+    @testset "Polarization0!: 3D ZeroTemp vs. FiniteTemp" begin
+        # param = Parameter.defaultUnit(1 / beta, rs, 3)
+        nmesh = MeshGrids.ImFreq(param3d.β, BOSON; grid=ngrid)
+        PZ = MeshArray(nmesh, qgrid; dtype=Float64)
+        PF = similar(PZ)
+
+        Polarization.Polarization0_ZeroTemp!(PZ, param3d)
+        Polarization.Polarization0_FiniteTemp!(PF, param3d)
+        for ind in eachindex(PZ)
+            @test isapprox(PZ[ind], PF[ind], rtol=1e-6)
+        end
+    end
+
     @testset "Polarization: wrapped" begin
-        dim = 3
-        beta, rs = 1e3, 1.0
-        param = Parameter.defaultUnit(1 / beta, rs, dim)
+        PZ = Polarization.Polarization0wrapped(100param3d.EF, 1e-10, qgrid, param3d, pifunc=Polarization.Polarization0_ZeroTemp!)
+        PF = Polarization.Polarization0wrapped(100param3d.EF, 1e-10, qgrid, param3d, pifunc=Polarization.Polarization0_FiniteTemp!)
 
-        qgrid = [0.0, 1e-16, 1e-8, 1e-7, 1e-6, 1e-5, 5e-5, 1e-4, 1e-3, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0]
+        PZ = Polarization.Polarization0wrapped(100param2d.EF, 1e-10, qgrid, param2d, pifunc=Polarization.Polarization0_ZeroTemp!)
 
-        PZ = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_ZeroTemp)
-        PF = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_FiniteTemp)
-
+        # PZ = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_ZeroTemp)
+        # PF = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_FiniteTemp)
     end
 
     # while true

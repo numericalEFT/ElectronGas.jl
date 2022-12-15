@@ -1,7 +1,7 @@
 name = "ElectronGas"
 uuid = "8c98e03e-8755-48b1-a5ef-1e2e7812a7c9"
 authors = ["Kun Chen"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CompositeGrids = "b5136c89-beeb-4521-9139-60d2cac8be56"
@@ -16,10 +16,12 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 [compat]
 CompositeGrids = "0.0, 0.1"
 Cuba = "2"
-GreenFunc = "0.1"
-LegendrePolynomials = "0.3"
+GreenFunc = "0.2"
+LegendrePolynomials = "0.3, 0.4"
 Lehmann = "0.1, 0.2"
 Parameters = "0.12"
+Roots = "1.4, 2"
+SpecialFunctions = "0.10, 1, 2"
 julia = "1.6"
 
 [extras]

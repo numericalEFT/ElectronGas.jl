@@ -95,47 +95,46 @@ function Fock0_ZeroTemp(k::Float64, param)
 end
 
 function G0wrapped(Euv, rtol, sgrid, param)
-    @unpack me, kF, β, μ = param
+    @unpack me, β, μ = param
 
-    green = GreenFunc.Green2DLR{ComplexF64}(:g0, GreenFunc.IMFREQ, β, true, Euv, sgrid, 1; rtol=rtol)
-    green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ))
-        end
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
+    for ind in eachindex(green)
+        green[ind] = 1 / (im * wn_mesh[ind[1]] - (green.mesh[2][ind[2]]^2 / 2 / me - μ))
     end
-    green.dynamic = green_dyn
+
     return green
 end
 
-function Gwrapped(Σ::GreenFunc.Green2DLR, param)
+function Gwrapped(Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, param)
     @unpack me, kF, β, μ = param
-    Σ_freq = GreenFunc.toMatFreq(Σ)
-    green = Green2DLR{ComplexF64}(
-        :G, GreenFunc.IMFREQ, Σ_freq.β, Σ_freq.isFermi, Σ_freq.dlrGrid.Euv, Σ_freq.spaceGrid, Σ_freq.color;
-        timeSymmetry=Σ_freq.timeSymmetry, rtol=Σ_freq.dlrGrid.rtol)
 
-    green_dyn = zeros(ComplexF64, (green.color, green.color, green.spaceGrid.size, green.timeGrid.size))
-    Σ_shift = real(GreenFunc.dynamic(Σ_freq, π / β, kF, 1, 1) + GreenFunc.instant(Σ_freq, kF, 1, 1))
+    Σ_freq = Σ |> to_dlr |> to_imfreq
+    green = similar(Σ_freq)
 
-    for (ki, k) in enumerate(green.spaceGrid)
-        for (ni, n) in enumerate(green.dlrGrid.n)
-            green_dyn[1, 1, ki, ni] = 1 / (im * (π / β * (2n + 1)) - (k^2 / 2 / me - μ) -
-                                           Σ.dynamic[1, 1, ki, ni] - Σ.instant[1, 1, ki] + Σ_shift)
-        end
+    w0i_label = locate(Σ_freq.mesh[1], 0)
+    kf_label = locate(Σ_freq.mesh[2], kF)
+    Σ_shift = real(Σ_freq[w0i_label, kf_label] + Σ_ins[1, kf_label])
+
+    for ind in eachindex(green)
+        green[ind] = 1 / (im * green.mesh[1][ind[1]] - (green.mesh[2][ind[2]]^2 / 2 / me - μ)
+                          -
+                          Σ_freq[ind] - Σ_ins[1, ind[2]] + Σ_shift)
     end
-    green.dynamic = green_dyn
+
     return green
 end
 
-function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
+function calcΣ_2d(G::GreenFunc.MeshArray, W::LegendreInteraction.DCKernel)
     @unpack β = W.param
 
     kgrid = W.kgrid
     qgrids = W.qgrids
-    fdlr = G.dlrGrid
+    fdlr = G.mesh[1].representation
     bdlr = W.dlrGrid
-    G = GreenFunc.toTau(G)
+
+    G_dlr = G |> to_dlr
+    G_imt = G_dlr |> to_imtime
 
     # prepare kernel, interpolate into τ-space with fdlr.τ
     kernel_bare = W.kernel_bare
@@ -143,43 +142,39 @@ function calcΣ_2d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis=3)
 
     # container of Σ
-    Σ = GreenFunc.Green2DLR{ComplexF64}(:sigma, GreenFunc.IMTIME, β, true, fdlr.Euv, kgrid, 1; rtol=fdlr.rtol)
-    Σ_ins = zeros(ComplexF64, (1, 1, length(kgrid.grid)))
-    Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
+    Σ = similar(G_imt)
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-    @assert length(G.instant) == 0 "current implication supports green function without instant part"
+    G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
+    Σ_ins = similar(G_ins)
 
-    for (ki, k) in enumerate(kgrid.grid)
-
-        for (τi, τ) in enumerate(fdlr.τ)
-            Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
-            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
-            Σ_dyn[1, 1, ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            @assert isfinite(Σ_dyn[1, 1, ki, τi]) "fail Δ at $ki, $τi"
-            if τi == 1
-                Gq = CompositeGrids.Interp.interp1DGrid(G_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
-                Σ_ins[1, 1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-                @assert isfinite(Σ_ins[1, 1, ki]) "fail Δ0 at $ki"
-            end
+    for ind in eachindex(G)
+        τi, ki = ind[1], ind[2]
+        Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], kgrid, qgrids[ki].grid)
+        integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
+        Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+        @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
+        if τi == 1
+            Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], kgrid, qgrids[ki].grid)
+            integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
+            Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+            @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
-    return Σ
+    return Σ / (-4 * π^2), Σ_ins / (-4 * π^2)
 end
 
-# function calcΣ(kernal, kernal_bare, fdlr, kgrid, qgrids)
-function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
+function calcΣ_3d(G::GreenFunc.MeshArray, W::LegendreInteraction.DCKernel)
     @unpack β = W.param
 
     kgrid = W.kgrid
     qgrids = W.qgrids
-    fdlr = G.dlrGrid
+    fdlr = G.mesh[1].representation
     bdlr = W.dlrGrid
-    G = GreenFunc.toTau(G)
+
+    G_dlr = G |> to_dlr
+    G_imt = G_dlr |> to_imtime
 
     # prepare kernel, interpolate into τ-space with fdlr.τ
     kernel_bare = W.kernel_bare
@@ -187,31 +182,28 @@ function calcΣ_3d(G::GreenFunc.Green2DLR, W::LegendreInteraction.DCKernel)
     kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis=3)
 
     # container of Σ
-    Σ = GreenFunc.Green2DLR{ComplexF64}(:sigma, GreenFunc.IMTIME, β, true, fdlr.Euv, kgrid, 1; rtol=fdlr.rtol)
-    Σ_ins = zeros(ComplexF64, (1, 1, length(kgrid.grid)))
-    Σ_dyn = zeros(ComplexF64, (1, 1, length(kgrid.grid), fdlr.size))
+    Σ = similar(G_imt)
 
     # equal-time green (instant)
-    G_ins = tau2tau(G.dlrGrid, G.dynamic, [β,], G.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-    @assert length(G.instant) == 0 "current implication supports green function without instant part"
+    G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
+    Σ_ins = similar(G_ins)
 
-    for (ki, k) in enumerate(kgrid.grid)
-        for (τi, τ) in enumerate(fdlr.τ)
-            Gq = CompositeGrids.Interp.interp1DGrid(G.dynamic[1, 1, :, τi], kgrid, qgrids[ki].grid)
-            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
-            Σ_dyn[1, 1, ki, τi] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            @assert isfinite(Σ_dyn[1, 1, ki, τi]) "fail Δ at $ki, $τi"
-            if τi == 1
-                Gq = CompositeGrids.Interp.interp1DGrid(G_ins, kgrid, qgrids[ki].grid)
-                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
-                Σ_ins[1, 1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-                @assert isfinite(Σ_ins[1, 1, ki]) "fail Δ0 at $ki"
-            end
+    for ind in eachindex(G)
+        τi, ki = ind[1], ind[2]
+        k = kgrid.grid[ki]
+        Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], kgrid, qgrids[ki].grid)
+        integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
+        Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+        @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
+        if τi == 1
+            Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], kgrid, qgrids[ki].grid)
+            integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
+            Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+            @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
         end
     end
 
-    Σ.dynamic, Σ.instant = Σ_dyn ./ (-4 * π^2), Σ_ins ./ (-4 * π^2)
-    return Σ
+    return Σ / (-4 * π^2), Σ_ins / (-4 * π^2)
 end
 
 function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
@@ -225,17 +217,17 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
         kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
             Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
         G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
-        Σ = calcΣ_2d(G0, kernel)
+        Σ, Σ_ins = calcΣ_2d(G0, kernel)
     elseif dim == 3
         kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
             Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
         G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
-        Σ = calcΣ_3d(G0, kernel)
+        Σ, Σ_ins = calcΣ_3d(G0, kernel)
     else
         error("No support for G0W0 in $dim dimension!")
     end
 
-    return Σ
+    return Σ, Σ_ins
 end
 
 function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa, kwargs...)
@@ -243,106 +235,88 @@ function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, m
 end
 
 """
-    function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
+    function zfactor(param, Σ::GreenFunc.MeshArray; kamp=param.kF, ngrid=[0, 1])
     
 calculate the z-factor of the self-energy at the momentum kamp
 ```math
     z_k=\\frac{1}{1-\\frac{\\partial Im\\Sigma(k, 0^+)}{\\partial \\omega}}
 ```
 """
-function zfactor(param, Σ::GreenFunc.Green2DLR; kamp=param.kF, ngrid=[0, 1])
-    kgrid = Σ.spaceGrid
-    kF = kgrid.panel[3]
-    β = Σ.dlrGrid.β
+function zfactor(param, Σ::GreenFunc.MeshArray; kamp=param.kF, ngrid=[0, 1])
+    @unpack kF, β = param
 
-    k_label = searchsortedfirst(kgrid.grid, kamp)
-    kamp = kgrid.grid[k_label]
+    k_label = locate(Σ.mesh[2], kamp)
+    kamp = Σ.mesh[2][k_label]
 
-    # Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
-    Σ_freq = GreenFunc.toMatFreq(Σ, ngrid[1:2])
-
-    ΣI = imag(Σ_freq.dynamic[1, 1, k_label, :])
+    Σ_freq = dlr_to_imfreq(to_dlr(Σ), ngrid[1:2])
+    ΣI = imag(Σ_freq[:, k_label])
     ds_dw = (ΣI[2] - ΣI[1]) / 2 / π * β
     Z0 = 1 / (1 - ds_dw)
-    # println("ds/dw = ", ds_dw)
-    # Z0 = 1 / (1 - imag(Σ_freq.dynamic[1, 1, kF_label, 1]) / π * β)
 
     return Z0, kamp
 end
 
 """
-    function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
+    function massratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, δK=5e-6; kamp=param.kF)
     
 calculate the effective mass of the self-energy at the momentum kamp
 ```math
     \\frac{m^*_k}{m}=\\frac{1}{z_k} \\cdot \\left(1+\\frac{m}{k}\\frac{\\partial Re\\Sigma(k, 0)}{\\partial k}\\right)^{-1}
 ```
 """
-function massratio(param, Σ::GreenFunc.Green2DLR, δK=5e-6; kamp=param.kF)
+function massratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, δK=5e-6; kamp=param.kF)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
 
     δK *= kF
-    kgrid = Σ.spaceGrid
-    k_label = searchsortedfirst(kgrid.grid, kamp)
-    kamp = kgrid.grid[k_label]
+    k_label = locate(Σ.mesh[2], kamp)
+    kamp = Σ.mesh[2][k_label]
     z = zfactor(param, Σ; kamp=kamp)[1]
 
-    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
+    Σ_freq = dlr_to_imfreq(to_dlr(Σ), [0, 1])
     k1, k2 = k_label, k_label + 1
-    while abs(kgrid.grid[k2] - kgrid.grid[k1]) < δK
+    while abs(Σ.mesh[2][k2] - Σ.mesh[2][k1]) < δK
         k2 += 1
     end
     # @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
-    sigma1 = real(Σ_freq.dynamic[1, 1, k1, 1] + Σ_freq.instant[1, 1, k1])
-    sigma2 = real(Σ_freq.dynamic[1, 1, k2, 1] + Σ_freq.instant[1, 1, k2])
-    ds_dk = (sigma1 - sigma2) / (kgrid.grid[k1] - kgrid.grid[k2])
+    sigma1 = real(Σ_freq[1, k1] + Σ_ins[1, k1])
+    sigma2 = real(Σ_freq[1, k2] + Σ_ins[1, k2])
+    ds_dk = (sigma1 - sigma2) / (Σ.mesh[2][k1] - Σ.mesh[2][k2])
 
-    # println("m/kF ds_dk = $(me/kF*ds_dk)")
     return 1.0 / z / (1 + me / kamp * ds_dk), kamp
 end
 
 """
-    function bandmassratio(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+    function bandmassratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray; kamp=param.kF)
     
 calculate the effective band mass of the self-energy at the momentum kamp
 ```math
     \\frac{m^*}{m}=z(kamp)^{-1}/\\left(1+\\frac{Re\\Sigma(kamp, 0) - Re\\Sigma(0, 0)}{k^2/2m}\\right)
 ```
 """
-function bandmassratio(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+function bandmassratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray; kamp=param.kF)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
-    @unpack kF, me = param
-
+    @unpack me = param
     z = zfactor(param, Σ; kamp=kamp)[1]
 
-    kgrid = Σ.spaceGrid
-    k_label = searchsortedfirst(kgrid.grid, kamp)
-    kamp = kgrid.grid[k_label]
+    k_label = locate(Σ.mesh[2], kamp)
+    kamp = Σ.mesh[2][k_label]
 
-    Σ_freq = GreenFunc.toMatFreq(Σ, [0, 1])
-    # @assert kF < kgrid.grid[k1] < kgrid.grid[k2] "k1 and k2 are not on the same side! It breaks $kF > $(kgrid.grid[k1]) > $(kgrid.grid[k2])"
-    # sigma1 = real(dynamic(Σ_freq, 0, kamp, 1, 1) + instant(Σ_freq, kamp, 1, 1))
-    # sigma2 = real(dynamic(Σ_freq, 0, 0.0, 1, 1) + instant(Σ_freq, 0.0, 1, 1))
-    sigma1 = real(Σ_freq.dynamic[1, 1, k_label, 1] + Σ_freq.instant[1, 1, k_label])
-    sigma2 = real(Σ_freq.dynamic[1, 1, 1, 1] + Σ_freq.instant[1, 1, 1])
+    Σ_freq = dlr_to_imfreq(to_dlr(Σ), [0, 1])
+    sigma1 = real(Σ_freq[1, k_label] + Σ_ins[1, k_label])
+    sigma2 = real(Σ_freq[1, 1] + Σ_ins[1, 1])
     ds_dk = (sigma1 - sigma2) / (kamp^2 / 2 / me)
 
-    # println("m/kF ds_dk = $(me/kF*ds_dk)")
     return 1.0 / z / (1 + ds_dk), kamp
 end
 
-function chemicalpotential(param, Σ::GreenFunc.Green2DLR; kamp=param.kF)
+function chemicalpotential(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray)
     # one can achieve ~1e-5 accuracy with δK = 5e-6
     @unpack kF, me = param
-    kgrid = Σ.spaceGrid
-    kidx = searchsortedfirst(kgrid.grid, kF)
-    kamp = kgrid.grid[k_label]
+    k_label = locate(Σ.mesh[2], kF)
 
-    Σ_freq = GreenFunc.toMatFreq(Σ, [-1, 0]) #n=-1 and 0 should have the same real part
-
-    dmu = real(Σ_freq.dynamic[1, 1, kidx, 1] + Σ_freq.instant[1, 1, kidx])
-    return dmu
+    Σ_freq = dlr_to_imfreq(to_dlr(Σ), [-1, 0])
+    return real(Σ_freq[1, k_label] + Σ_ins[1, k_label])
 end
 
 end

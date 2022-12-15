@@ -245,27 +245,39 @@ function RPA(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulombinv, r
     return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landauParameter0, Vinv_Bare=Vinv_Bare, regular=regular, kwargs...)
 end
 
+"""
+    function RPAwrapped(Euv, rtol, sgrid::SGT, param;
+        pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+
+Return dynamic part and instant part of RPA-interaction Green's function separately. Each part is a MeshArray with inner state 
+(1: spin symmetric part, 2: asymmetric part), and ImFreq and q-grid mesh.
+
+#Arguments:
+ - Euv: Euv of DLRGrid
+ - rtol: rtol of DLRGrid
+ - sgrid: momentum grid
+ - param: other system parameters
+ - pifunc: caller to the polarization function
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+"""
 function RPAwrapped(Euv, rtol, sgrid::SGT, param;
     pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
-
+    # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as RPA and Vinv_Bare should be fixed with inner state as argument.  
     @unpack β = param
-    green_s = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
-    green_a = GreenFunc.Green2DLR{Float64}(:rpa, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
-    green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
-    green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
-    green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
-    green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
+
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green_dyn = GreenFunc.MeshArray(1:2, wn_mesh, sgrid; dtype=ComplexF64)
+    green_ins = GreenFunc.MeshArray(1:2, [0,], sgrid; dtype=ComplexF64)
+
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green_s.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true, kwargs...)
+        for (ni, n) in enumerate(wn_mesh.grid)
+            green_dyn[1, ni, ki], green_dyn[2, ni, ki] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true, kwargs...)
         end
-        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
+        green_ins[1, 1, ki], green_ins[2, 1, ki] = Vinv_Bare(k, param)
     end
-    green_s.dynamic = green_dyn_s
-    green_s.instant = green_ins_s
-    green_a.dynamic = green_dyn_a
-    green_a.instant = green_ins_a
-    return green_s, green_a
+
+    return green_dyn, green_ins
 end
 
 """
@@ -417,27 +429,38 @@ function KO(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc=landauParamet
     return bubblecorrection(q, n, param; pifunc=pifunc, landaufunc=landaufunc, Vinv_Bare=Vinv_Bare, regular=regular, kwargs...)
 end
 
+"""
+    function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
+        pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+
+Return dynamic part and instant part of KO-interaction Green's function separately. Each part is a MeshArray with inner state 
+(1: spin symmetric part, 2: asymmetric part), and ImFreq and q-grid mesh.
+
+#Arguments:
+ - Euv: Euv of DLRGrid
+ - rtol: rtol of DLRGrid
+ - sgrid: momentum grid
+ - param: other system parameters
+ - pifunc: caller to the polarization function
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+"""
 function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
     pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
-
+    # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
     @unpack β = param
-    green_s = GreenFunc.Green2DLR{Float64}(int_type, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
-    green_a = GreenFunc.Green2DLR{Float64}(int_type, GreenFunc.IMFREQ, β, false, Euv, sgrid, 1; timeSymmetry=:ph, rtol=rtol)
-    green_dyn_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size, green_s.timeGrid.size))
-    green_ins_s = zeros(Float64, (green_s.color, green_s.color, green_s.spaceGrid.size))
-    green_dyn_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size, green_a.timeGrid.size))
-    green_ins_a = zeros(Float64, (green_a.color, green_a.color, green_a.spaceGrid.size))
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green_dyn = GreenFunc.MeshArray(1:2, wn_mesh, sgrid; dtype=ComplexF64)
+    green_ins = GreenFunc.MeshArray(1:2, [0,], sgrid; dtype=ComplexF64)
+
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(green_s.dlrGrid.n)
-            green_dyn_s[1, 1, ki, ni], green_dyn_a[1, 1, ki, ni] = KO(k, n, param; pifunc=pifunc, landaufunc=landaufunc, Vinv_Bare=Vinv_Bare, kwargs...)
+        for (ni, n) in enumerate(wn_mesh.grid)
+            green_dyn[1, ni, ki], green_dyn[2, ni, ki] = KO(k, n, param; pifunc=pifunc, landaufunc=landaufunc, Vinv_Bare=Vinv_Bare, kwargs...)
         end
-        green_ins_s[1, 1, ki], green_ins_a[1, 1, ki] = Vinv_Bare(k, param)
+        green_ins[1, 1, ki], green_ins[2, 1, ki] = Vinv_Bare(k, param)
     end
-    green_s.dynamic = green_dyn_s
-    green_s.instant = green_ins_s
-    green_a.dynamic = green_dyn_a
-    green_a.instant = green_ins_a
-    return green_s, green_a
+
+    return green_dyn, green_ins
 end
 
 """

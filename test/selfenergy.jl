@@ -42,11 +42,12 @@
         # zlist = [0.859, 0.764, 0.700, 0.645, 0.602, 0.568]
         # mlist = [0.970, 0.992, 1.016, 1.039, 1.059, 1.078]
         ## our results: zlist = [0.859, 0.764, 0.693, 0.637, 0.591]
-        rslist = [5.0,]
-        zlist = [0.5913,]
-        mlist = [1.059,]
-        # zlist = [0.859, 0.764]
-        # mlist = [0.970, 0.992]
+        # rslist = [5.0,]
+        # zlist = [0.5913,]
+        # mlist = [1.059,]
+        rslist = [1.0, 2.0]
+        zlist = [0.859, 0.764]
+        mlist = [0.970, 0.992]
 
         for (ind, rs) in enumerate(rslist)
             param = Parameter.rydbergUnit(θ, rs)
@@ -61,29 +62,28 @@
             # Euv, rtol = 1000 * param.EF, 1e-11
             # maxK, minK = 20param.kF, 1e-9param.kF
             # Nk, order = 16, 12
+            kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [0.0, kF], Nk, minK, order)
 
             # test G0
-            kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [0.0, kF], Nk, minK, order)
             G0 = SelfEnergy.G0wrapped(Euv, rtol, kgrid, param)
-            kF_label = searchsortedfirst(kgrid.grid, kF)
-            G_tau = GreenFunc.toTau(G0)
-            # println(G_tau.timeGrid.grid)
-            # println(real(G_tau.dynamic[1, 1, :, end]) .* (-1))
-            G_ins = tau2tau(G_tau.dlrGrid, G_tau.dynamic, [β,], G_tau.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-            # println(real(G_ins))
-            integrand = real(G_ins) .* kgrid.grid .* kgrid.grid
+            # kF_label = searchsortedfirst(kgrid.grid, kF)
+            kF_label = locate(G0.mesh[2], kF)
+
+            G0_dlr = G0 |> to_dlr
+            G0_tau = G0_dlr |> to_imtime
+
+            G0_ins = dlr_to_imtime(G0_dlr, [β,]) * (-1)
+            integrand = real(G0_ins[1, :]) .* kgrid.grid .* kgrid.grid
             density0 = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π^2
-            # println("$density0, $(param.n)")
             @test isapprox(param.n, density0, rtol=3e-5)
 
-            @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, :rpa)
-            Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
+            @time Σ, Σ_ins = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, :rpa)
 
             Z0 = (SelfEnergy.zfactor(param, Σ))[1]
             z = zlist[ind]
             @test isapprox(Z0, z, rtol=3e-3)
-            mratio = SelfEnergy.massratio(param, Σ)[1]
-            mratio1 = SelfEnergy.massratio(param, Σ, 1e-5)[1]
+            mratio = SelfEnergy.massratio(param, Σ, Σ_ins)[1]
+            mratio1 = SelfEnergy.massratio(param, Σ, Σ_ins, 1e-5)[1]
             m = mlist[ind]
             @test isapprox(mratio, m, rtol=3e-3)
             @test isapprox(mratio, mratio1, rtol=1e-4)
@@ -93,16 +93,14 @@
             println("m*/m = $mratio ($m), rtol=$(mratio/m-1)")
 
             ## test G_RPA
-            G = SelfEnergy.Gwrapped(Σ, param)
-            kF_label = searchsortedfirst(G.spaceGrid.grid, kF)
-            G_tau = GreenFunc.toTau(G)
-            G_ins = tau2tau(G_tau.dlrGrid, G_tau.dynamic, [β,], G_tau.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-            # println(real(G_tau.dynamic[1, 1, kF_label, :]))
-            # println(real(G_ins[kF_label]))
-            Gk_ins = CompositeGrids.Interp.interp1DGrid(G_ins, G.spaceGrid, kgrid.grid)
-            integrand = real(Gk_ins) .* kgrid.grid .* kgrid.grid
+            G = SelfEnergy.Gwrapped(Σ, Σ_ins, param)
+            G_dlr = G |> to_dlr
+            G_tau = G_dlr |> to_imtime
+
+            G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
+            integrand = real(G_ins[1, :]) .* kgrid.grid .* kgrid.grid
             density = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π^2
-            @test isapprox(param.n, density, atol=1e-5)
+            @test isapprox(param.n, density, rtol=5e-3)
             println("density n, from G0, from G_RPA: $(param.n),  $density0 (rtol=$(density0/param.n-1)),  $density (rtol=$(density/param.n-1))")
         end
     end
@@ -130,26 +128,26 @@
             # Euv, rtol = 100 * param.EF, 1e-12
             # maxK, minK = 20param.kF, 1e-9param.kF
             # Nk, order = 16, 6
+            kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
 
             ## test G0
-            kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
             G0 = SelfEnergy.G0wrapped(Euv, rtol, kgrid, param)
-            kF_label = searchsortedfirst(kgrid.grid, kF)
-            G_tau = GreenFunc.toTau(G0)
-            G_ins = tau2tau(G_tau.dlrGrid, G_tau.dynamic, [β,], G_tau.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-            integrand = real(G_ins) .* kgrid.grid
+            kF_label = locate(G0.mesh[2], kF)
+
+            G0_dlr = G0 |> to_dlr
+            G0_tau = G0_dlr |> to_imtime
+
+            G0_ins = dlr_to_imtime(G0_dlr, [β,]) * (-1)
+            integrand = real(G0_ins[1, :]) .* kgrid.grid
             density0 = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π
             @test isapprox(param.n, density0, rtol=3e-5)
 
-            @time Σ = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, :rpa)
-            Σ = SelfEnergy.GreenFunc.toMatFreq(Σ)
+            @time Σ, Σ_ins = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, :rpa)
 
-            kgrid = Σ.spaceGrid
-            kF = kgrid.panel[3]
             Z0 = (SelfEnergy.zfactor(param, Σ))[1]
             z = zlist[ind]
             @test isapprox(Z0, z, rtol=3e-3)
-            mratio = SelfEnergy.massratio(param, Σ)[1]
+            mratio = SelfEnergy.massratio(param, Σ, Σ_ins)[1]
             m = mlist[ind]
             @test isapprox(mratio, m, rtol=3e-3)
             println("θ = $θ,  rs= $rs")
@@ -157,14 +155,12 @@
             println("m*/m = $mratio ($m), rtol=$(mratio/m-1)")
 
             ## test G_RPA
-            G = SelfEnergy.Gwrapped(Σ, param)
-            kF_label = searchsortedfirst(kgrid.grid, kF)
-            G_tau = GreenFunc.toTau(G)
-            G_ins = tau2tau(G_tau.dlrGrid, G_tau.dynamic, [β,], G_tau.timeGrid.grid; axis=4)[1, 1, :, 1] .* (-1)
-            # println(real(G_tau.dynamic[1, 1, kF_label, :]))
-            # println(real(G_ins[kF_label]))
-            # println(real(G_ins))
-            integrand = real(G_ins) .* kgrid.grid
+            G = SelfEnergy.Gwrapped(Σ, Σ_ins, param)
+            G_dlr = G |> to_dlr
+            G_tau = G_dlr |> to_imtime
+
+            G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
+            integrand = real(G_ins[1, :]) .* kgrid.grid
             density = CompositeGrids.Interp.integrate1D(integrand, kgrid) / π
             @test isapprox(param.n, density, atol=3e-4)
             println("density n, from G0, from G_RPA: $(param.n),  $density0 (rtol=$(density0/param.n-1)),  $density (rtol=$(density/param.n-1))")
