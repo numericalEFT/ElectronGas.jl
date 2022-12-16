@@ -24,4 +24,7 @@ export LegendreInteraction
 include("selfenergy.jl")
 export SelfEnergy
 
+include("BSeq.jl")
+export BSeq
+
 end
