@@ -35,7 +35,7 @@ end
 """
     function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
 
-Calculation of the Bethe-Slapter amplitude `F` from `F ≡ RGG`.
+Calculation of the Bethe-Slapter amplitude `F` from `F ≡ (R+R_ins)⋅G2`.
 """
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
     R_freq = R |> to_dlr |> to_imfreq
@@ -48,7 +48,7 @@ end
     function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
  
-Calculation of `R = ∫ Γ*F` in three dimensions.
+Calculation of `R = ∫ Γ⋅F` in three dimensions. If the dynamical `source` is given, `R` will be added to `source`. 
 """
 function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -74,7 +74,7 @@ end
     function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,  
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
 
-Calculation of `R = ∫ Γ*F` in two dimensions.
+Calculation of `R = ∫ Γ⋅F` in two dimensions. If the dynamical `source` is given, `R` will be added to `source`. 
 """
 function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -97,6 +97,15 @@ function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenF
     !(source isa Nothing) && (R += source)
 end
 
+"""
+    function G02wrapped(Euv, rtol, sgrid, param)
+
+Returns the product of two bare single-particle Green's function.
+```math
+   G_0^{(2)}(\\omega_n, k) = 1/(\\omega_n^2+\\omega^2)
+```
+where ``\\omega= k^2/(2m)-\\mu``.
+"""
 function G02wrapped(Euv, rtol, sgrid, param)
     @unpack me, β, μ = param
 
@@ -111,6 +120,15 @@ function G02wrapped(Euv, rtol, sgrid, param)
     return green
 end
 
+"""
+    function G2wrapped(Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, param)
+
+Returns the product of two single-particle Green's function from given dynamical and instant parts of self-energy (`Σ` and `Σ_ins`).
+```math
+   G_0^{(2)}(\\omega_n, k) = 1/([\\omega_n - \\mathrm{Im} \\Sigma(\\omega_n, k) ]^2+[\\omega+ \\mathrm{Re} \\Sigma(\\omega_n, k) - \\Sigma_{\\mathrm{shift}} ]^2)
+```
+where ``\\omega= k^2/(2m)-\\mu`` and ``\\Sigma_{\\mathrm{shift}}=\\Sigma(\\omega_0, k_F)``.
+"""
 function G2wrapped(Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, param)
     @unpack me, kF, β, μ = param
 
@@ -139,10 +157,15 @@ end
     )
 
 Bethe-Slapter equation solver by self-consistent iterations.
+```math
+    R(\\omega_n, k) = \\eta(\\omega_n, k) - 1/\\beta \\sum_m \\int dp \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p) ,
+```
+where ``\\eta(\\omega_n, k)`` is the sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
+with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
 
 # Arguments
 - `param`: parameters of ElectronGas.
-- `G2`: product of two single-particle Green’s function (::GreenFunc.MeshArray).
+- `G2`: product of two single-particle Green's function (::GreenFunc.MeshArray).
 - `kernel`: dynamical part of the particle-particle four-point vertex with zero incoming momentum and frequency.
 - `kernel_ins`: instant part of the particle-particle four-point vertex with zero incoming momentum and frequency.
 - `qgrids`: momentum grid of kernel (::Vector{CompositeGrid.Composite}).
@@ -152,6 +175,16 @@ Bethe-Slapter equation solver by self-consistent iterations.
 - `α`: mixing parameter in the self-consistent iteration. By default, `α=0.7`.
 - `source`: dynamical part of sourced term. By default, `source=nothing`.
 - `source_ins`: instant part of sourced term. By default, `source_ins=1`.
+
+# Return 
+- Inverse of low-energy linear response `1/R₀` (``R_0=R(\\omega_0, k_F)``)
+- Bethe-Slapter amplitude `F` in imaginary-frequency space
+```math
+    F(\\omega_m, p) = G^{(2)}(\\omega_m,p)R(\\omega_m,p)
+```
+- dynamical part of `R` in imaginary-time space
+- instant part of `R` in imaginary-time space
+
 """
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
     Euv; Ntherm=120, rtol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
@@ -171,6 +204,7 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
 
     lamu, lamu0 = 0.0, 1.0
     n = 0
+    # self-consistent iteration with mixing α
     while (true)
         n = n + 1
         # calculation from imtime R to imfreq F
@@ -186,18 +220,20 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         end
 
         R_kF = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1, kF_label] + R_ins[1, kF_label])
-        # calculate R0=R(ω₀, kF)
+        # split the low-energy part R0=R(ω₀,kF) and the remaining instant part dR0 for iterative calcualtions 
         R0_sum = kF * source0 + R_kF + R0_sum * α
         dR0_sum = view(R_ins, 1, :) + kgrid.grid .* view(source_ins, 1, :) .- (kF * source0 + R_kF) + dR0_sum .* α
         R0 = R0_sum * (1 - α)
         dR0 = dR0_sum .* (1 - α)
         R_ins[1, :] = dR0 .+ R0
 
+        # iterative calculation of the dynamical part 
         R_sum = view(R_imt, :, :) + R_sum .* α
         R_imt[:, :] = R_sum .* (1 - α)
         @debug "R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))"
         # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
 
+        # record lamu=1/R0 if iterative step n > Ntherm
         if n > Ntherm
             lamu = -1 / (1 + R_kF / kF)
             lamu > 0 && error("α = $α is too small!")
@@ -217,8 +253,7 @@ end
     function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
         maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
 
-Implmentation ofCooper-pair linear response approach.
-Returns the inverse of low-energy linear response `1/R₀` (`R₀=R(ω₀, kF)`) and linear response `R(ωₙ, k)`.
+Implmentation of Cooper-pair linear response approach.
 
 # Arguments:
 - `param`: parameters of ElectronGas.
@@ -232,6 +267,13 @@ Returns the inverse of low-energy linear response `1/R₀` (`R₀=R(ω₀, kF)`)
 - `sigmatype`: type of fermionic self-energy. (no self-energy :none, G0W0 approximation :g0w0)
 - `int_type`: type of effective interaction. By default, `int_type=:rpa`.
 - `α`: mixing parameter in the self-consistent iteration. By default, `α=0.7`.
+
+# Return:
+- Inverse of low-energy linear response `1/R₀` (``R_0=R(\\omega_0, k_F)``)
+- Linear response `R(ωₙ, k)`, which is calculated by the Bethe-Slapter-type equation
+```math
+    R(\\omega_n, k) = 1 - 1/\\beta \\sum_m \\int dp \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p)
+```
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
