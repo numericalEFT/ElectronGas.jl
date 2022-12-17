@@ -1,7 +1,6 @@
 """
-Bethe-Slapter equation solver and the application to Cooper-pair linear response approach. 
+Bethe-Slapter-type equation solver and the application to Cooper-pair linear response approach. 
 """
-
 module BSeq
 
 using ..Parameter, ..Convention, ..LegendreInteraction
@@ -35,7 +34,11 @@ end
 """
     function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
 
-Calculation of the Bethe-Slapter amplitude `F` from `F ≡ (R+R_ins)⋅G2`.
+Calculation of the Bethe-Slapter amplitude `F` from the product of single-particle Green's function `G2` 
+and the dynamical and instant parts of `R`, `R_ins`.
+```math
+    F(\\omega_n, k) = G^{(2)}(\\omega_n, k) R(\\omega_n, k)
+```
 """
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
     R_freq = R |> to_dlr |> to_imfreq
@@ -48,7 +51,12 @@ end
     function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
  
-Calculation of `R = ∫ Γ⋅F` in three dimensions. If the dynamical `source` is given, `R` will be added to `source`. 
+Calculate ``kR(\\tau, k)`` in three dimensions by given `pF(p)` and `kernel` 
+```math
+    kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{dp}{4\\pi^2} H(\\tau,k,p) pF(\\tau,p),
+```
+where ``H(\\tau,k,p)\\equiv kp W(\\tau,k,p)`` is the helper function of interaction (see `LegendreInteraction`) and the kernel argument.
+The dynamical `source` ``\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
 """
 function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -74,7 +82,12 @@ end
     function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,  
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
 
-Calculation of `R = ∫ Γ⋅F` in two dimensions. If the dynamical `source` is given, `R` will be added to `source`. 
+Calculate ``kR(\\tau, k)`` in two dimensions by given `pF(p)` and `kernel`
+```math
+    kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{pdp}{4\\pi^2} W(\\tau,k,p) pF(\\tau,p),
+```
+where ``W`` is the interaction and the kernel argument.
+The dynamical `source` ``\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
 """
 function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -127,7 +140,7 @@ Returns the product of two single-particle Green's function from given dynamical
 ```math
    G_0^{(2)}(\\omega_n, k) = 1/([\\omega_n - \\mathrm{Im} \\Sigma(\\omega_n, k) ]^2+[\\omega+ \\mathrm{Re} \\Sigma(\\omega_n, k) - \\Sigma_{\\mathrm{shift}} ]^2)
 ```
-where ``\\omega= k^2/(2m)-\\mu`` and ``\\Sigma_{\\mathrm{shift}}=\\Sigma(\\omega_0, k_F)``.
+where ``\\omega= k^2/(2m)-\\mu`` and ``\\Sigma_{\\mathrm{shift}}=\\mathrm{Re} \\Sigma(\\omega_0, k_F)``.
 """
 function G2wrapped(Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, param)
     @unpack me, kF, β, μ = param
@@ -158,7 +171,7 @@ end
 
 Bethe-Slapter equation solver by self-consistent iterations.
 ```math
-    R(\\omega_n, k) = \\eta(\\omega_n, k) - 1/\\beta \\sum_m \\int dp \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p) ,
+    R(\\omega_n, k) = \\eta(\\omega_n, k) - \\frac{1}{\\beta} \\sum_m \\frac{d^dp}{(2\\pi)^d} \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p) ,
 ```
 where ``\\eta(\\omega_n, k)`` is the sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
@@ -166,14 +179,14 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 # Arguments
 - `param`: parameters of ElectronGas.
 - `G2`: product of two single-particle Green's function (::GreenFunc.MeshArray).
-- `kernel`: dynamical part of the particle-particle four-point vertex with zero incoming momentum and frequency.
-- `kernel_ins`: instant part of the particle-particle four-point vertex with zero incoming momentum and frequency.
+- `kernel`: dynamical kernel of the Legendre decomposed effective interaction.
+- `kernel_ins`: instant part of the the Legendre decomposed effective interaction.
 - `qgrids`: momentum grid of kernel (::Vector{CompositeGrid.Composite}).
 - `Euv`: the UV energy scale of the spectral density. 
 - `Ntherm`: thermalization step. By defalut, `Ntherm=120`.
 - `rtol`: tolerance absolute error. By defalut, `rtol=1e-10`.
 - `α`: mixing parameter in the self-consistent iteration. By default, `α=0.7`.
-- `source`: dynamical part of sourced term. By default, `source=nothing`.
+- `source`: dynamical part of sourced term in imaginary-time space. By default, `source=nothing`.
 - `source_ins`: instant part of sourced term. By default, `source_ins=1`.
 
 # Return 
@@ -191,8 +204,11 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size))
 )
     @unpack dim, kF = param
-    kgrid = G2.mesh[2]
+    if !(source isa Nothing)
+        @assert source.mesh[1] isa MeshGrids.ImTime "ImTime is expect for the dim = 1 source."
+    end
 
+    kgrid = G2.mesh[2]
     # Initalize F and R
     F_freq, R_imt, R_ins = initFR(Euv, G2.mesh[1].representation.rtol, kgrid, param)
 
@@ -205,6 +221,7 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
     lamu, lamu0 = 0.0, 1.0
     n = 0
     # self-consistent iteration with mixing α
+    # Note!: all quantites about R and F in the `while` loop are multiplied by momentum k.
     while (true)
         n = n + 1
         # calculation from imtime R to imfreq F
@@ -237,15 +254,23 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         if n > Ntherm
             lamu = -1 / (1 + R_kF / kF)
             lamu > 0 && error("α = $α is too small!")
-
             err = abs(lamu - lamu0) / abs(lamu + EPS)
+            # Exit the loop if the iteraction converges
             lamu >= lamu0 > -1 && err < rtol && break
             lamu0 <= lamu < -1 && err < rtol && break
+
             lamu0 = lamu
         end
     end
     println("α = $α, iteration step: $n")
-    lamu = -kF / R0
+    lamu = -kF / R0   # calculate 1/R0
+    # calculate real physical quantites F and R
+    for ni in eachindex(F_freq.mesh[1])
+        F_freq[ni, :] ./= kgrid.grid
+        R_imt[ni, :] ./= kgrid.grid
+    end
+    R_ins[1, :] ./= kgrid.grid
+
     return lamu, F_freq, R_imt, R_ins
 end
 
@@ -272,8 +297,11 @@ Implmentation of Cooper-pair linear response approach.
 - Inverse of low-energy linear response `1/R₀` (``R_0=R(\\omega_0, k_F)``)
 - Linear response `R(ωₙ, k)`, which is calculated by the Bethe-Slapter-type equation
 ```math
-    R(\\omega_n, k) = 1 - 1/\\beta \\sum_m \\int dp \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p)
+    R(\\omega_n, k) = 1 - \\frac{1}{\\beta} \\sum_m \\int \\frac{d^dp}{(2\\pi)^d} \\Gamma(\\omega_n,k;\\omega_m,p) G^{(2)}(\\omega_m,p)R(\\omega_m,p)
 ```
+where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
+with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
+
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
