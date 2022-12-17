@@ -107,7 +107,7 @@ function G2wrapped(Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, param)
 end
 
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_bare, qgrids, Euv;
-    Ntherm=120, rtol=1e-10, α=0.7)
+    Ntherm=120, rtol=1e-10, α=0.7, source=1, source_kF=1)
     @unpack dim, kF = param
     kgrid = G2.mesh[2]
 
@@ -134,8 +134,8 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_bare, qgrids
 
         R_kF = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1, kF_label] + R_ins[1, kF_label])
 
-        R0_sum = kF + R_kF + R0_sum * α
-        dR0_sum = view(R_ins, 1, :) + kgrid.grid .- (kF + R_kF) + dR0_sum .* α
+        R0_sum = kF * source_kF + R_kF + R0_sum * α
+        dR0_sum = view(R_ins, 1, :) + kgrid.grid .- (kF * source_kF + R_kF) + dR0_sum .* α
         R0 = R0_sum * (1 - α)
         dR0 = dR0_sum .* (1 - α)
         R_ins[1, :] = dR0 .+ R0
