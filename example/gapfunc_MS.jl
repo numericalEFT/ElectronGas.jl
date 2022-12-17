@@ -16,6 +16,19 @@ include("./eigen.jl")
 const dim = 3
 const freq_sep = 0.01
 
+function measureF(F::GreenFunc.Green2DLR)
+    kgrid = F.spaceGrid
+    integrand = view(F.dynamic, 1, 1, :, 1)
+    return CompositeGrids.Interp.integrate1D(integrand, kgrid)
+end
+
+function measureΔ(Δ::GreenFunc.Green2DLR)
+    Δ_freq = tau2matfreq(Δ.dlrGrid, Δ.dynamic, Δ.dlrGrid.n, Δ.timeGrid.grid; axis=4)
+    kgrid = Δ.spaceGrid
+    integrand = real(view(Δ_freq, 1, 1, :, 1) .+ view(Δ.instant, 1, 1, :))
+    return CompositeGrids.Interp.integrate1D(integrand, kgrid)
+end
+
 function G02wrapped(Euv, rtol, sgrid, param)
     # return G0(K)G0(-K)
     @unpack me, kF, β, μ = param
@@ -88,7 +101,7 @@ end
 
 function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, kernel_bare, qgrids, Euv;
     Ntherm=200, rtol=1e-10)
-    @unpack dim, kF = param
+    @unpack dim, kF, β = param
 
     kgrid = G2.spaceGrid
 
@@ -145,12 +158,15 @@ function gapIteration_Renorm(param, channel, G2::GreenFunc.Green2DLR, kernel, ke
             err < rtol && break
             lamu0 = lamu
         end
-        if n%printn == 0
-            println(1 - kF / Δ0)
+        if n % printn == 0
+            println("λ=", 1 - kF / Δ0)
+            println("measureF=", measureF(F))
         end
     end
     println("α = $α, iteration step: $n")
-    lamu = 1 - kF / Δ0
+    # lamu = 1 - kF / Δ0
+    # lamu = β^2 / measureF(F)
+    lamu = 1 / measureΔ(Δ)
     return lamu, Δ, F
 end
 
@@ -197,7 +213,7 @@ function gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv;
 end
 
 
-function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm = 20, int_type=:rpa, Λs=Λs)
+function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodtype=:explicit, Ntherm=20, int_type=:rpa, Λs=Λs)
     #--- parameters ---
     param = Parameter.defaultUnit(1 / beta, rs, dim; Λs=Λs)
     # param = Parameter.rydbergUnit(1 / beta, rs, dim)
@@ -251,13 +267,13 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
         G2 = G2wrapped(Σ, param)
     end
     println("G2 at kF:")
-    println(view(G2.dynamic,1, 1, kF_label, :))
+    println(view(G2.dynamic, 1, 1, kF_label, :))
 
     if methodtype == :explicit
         lamu, Δ, F = gapIteration(param, G2, kernel, kernel_bare, qgrids, Euv; rtol=1e-7, shift=3.0)
     elseif methodtype == :minisub
         lamu, Δ, F = gapIteration_Renorm(param, channel, G2, kernel, kernel_bare, qgrids, Euv;
-                                         rtol=rtol, Ntherm=Ntherm)
+            rtol=rtol, Ntherm=Ntherm)
     else
         error("method $(methodtype) not implemented!")
     end
@@ -281,14 +297,17 @@ function gapfunction(beta, rs, channel::Int, dim::Int; sigmatype=:none, methodty
     end
 end
 
+
+
 if abspath(PROGRAM_FILE) == @__FILE__
     # sigmatype = :none
-    methodtype = :explicit
+    methodtype = :minisub
     sigmatype = :g0w0
     int_type = :rpa
 
     rs = 1.5
     channel = 0
+    Λs = 0.0
     # channels = [0, 0, 0]
     # channels = [0, 1, 2, 3]
 
@@ -300,18 +319,19 @@ if abspath(PROGRAM_FILE) == @__FILE__
         end
     end
 
+    # num = 18
     num = 9
     # blist = [400, 800, 1600, 3200, 6400]
     # blist = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-    blist = [400 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-    # blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
+    # blist = [400 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    blist = [400 * 2^i for i in LinRange(0, num - 1, num)]
     # blist = [1 / 1.89059095e-05, 1 / 8.44687571e-05, 1 / 1.28551713e-05, 1 / 1.14498145e-06]
     # blist = [1 / 1.78760981e-05, 1 / 8.35387289e-05, 1 / 1.20811357e-05, 1 / 1.03562748e-06]
 
     for (ind, beta) in enumerate(blist)
-    # for (channel, beta) in zip(channels, blist)
+        # for (channel, beta) in zip(channels, blist)
         println("beta = $beta,    rs = $rs")
         println("channel = $channel")
-        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type = int_type, Λs = Λs)
+        gapfunction(beta, rs, channel, dim; sigmatype=sigmatype, methodtype=methodtype, int_type=int_type, Λs=Λs)
     end
 end
