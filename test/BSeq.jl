@@ -4,7 +4,7 @@
         param = Parameter.rydbergUnit(θ, rs, dim)
         channel = 0
         lamu, R_freq = BSeq.linearResponse(param, channel)
-        @test isapprox(lamu, -2.34540, rtol=1e-5)
+        @test isapprox(lamu, -2.34540, rtol=1e-4)
         # lamu, R_freq = BSeq.linearResponse(param, 1)
         # @test isapprox(lamu, -1.23815, rtol=1e-5)
     end

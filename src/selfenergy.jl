@@ -97,7 +97,7 @@ end
 function G0wrapped(Euv, rtol, sgrid, param)
     @unpack me, β, μ = param
 
-    wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:ph)
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol)
     green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
     for ind in eachindex(green)
         green[ind] = 1 / (im * wn_mesh[ind[1]] - (green.mesh[2][ind[2]]^2 / 2 / me - μ))
