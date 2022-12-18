@@ -5,6 +5,8 @@ using ElectronGas
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
 
+using DelimitedFiles
+
 export measure_chi
 
 function measure_chi(F_freq::GreenFunc.MeshArray)
@@ -19,7 +21,18 @@ function measure_chi(dim, θ, rs)
     param = Parameter.rydbergUnit(θ, rs, dim)
     channel = 0
     lamu, R_freq, F_freq = BSeq.linearResponse(param, channel)
-    return measure_chi(F_freq)
+    result = measure_chi(F_freq)
+    println("1/chi=", 1 / result)
+
+    data = [1 / θ 1 / result channel rs]
+
+    dir = "./run/"
+    fname = "gap_chi_rs$(rs)_l$(channel).txt"
+    open(dir * fname, "a+") do io
+        writedlm(io, data, ' ')
+    end
+
+    return 1 / result
 end
 
 end
@@ -31,7 +44,10 @@ using .MeasureChi
     # println(measure_chi(3, 1e-2, 2.0))
     dim = 3
     rs = 3.0
-    beta = [400, 800, 1600] .* 8
+    num = 18
+    beta = [6.25 * 2^i for i in LinRange(0, num - 1, num)]
+    # num = 18
+    # beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     chi = [measure_chi(dim, 1 / b, rs) for b in beta]
     println(chi)
 end
