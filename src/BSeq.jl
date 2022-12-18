@@ -12,6 +12,14 @@ const freq_sep = 0.01
     function initFR(Euv, rtol, sgrid, param)
 
 Initalize the Bethe-Slapter amplitude `F` in imaginary-frequency space and `R ≡ F(GG)⁻¹` in imaginary-time space.
+# Return
+- ``F(\\omega_n, k)=0`` as a `GreenFunc.MeshArray`
+- the dynamical part of `R` in the imaginary-time space as a `GreenFunc.MeshArray`. In the imaginary-frequency space,
+```math
+    R(\\omega_n, k) =  \\frac{1}{\\Omega_c^2+e^2}\\left(1- \\frac{2\\omega_n^2}{\\omega_n^2+\\Omega_c^2} \\right)
+```
+where ``e=k^2/(2m)-\\mu`` and ``\\Omega_c =0.01``.
+- the instant part of `R` as a `GreenFunc.MeshArray`, ``R_{\\mathrm{ins}}(k)=0``.
 """
 function initFR(Euv, rtol, sgrid, param)
     @unpack β, me, μ = param
@@ -37,7 +45,7 @@ end
 Calculation of the Bethe-Slapter amplitude `F` from the product of single-particle Green's function `G2` 
 and the dynamical and instant parts of `R`, `R_ins`.
 ```math
-    F(\\omega_n, k) = G^{(2)}(\\omega_n, k) R(\\omega_n, k)
+    F(\\omega_n, k) = G^{(2)}(\\omega_n, k) [R(\\omega_n, k)+R_{\\mathrm{ins}}(k)]
 ```
 """
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
@@ -55,8 +63,8 @@ Calculate ``kR(\\tau, k)`` in three dimensions by given `pF(p)` and `kernel`
 ```math
     kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{dp}{4\\pi^2} H(\\tau,k,p) pF(\\tau,p),
 ```
-where ``H(\\tau,k,p)\\equiv kp W(\\tau,k,p)`` is the helper function of interaction (see `LegendreInteraction`) and the kernel argument.
-The dynamical `source` ``\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
+where ``H(\\tau,k,p)\\equiv kp W(\\tau,k,p)`` is the helper function of interaction (see [Legendre Decomposition of Interaction](https://numericaleft.github.io/ElectronGas.jl/dev/manual/legendreinteraction/)) 
+and the kernel argument. The dynamical `source` ``k\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
 """
 function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -87,7 +95,7 @@ Calculate ``kR(\\tau, k)`` in two dimensions by given `pF(p)` and `kernel`
     kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{pdp}{4\\pi^2} W(\\tau,k,p) pF(\\tau,p),
 ```
 where ``W`` is the interaction and the kernel argument.
-The dynamical `source` ``\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
+The dynamical `source` ``k\\eta(\\tau, k)`` will be added if it is given as `GreenFunc.MeshArray`.
 """
 function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -138,7 +146,8 @@ end
 
 Returns the product of two single-particle Green's function from given dynamical and instant parts of self-energy (`Σ` and `Σ_ins`).
 ```math
-   G_0^{(2)}(\\omega_n, k) = 1/([\\omega_n - \\mathrm{Im} \\Sigma(\\omega_n, k) ]^2+[\\omega+ \\mathrm{Re} \\Sigma(\\omega_n, k) - \\Sigma_{\\mathrm{shift}} ]^2)
+   G_0^{(2)}(\\omega_n, k) = 1/\\left([\\omega_n - \\mathrm{Im} \\Sigma(\\omega_n, k)]^2+
+   [\\omega+ \\mathrm{Re} \\Sigma(\\omega_n, k) - \\Sigma_{\\mathrm{shift}}]^2\\right)
 ```
 where ``\\omega= k^2/(2m)-\\mu`` and ``\\Sigma_{\\mathrm{shift}}=\\mathrm{Re} \\Sigma(\\omega_0, k_F)``.
 """
@@ -197,31 +206,34 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 ```
 - dynamical part of `R` in imaginary-time space
 - instant part of `R` in imaginary-time space
-
 """
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
     Euv; Ntherm=120, rtol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size))
 )
     @unpack dim, kF = param
+    kgrid = G2.mesh[2]
+    kF_label = locate(kgrid, kF)
     if !(source isa Nothing)
         @assert source.mesh[1] isa MeshGrids.ImTime "ImTime is expect for the dim = 1 source."
+        for ni in eachindex(F_freq.mesh[1])
+            source[ni, :] .*= kgrid.grid
+        end
     end
+    source_ins[1, :] .*= kgrid.grid
+    source0 = source_ins[1, kF_label]
 
-    kgrid = G2.mesh[2]
     # Initalize F and R
     F_freq, R_imt, R_ins = initFR(Euv, G2.mesh[1].representation.rtol, kgrid, param)
 
-    kF_label = locate(kgrid, kF)
     R0, R0_sum = 1.0, 0.0
     dR0, dR0_sum = zeros(Float64, (kgrid.size)), zeros(Float64, (kgrid.size))
     R_sum = zeros(Float64, (R_imt.mesh[1].representation.size, kgrid.size))
-    source0 = source_ins[1, kF_label]
 
     lamu, lamu0 = 0.0, 1.0
     n = 0
     # self-consistent iteration with mixing α
-    # Note!: all quantites about R and F in the `while` loop are multiplied by momentum k.
+    # Note!: all quantites about R, F, and source in the `while` loop are multiplied by momentum k.
     while (true)
         n = n + 1
         # calculation from imtime R to imfreq F
@@ -238,8 +250,8 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
 
         R_kF = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1, kF_label] + R_ins[1, kF_label])
         # split the low-energy part R0=R(ω₀,kF) and the remaining instant part dR0 for iterative calcualtions 
-        R0_sum = kF * source0 + R_kF + R0_sum * α
-        dR0_sum = view(R_ins, 1, :) + kgrid.grid .* view(source_ins, 1, :) .- (kF * source0 + R_kF) + dR0_sum .* α
+        R0_sum = source0 + R_kF + R0_sum * α
+        dR0_sum = view(R_ins, 1, :) + view(source_ins, 1, :) .- (source0 + R_kF) + dR0_sum .* α
         R0 = R0_sum * (1 - α)
         dR0 = dR0_sum .* (1 - α)
         R_ins[1, :] = dR0 .+ R0
@@ -301,7 +313,6 @@ Implmentation of Cooper-pair linear response approach.
 ```
 where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
-
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
