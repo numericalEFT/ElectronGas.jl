@@ -351,7 +351,7 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
 
     R_freq = R_imt |> to_dlr |> to_imfreq
     # println(view(R_freq, :, kF_label))
-    return lamu, R_freq
+    return lamu, R_freq, F_freq
 end
 
 end
