@@ -12,6 +12,13 @@ const freq_sep = 0.01
     function initFR(Euv, rtol, sgrid, param)
 
 Initalize the Bethe-Slapter amplitude `F` in imaginary-frequency space and `R ≡ F(GG)⁻¹` in imaginary-time space.
+
+# Arguments:
+- `Euv`: the UV energy scale of the spectral density. parameter for DLR grids.
+- `rtol`: tolerance absolute error. parameter for DLR grids.
+- `sgrid`: momentum grid of F and R
+- `param`: parameters of ElectronGas.
+
 # Return
 - ``F(\\omega_n, k)=0`` as a `GreenFunc.MeshArray`
 - the dynamical part of `R` in the imaginary-time space as a `GreenFunc.MeshArray`. In the imaginary-frequency space,
@@ -43,13 +50,14 @@ end
     function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
 
 Calculation of the Bethe-Slapter amplitude `F` from the product of single-particle Green's function `G2` 
-and the dynamical and instant parts of `R`, `R_ins`.
+and the dynamical and instant parts of `R`, `R_ins`. Compute in frequency space to avoid \\tau integration.
 ```math
     F(\\omega_n, k) = G^{(2)}(\\omega_n, k) [R(\\omega_n, k)+R_{\\mathrm{ins}}(k)]
 ```
 """
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
     R_freq = R |> to_dlr |> to_imfreq
+    # algebraic in frequency space
     for ind in eachindex(F)
         F[ind] = real(R_freq[ind] + R_ins[1, ind[2]]) * G2[ind]
     end
@@ -59,7 +67,8 @@ end
     function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
  
-Calculate ``kR(\\tau, k)`` in three dimensions by given `pF(p)` and `kernel` 
+Calculate ``kR(\\tau, k)`` in three dimensions by given `pF(\\tau, p)` and `kernel`. 
+Compute in imaginary time space to aviod frequency convolution.
 ```math
     kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{dp}{4\\pi^2} H(\\tau,k,p) pF(\\tau,p),
 ```
@@ -70,14 +79,19 @@ function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
     kgrid = F.mesh[2]
     F_dlr = F |> to_dlr
+    # switch to τ space
     F_imt = real(F_dlr |> to_imtime)
     F_ins = real(dlr_to_imtime(F_dlr, [F.mesh[1].representation.β,])) * (-1)
+
     for ind in eachindex(R)
+        # for each τ, k, integrate over q
         τi, ki = ind[1], ind[2]
+        # interpolate F to q grid of given k
         Fq = CompositeGrids.Interp.interp1DGrid(view(F_imt, τi, :), kgrid, qgrids[ki].grid)
         integrand = view(kernel, ki, 1:qgrids[ki].size, τi) .* Fq
         R[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
         if τi == 1
+            # same for instant part
             Fq = CompositeGrids.Interp.interp1DGrid(view(F_ins, 1, :), kgrid, qgrids[ki].grid)
             integrand = view(kernel_ins, ki, 1:qgrids[ki].size) .* Fq
             R_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
@@ -91,6 +105,7 @@ end
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
 
 Calculate ``kR(\\tau, k)`` in two dimensions by given `pF(p)` and `kernel`
+Compute in imaginary time space to aviod frequency convolution.
 ```math
     kR(\\tau, k) = k\\eta(\\tau, k) - \\int \\frac{pdp}{4\\pi^2} W(\\tau,k,p) pF(\\tau,p),
 ```
@@ -99,6 +114,7 @@ The dynamical `source` ``k\\eta(\\tau, k)`` will be added if it is given as `Gre
 """
 function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
     source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
+    # similar to 3d
     kgrid = F.mesh[2]
     F_dlr = F |> to_dlr
     F_imt = real(F_dlr |> to_imtime)
@@ -236,6 +252,9 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
     # Note!: all quantites about R, F, and source in the `while` loop are multiplied by momentum k.
     while (true)
         n = n + 1
+        # switch between imtime and imfreq to avoid convolution
+        # dlr Fourier transform is much faster than brutal force convolution
+
         # calculation from imtime R to imfreq F
         calcF!(F_freq, R_imt, R_ins, G2)
 
