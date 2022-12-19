@@ -11,6 +11,7 @@ using GreenFunc, Lehmann
         include("interaction.jl")
         include("legendreinteraction.jl")
         include("selfenergy.jl")
+        include("BSeq.jl")
     else
         include(ARGS[1])
     end
