@@ -5,6 +5,7 @@ module BSeq
 
 using ..Parameter, ..Convention, ..LegendreInteraction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..CompositeGrids
+using ..SelfEnergy
 
 const freq_sep = 0.01
 
@@ -341,8 +342,13 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     if sigmatype == :none
         G2 = G02wrapped(Euv, rtol, kgrid, param)
     elseif sigmatype == :g0w0
+        @unpack me, β, μ = param
+        wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
         Σ, Σ_ins = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
-        G2 = G2wrapped(Σ, Σ_ins, param)
+        # self energy should be converted to proper frequency grid
+        Σ_dlr = Σ |> to_dlr
+        Σ_wn = dlr_to_imfreq(Σ_dlr, wn_mesh)
+        G2 = G2wrapped(Σ_wn, Σ_ins, param)
     end
 
     # calculate F, R by Bethe-Slapter iteration.
