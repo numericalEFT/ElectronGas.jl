@@ -47,8 +47,7 @@ using .MeasureChi
     rs = 7.0
     # num = 18
     # beta = [6.25 * 2^i for i in LinRange(0, num - 1, num)]
-    num = 5
-    beta = [400 * 2^i for i in LinRange(0, num - 1, num)]
+    beta = [2000, 2200.0, 2229.78,]
     # num = 18
     # beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
