@@ -5,6 +5,7 @@ module BSeq
 
 using ..Parameter, ..Convention, ..LegendreInteraction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..CompositeGrids
+using ..SelfEnergy
 
 const freq_sep = 0.01
 
@@ -224,7 +225,7 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 - instant part of `R` in imaginary-time space
 """
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
-    Euv; Ntherm=120, rtol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
+    Euv; Ntherm=120, rtol=1e-10, atol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size))
 )
     @unpack dim, kF = param
@@ -285,10 +286,10 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         if n > Ntherm
             lamu = -1 / (1 + R_kF / kF)
             lamu > 0 && error("α = $α is too small!")
-            err = abs(lamu - lamu0) / abs(lamu + EPS)
+            err = abs(lamu - lamu0)
             # Exit the loop if the iteraction converges
-            lamu >= lamu0 > -1 && err < rtol && break
-            lamu0 <= lamu < -1 && err < rtol && break
+            lamu >= lamu0 > -1 && err < rtol * abs(lamu + EPS) + atol && break
+            lamu0 <= lamu < -1 && err < rtol * abs(lamu + EPS) + atol && break
 
             lamu0 = lamu
         end
@@ -371,8 +372,13 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     if sigmatype == :none
         G2 = G02wrapped(Euv, rtol, kgrid, param)
     elseif sigmatype == :g0w0
+        @unpack me, β, μ = param
+        wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
         Σ, Σ_ins = SelfEnergy.G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type)
-        G2 = G2wrapped(Σ, Σ_ins, param)
+        # self energy should be converted to proper frequency grid
+        Σ_dlr = Σ |> to_dlr
+        Σ_wn = dlr_to_imfreq(Σ_dlr, wn_mesh)
+        G2 = G2wrapped(Σ_wn, Σ_ins, param)
     end
 
     # calculate F, R by Bethe-Slapter iteration.
@@ -381,7 +387,7 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
 
     R_freq = R_imt |> to_dlr |> to_imfreq
     # println(view(R_freq, :, kF_label))
-    return lamu, R_freq
+    return lamu, R_freq, F_freq
 end
 
 end
