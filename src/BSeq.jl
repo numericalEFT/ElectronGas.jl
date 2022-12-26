@@ -203,7 +203,7 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
     Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size)),
-    verbose=false, Ncheck=10)
+    verbose=false, Ncheck=5)
 
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -266,9 +266,8 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
                 @warn ("α = $α or Ntherm=$Ntherm is too small!")
             end
             # err = abs(lamu - lamu0)
-            # Exit the loop if the iteraction converges
-            lamu >= lamu0 > -1 && isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
-            lamu0 <= lamu < -1 && isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+            # Exit the loop if the iteration converges
+            isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
 
             lamu0 = lamu
             if verbose
