@@ -25,7 +25,7 @@ function measure_chi(dim, θ, rs; kwargs...)
     result = measure_chi(F_freq)
     println("1/chi=", 1 / result)
 
-    data = [1 / θ 1 / result channel rs]
+    data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
     fname = "gap_chi_rs$(rs)_l$(channel).txt"
@@ -45,11 +45,13 @@ using .MeasureChi
     # println(measure_chi(3, 1e-2, 2.0))
     dim = 3
     rs = 7.0
-    # num = 18
+    num = 20
     # beta = [6.25 * 2^i for i in LinRange(0, num - 1, num)]
-    beta = [2000, 2200.0, 2229.78,]
+    # beta = [2000, 2200.0, 2229.78,]
+    beta = [3200,]
     # num = 18
     # beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-    chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
+    # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
+    chi = [measure_chi(dim, 1 / b, rs; atol=1e-10, rtol=1e-10, verbose=true) for b in beta]
     println(chi)
 end

@@ -225,9 +225,14 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 - instant part of `R` in imaginary-time space
 """
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
-    Euv; Ntherm=120, rtol=1e-10, atol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
-    source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size))
-)
+    Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
+    source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size)),
+    verbose=false, Ncheck=5)
+
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+
     @unpack dim, kF = param
     kgrid = G2.mesh[2]
     kF_label = locate(kgrid, kF)
@@ -283,15 +288,22 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
 
         # record lamu=1/R0 if iterative step n > Ntherm
-        if n > Ntherm
+        if n > Ntherm && (n % Ncheck == 1)
             lamu = -1 / (1 + R_kF / kF)
-            lamu > 0 && error("α = $α is too small!")
-            err = abs(lamu - lamu0)
-            # Exit the loop if the iteraction converges
-            lamu >= lamu0 > -1 && err < rtol * abs(lamu + EPS) + atol && break
-            lamu0 <= lamu < -1 && err < rtol * abs(lamu + EPS) + atol && break
+            if lamu > 0
+                # this condition does not necessarily mean something wrong
+                # it only indicates lamu is not converge to correct sign within Ntherm steps
+                # normally α>0.8 guarantees convergence, then it means Ntherm is too small
+                @warn ("α = $α or Ntherm=$Ntherm is too small!")
+            end
+            # err = abs(lamu - lamu0)
+            # Exit the loop if the iteration converges
+            isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
 
             lamu0 = lamu
+            if verbose
+                println("lamu=$lamu")
+            end
         end
     end
     println("α = $α, iteration step: $n")
@@ -334,10 +346,13 @@ Implmentation of Cooper-pair linear response approach.
 where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
 """
-function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
-    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
+function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
+    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
+    sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30)
     @unpack dim, rs, β, kF = param
-
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
     # prepare Legendre decomposed effective interaction
     if dim == 3
         if channel == 0
@@ -382,7 +397,8 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     end
 
     # calculate F, R by Bethe-Slapter iteration.
-    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv; rtol=rtol, α=α)
+    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv;
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm)
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
