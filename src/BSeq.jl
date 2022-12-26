@@ -304,7 +304,7 @@ where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
 
 """
-function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
+function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
     @unpack dim, rs, β, kF = param
 
@@ -352,7 +352,7 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
     end
 
     # calculate F, R by Bethe-Slapter iteration.
-    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv; rtol=rtol, α=α)
+    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv; rtol=rtol, α=α, atol=atol)
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
