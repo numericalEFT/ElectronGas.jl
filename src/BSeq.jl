@@ -259,7 +259,12 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         # record lamu=1/R0 if iterative step n > Ntherm
         if n > Ntherm && (n % Ncheck == 1)
             lamu = -1 / (1 + R_kF / kF)
-            lamu > 0 && error("α = $α or N=$Ntherm is too small!")
+            if lamu > 0
+                # this condition does not necessarily mean something wrong
+                # it only indicates lamu is not converge to correct sign within Ntherm steps
+                # normally α>0.8 guarantees convergence, then it means Ntherm is too small
+                @warn ("α = $α or Ntherm=$Ntherm is too small!")
+            end
             # err = abs(lamu - lamu0)
             # Exit the loop if the iteraction converges
             lamu >= lamu0 > -1 && isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
