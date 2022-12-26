@@ -201,9 +201,14 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 
 """
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
-    Euv; Ntherm=120, rtol=1e-10, atol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
-    source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size))
-)
+    Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
+    source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size)),
+    verbose=false, Ncheck=10)
+
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+
     @unpack dim, kF = param
     if !(source isa Nothing)
         @assert source.mesh[1] isa MeshGrids.ImTime "ImTime is expect for the dim = 1 source."
@@ -252,15 +257,18 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
         # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
 
         # record lamu=1/R0 if iterative step n > Ntherm
-        if n > Ntherm
+        if n > Ntherm && (n % Ncheck == 1)
             lamu = -1 / (1 + R_kF / kF)
-            lamu > 0 && error("α = $α is too small!")
-            err = abs(lamu - lamu0)
+            lamu > 0 && error("α = $α or N=$Ntherm is too small!")
+            # err = abs(lamu - lamu0)
             # Exit the loop if the iteraction converges
-            lamu >= lamu0 > -1 && err < rtol * abs(lamu + EPS) + atol && break
-            lamu0 <= lamu < -1 && err < rtol * abs(lamu + EPS) + atol && break
+            lamu >= lamu0 > -1 && isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+            lamu0 <= lamu < -1 && isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
 
             lamu0 = lamu
+            if verbose
+                println("lamu=$lamu")
+            end
         end
     end
     println("α = $α, iteration step: $n")
@@ -305,9 +313,12 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
-    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
+    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
+    sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30)
     @unpack dim, rs, β, kF = param
-
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
     # prepare Legendre decomposed effective interaction
     if dim == 3
         if channel == 0
@@ -352,7 +363,8 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     end
 
     # calculate F, R by Bethe-Slapter iteration.
-    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv; rtol=rtol, α=α, atol=atol)
+    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv;
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm)
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
