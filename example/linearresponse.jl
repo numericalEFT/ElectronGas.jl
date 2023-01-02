@@ -45,13 +45,15 @@ using .MeasureChi
     # println(measure_chi(3, 1e-2, 2.0))
     dim = 3
     rs = 7.0
-    num = 20
-    # beta = [6.25 * 2^i for i in LinRange(0, num - 1, num)]
-    # beta = [2000, 2200.0, 2229.78,]
-    beta = [3200,]
-    # num = 18
-    # beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    num = 6
+    beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    # beta = [1800, 2000, 2229.78,]
+    # num = 6
+    # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
-    chi = [measure_chi(dim, 1 / b, rs; atol=1e-10, rtol=1e-10, verbose=true) for b in beta]
+    chi = [measure_chi(dim, 1 / b, rs;
+        atol=1e-10, rtol=1e-10, Nk=8, order=8,
+        sigmatype=:g0w0, int_type=:rpa,
+        verbose=true) for b in beta]
     println(chi)
 end
