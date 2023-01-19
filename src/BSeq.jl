@@ -3,7 +3,7 @@ Bethe-Slapter-type equation solver and the application to Cooper-pair linear res
 """
 module BSeq
 
-using ..Parameter, ..Convention, ..LegendreInteraction
+using ..Parameter, ..Convention, ..LegendreInteraction, ..Interaction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..CompositeGrids
 using ..SelfEnergy
 
@@ -48,10 +48,49 @@ function initFR(Euv, rtol, sgrid, param)
 end
 
 """
+    function initFR(Euv, rtol, param)
+
+Initalize the Uniform amplitude `R` and zero amplitude 'F' in imaginary-frequency space. Both function have no momentum dependence. 
+
+# Arguments:
+- `Euv`: the UV energy scale of the spectral density. parameter for DLR grids.
+- `rtol`: tolerance absolute error. parameter for DLR grids.
+- `param`: parameters of ElectronGas.
+
+# Return
+- ``F(\\omega_n, k)=0`` as a `GreenFunc.MeshArray`
+- the dynamical part of `R` in the imaginary-time space as a `GreenFunc.MeshArray`, which is set to be zero.
+- the instant part of `R` as a `GreenFunc.MeshArray`, ``R_{\\mathrm{ins}}=1``.
+"""
+function initFR(Euv, rtol, param)
+    @unpack β = param
+    Ω_c = freq_sep
+
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
+    R_freq = GreenFunc.MeshArray(wn_mesh; dtype=Float64)
+    F_freq = similar(R_freq)
+    for ind in eachindex(R_freq)
+        ni = ind[1]
+        ωn = wn_mesh[ni]
+        R_freq[ni] = 0.0 #(1.0 - 2.0 * ωn^2 / (ωn^2 + Ω_c^2))
+    end
+    R_imt = real(R_freq |> to_dlr |> to_imtime)
+    #R_ins = GreenFunc.MeshArray([1]; dtype=Float64, data=zeros(1))
+    R_ins = GreenFunc.MeshArray([1]; dtype=Float64, data=ones(1))
+    return F_freq, R_imt, R_ins
+end
+
+
+"""
     function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
 
 Calculation of the Bethe-Slapter amplitude `F` from the product of single-particle Green's function `G2` 
 and the dynamical and instant parts of `R`, `R_ins`. Compute in frequency space to avoid \\tau integration.
+If F only depends on frequency,
+```math
+    F(\\omega_n) = G^{(2)}(\\omega_n) [R(\\omega_n)+R_{\\mathrm{ins}}]
+```
+Otherwise,
 ```math
     F(\\omega_n, k) = G^{(2)}(\\omega_n, k) [R(\\omega_n, k)+R_{\\mathrm{ins}}(k)]
 ```
@@ -59,8 +98,14 @@ and the dynamical and instant parts of `R`, `R_ins`. Compute in frequency space 
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
     R_freq = R |> to_dlr |> to_imfreq
     # algebraic in frequency space
-    for ind in eachindex(F)
-        F[ind] = real(R_freq[ind] + R_ins[1, ind[2]]) * G2[ind]
+    if length(R.mesh)==1
+        for ind in eachindex(F)
+            F[ind] = real(R_freq[ind] + R_ins[1]) * G2[ind]
+        end
+    else
+        for ind in eachindex(F)
+            F[ind] = real(R_freq[ind] + R_ins[1, ind[2]]) * G2[ind]
+        end
     end
 end
 
@@ -101,6 +146,36 @@ function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc
     !(source isa Nothing) && (R += source)
 end
 
+
+"""
+    function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
+        source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins)
+ 
+Calculate ``R(\\tau)``  by given `F(\\tau)` and `kernel`. 
+Compute in imaginary time space to aviod frequency convolution.
+```math
+    R(\\tau) = \\eta(\\tau) -  W(\\tau) F(\\tau),
+```
+where ``W(\\tau)`` is the kernel.
+The dynamical `source` ``\\eta(\\tau)`` will be added if it is given as `GreenFunc.MeshArray`.
+"""
+function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
+    source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins)
+    F_dlr = F |> to_dlr
+    # switch to τ space
+    F_imt = real(F_dlr |> to_imtime)
+    F_ins = real(dlr_to_imtime(F_dlr, [F.mesh[1].representation.β,])) * (-1)
+
+    R[:] = -F_imt[:].*kernel[:]
+    #print("$(F_ins[:])\n")
+    R_ins[:] = -F_ins[:].* kernel_ins[:]
+    #print("$(R_ins[:])\n")
+    !(source isa Nothing) && (R += source)
+end
+
+
+
+
 """
     function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,  
         source::Union{Nothing,GreenFunc.MeshArray}, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite})
@@ -133,6 +208,47 @@ function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenF
         end
     end
     !(source isa Nothing) && (R += source)
+end
+
+function Sigma_γ(n, param)
+    @unpack β,γ,g = param
+    ωn = (2n+1)*π/β
+    K = (abs(g)*β/2/π)^γ
+    A = 0
+    for i in 1:abs(n)
+        A += 2.0/i^γ
+    end
+    Σ =abs(ωn) #+ π/β*K*A*sign(2n+1)
+    return Σ
+end
+
+
+"""
+    function G02wrapped(Euv, rtol, param)
+
+Returns the inverse self-energy in gamma model.
+```math
+   \\Sigma^{-1}(\\omega_n) = 1/|\\omega_n+\\pi T K A sgn(2n+1)|
+```
+where g is the interaction strength, and T is the temperature. Here ``K=\\left( \\frac{g}{2\\pi T} \\right)^{γ}``, ``A=\\sum_{n=1}^{\\infty} \\frac{2}{n^{\\gamma}}``.
+"""
+function G2γwrapped(Euv, rtol, param)
+    @unpack β,Ωcut = param
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
+    print("max frequency $(wn_mesh[end]*β)\n")
+    green = GreenFunc.MeshArray(wn_mesh; dtype=Float64)
+    for ind in eachindex(green)
+        ni = ind[1]
+        n = wn_mesh.grid[ni]
+        wn = wn_mesh[ni]
+        # if abs(wn_mesh[ni])>1.0
+        #     green[ind] = 0.0
+        # else
+        #     green[ind] = 1.0/abs(Sigma_γ(n,param))
+        # end
+        green[ind] = 1.0/Sigma_γ(n,param)/(exp((wn-Ωcut)/0.0001)+1) # use fermi distribution to enforce a smooth UV cutoff
+    end
+    return green
 end
 
 """
@@ -318,6 +434,125 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
     return lamu, F_freq, R_imt, R_ins
 end
 
+
+"""
+    function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
+        Euv; Ntherm=120, rtol=1e-10, α=0.7, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
+        source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1]; dtype=Float64, data=ones(1))
+    )
+
+Bethe-Slapter equation solver by self-consistent iterations (no momentum dependence).
+```math
+    R(\\omega_n) = \\eta(\\omega_n) - \\frac{1}{\\beta} \\sum_m \\Gamma(\\omega_n;\\omega_m) G^{(2)}(\\omega_m)R(\\omega_m) ,
+```
+where ``\\eta(\\omega_n)`` is the sourced term, ``\\Gamma(\\omega_n;\\omega_m)`` is the particle-particle four-point vertex 
+with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the product of two single-particle Green's function. In γ-model, ``G^{(2)}(\\omega_m)=1/\\Sigma(\\omega_m)``.
+
+# Arguments
+- `param`: parameters of ElectronGas.
+- `G2`: product of two single-particle Green's function (::GreenFunc.MeshArray).
+- `kernel`: dynamical kernel of the Legendre decomposed effective interaction.
+- `kernel_ins`: instant part of the the Legendre decomposed effective interaction.
+- `Euv`: the UV energy scale of the spectral density. 
+- `Ntherm`: thermalization step. By defalut, `Ntherm=120`.
+- `rtol`: tolerance absolute error. By defalut, `rtol=1e-10`.
+- `α`: mixing parameter in the self-consistent iteration. By default, `α=0.7`.
+- `source`: dynamical part of sourced term in imaginary-time space. By default, `source=nothing`.
+- `source_ins`: instant part of sourced term. By default, `source_ins=1`.
+
+# Return 
+- Inverse of low-energy linear response `1/R₀` (``R_0=R(\\omega_0)``)
+- Bethe-Slapter amplitude `F` in imaginary-frequency space
+```math
+    F(\\omega_m) = G^{(2)}(\\omega_m)R(\\omega_m)
+```
+- dynamical part of `R` in imaginary-time space
+- instant part of `R` in imaginary-time space
+"""
+function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
+    Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
+    source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1]; dtype=Float64, data=ones(1)),
+    verbose=false, Ncheck=5)
+    @unpack β = param
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+
+    if !(source isa Nothing)
+        @assert source.mesh[1] isa MeshGrids.ImTime "ImTime is expect for the dim = 1 source."
+    end
+    source0 = source_ins[1]
+
+    # Initalize F and R
+    print("G2 $(G2.data)\n $(G2.mesh[1].grid)\n")
+    G_compare = G2 |> to_dlr |> to_imtime
+    print("G_compare $(G_compare.data)\n")
+    F_freq, R_imt, R_ins = initFR(Euv, G2.mesh[1].representation.rtol, param)
+
+    #print("$(typeof(R_imt))")
+    R0, R0_sum = 1.0, 0.0
+    dR0, dR0_sum = 0.0, 0.0
+    R_sum = zeros(Float64, (R_imt.mesh[1].representation.size))
+    lamu, lamu0 = 0.0, 1.0
+    n = 0
+    # self-consistent iteration with mixing α
+    # Note!: all quantites about R, F, and source in the `while` loop are multiplied by momentum k.
+    while (true)
+        n = n + 1
+        # switch between imtime and imfreq to avoid convolution
+        # dlr Fourier transform is much faster than brutal force convolution
+
+        # calculation from imtime R to imfreq F
+        calcF!(F_freq, R_imt, R_ins, G2)
+
+        # calculation from imfreq F to imtime R
+        calcR!(F_freq, R_imt, R_ins, source, kernel, kernel_ins)
+        if n==1
+            print("R_ins $(R_ins.data) \n ")
+        end       
+        R_ω0 = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1] + R_ins[1])
+        # split the low-energy part R0=R(ω₀,kF) and the remaining instant part dR0 for iterative calcualtions 
+        R0_sum =  (source0 + R_ω0) + R0_sum * α
+        dR0_sum = view(R_ins, 1) + view(source_ins, 1) .- (source0 + R_ω0) + dR0_sum .* α
+        R0 = R0_sum * (1 - α)
+        dR0 = dR0_sum .* (1 - α)
+        R_ins[1] = R0+dR0
+
+        # iterative calculation of the dynamical part 
+        R_sum = view(R_imt, :) + R_sum .* α
+        R_imt[:] = R_sum .* (1 - α)
+        @debug "R(ω0) = $R_ω0, 1/R0 = $(-1/R0)  ($(-1/(1 + R_ω0)))"
+        # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
+
+        # record lamu=1/R0 if iterative step n > Ntherm
+        if n > Ntherm && (n % Ncheck == 1)
+            lamu = -1 / (1 + R_ω0)
+            if lamu > 0
+                # this condition does not necessarily mean something wrong
+                # it only indicates lamu is not converge to correct sign within Ntherm steps
+                # normally α>0.8 guarantees convergence, then it means Ntherm is too small
+                @warn ("α = $α or Ntherm=$Ntherm is too small!")
+            end
+            # err = abs(lamu - lamu0)
+            # Exit the loop if the iteration converges
+            isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+
+            lamu0 = lamu
+            if verbose
+                println("lamu=$lamu")
+            end
+        end
+    end
+    println("α = $α, iteration step: $n")
+    lamu = 1.0 / R0   # calculate 1/R0
+    # calculate real physical quantites F and R
+
+    return lamu, F_freq, R_imt, R_ins
+end
+
+
+
+
 """
     function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
         maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
@@ -405,5 +640,59 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     # println(view(R_freq, :, kF_label))
     return lamu, R_freq, F_freq
 end
+
+
+
+
+"""
+    function linearResponse(param; Euv=100 * param.EF, rtol=1e-10,
+        maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, α=0.8)
+
+Implmentation of γ-model linear response approach.
+
+# Arguments:
+- `param`: parameters of ElectronGas.
+- `Euv`: the UV energy scale of the spectral density. By default, `Euv=100EF`.
+- `rtol`: tolerance absolute error. By defalut, `rtol=1e-10`.
+- `maxK`: maximum momentum of kgrid and qgrids. By default, `maxK=10kF`.
+- `minK`: minimum interval of panel kgrid and qgrids. By default, `minK=1e-7kF`.
+- `Nk`: number of grid points of panel kgrid and qgrids. By defalut, `Nk=8`.
+- `order`: number of grid points of subgrid of kgrid and qgrids. By defalut, `order=8`.
+- `α`: mixing parameter in the self-consistent iteration. By default, `α=0.7`.
+
+# Return:
+- Inverse of low-energy linear response `1/R₀` (``R_0=R(\\omega_0)``)
+- Linear response `R(ωₙ)`, which is calculated by the Bethe-Slapter-type equation
+```math
+    R(\\omega_n) = 1 - \\frac{1}{\\beta} \\sum_m\\Gamma(\\omega_n;\\omega_m) G^{(2)}(\\omega_m)R(\\omega_m)
+```
+where ``1`` is the default sourced term, ``\\Gamma(\\omega_n;\\omega_m)`` is the particle-particle four-point vertex 
+with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the product of two single-particle Green's function.
+"""
+function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.7, verbose=false, Ntherm=30)
+    @unpack g , β, γ = param
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+    # prepare Legendre decomposed effective interaction
+    @time kernel_freq, kernel_ins = Interaction.gamma_wrapped(Euv, rtol, param)
+    G2 = G2γwrapped(Euv,rtol,param)
+    fdlr = Lehmann.DLRGrid(Euv, β, rtol, FERMION, :pha)
+    # bdlr = kernel_freq.mesh[1].dlrGrid
+    @assert G2.mesh[1].grid == fdlr.n
+    # prepare kernel, interpolate into τ-space with fdlr.τ
+    # kernel =  kernel_freq |> to_dlr |>to_imtime
+    kernel =  dlr_to_imtime(to_dlr(kernel_freq),fdlr.τ)
+
+    # calculate F, R by Bethe-Slapter iteration.
+    lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, Euv;
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm)
+    println("1/R₀ = $lamu")
+
+    R_freq = R_imt |> to_dlr |> to_imfreq
+    # println(view(R_freq, :, kF_label))
+    return lamu, R_freq, F_freq
+end
+
 
 end

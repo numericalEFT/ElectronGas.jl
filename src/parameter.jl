@@ -24,8 +24,11 @@ using ..Parameters
     EF::Float64 = 1.0     #kF^2 / (2me)
     β::Float64 = 200 # bare inverse temperature
     μ::Float64 = 1.0
-
+    g::Float64 = 1.0
+    γ::Float64 = 0.0
+    Ωph::Float64=0.01EF
     # artificial parameters
+    Ωcut::Float64=0.5EF
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
     Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)
     gs::Float64 = 1.0   # spin-symmetric coupling 

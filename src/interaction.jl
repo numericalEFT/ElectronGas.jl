@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni, gamma, gamma_wrapped
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -29,6 +29,57 @@ function inf_sum(q, n)
     end
     return 1.0 / sum / sum
 end
+
+
+function phonon(n,param)
+    @unpack β,g = param
+    Ω = 0.1
+    ω = 2*π*β*n
+    kernel = g*π*ω^2/(ω^2+Ω^2)
+    return kernel
+end
+
+function gamma(n, param)
+    @unpack β,γ,g = param
+    ω = 2*π*β*n
+    if n==0
+        kernel = 0.0
+    else
+        kernel = g*π/abs(ω)^γ
+    end
+    return kernel
+end
+
+# """
+#     function gamma_wrapped(Euv,rtol,param)
+
+# Interaction of γ-model generated as MeshArray. 
+# ```math
+#  W(\\omega_n)= \\left\\{
+# \\begin{array}{l}
+# 0\\, , ~\\qquad \\mbox{n=0} \\; , \\\
+# \\frac{g\\pi}{|\\omega_n|^{\\gamma}} \\, , \\qquad \\mbox{n \\neq 0} \\; ,\\end{array} \\right.}
+# ```
+# where g is the interaction strength.
+# #Arguments:
+#  - `Euv`: the UV energy scale of the spectral density. By default, `Euv=100EF`.
+#  - `rtol`: tolerance absolute error. By defalut, `rtol=1e-10`.
+#  - param: other system parameters
+# """
+function gamma_wrapped(Euv,rtol,param)
+    @unpack β, g= param
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green_dyn = GreenFunc.MeshArray(wn_mesh; dtype=Float64)
+    green_ins = GreenFunc.MeshArray([0,]; dtype=Float64)
+    for (ni, n) in enumerate(wn_mesh.grid)
+        # green_dyn[ni]=gamma(n,param) 
+        green_dyn[ni]= phonon(n,param) 
+    end
+    green_ins[1] = 0.0#*g*π
+    # green_ins[1] = g
+    return green_dyn, green_ins
+end
+
 
 """
     function coulomb(q,param)
