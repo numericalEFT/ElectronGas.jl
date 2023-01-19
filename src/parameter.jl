@@ -25,6 +25,10 @@ using ..Parameters
     β::Float64 = 200 # bare inverse temperature
     μ::Float64 = 1.0
 
+    # e-ph
+    eph::Float64 = 0.4 * 4 * π^2
+    ω_D::Float64 = 0.05EF
+
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
     Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)

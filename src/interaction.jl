@@ -143,6 +143,28 @@ function coulombinv_2d(q, param)
     end
     return Vinvs, Vinva
 end
+"""
+    function phonon(q,n,param)
+
+El-el interaction induced by phonon.
+
+#Arguments:
+ - q: momentum
+ - n: Matsubara frequency ω_n=2πTn
+ - param: system parameters
+"""
+function phonon(q, n, param)
+    @unpack β, eph, ω_D, kF = param
+    kernel = 0
+    ω = 2 * π * n / β
+    α = eph
+    β_freq = ω_D^2 / kF^2
+    γ = 1 / kF^2
+    ω_q2 = β_freq * q^2 / (1 + γ * q^2)
+    kernel = -α / (1 + (q / kF)^2) * ω_q2 / (ω^2 + ω_q2)
+    #kernel = -α*ω_D^2/(ω^2+ω_D^2) 
+    return (kernel, 0.0)
+end
 
 """
     function bubbledyson(Vinv::Float64, F::Float64, Π::Float64)

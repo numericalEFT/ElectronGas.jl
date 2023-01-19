@@ -45,4 +45,8 @@
         # println(KO_ins[2, :, :])
         F_s = Interaction.landauParameterMoroni(1.0, 0, param)
     end
+
+    @testset "Phonon" begin
+        @test isapprox(Interaction.phonon(1.0, 1, param)[1], -6.594066889080548, rtol=1e-4)
+    end
 end
