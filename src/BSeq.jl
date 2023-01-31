@@ -347,7 +347,7 @@ where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
-    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
+    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, Vph::Union{Function,Nothing}=nothing,
     sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30)
     @unpack dim, rs, β, kF = param
     if verbose
@@ -357,14 +357,14 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     if dim == 3
         if channel == 0
             @time W = LegendreInteraction.DCKernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
-                minK=minK, order=order, int_type=int_type, channel=channel)
+                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
         else
             @time W = LegendreInteraction.DCKernel_old(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
-                minK=minK, order=order, int_type=int_type, channel=channel)
+                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
         end
     elseif dim == 2
         @time W = LegendreInteraction.DCKernel_2d(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
-            minK=minK, order=order, int_type=int_type, channel=channel)
+            minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
     else
         error("No support for $dim dimension!")
     end

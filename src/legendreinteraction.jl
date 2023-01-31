@@ -33,7 +33,7 @@ export DCKernel
     return factor
 end
 
-function interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
+function interaction_dynamic(q, n, param, int_type, spin_state, Vph::Union{Function,Nothing}=nothing; kwargs...)
     # a wrapper for dynamic part of effective interaction
     # for rpa simply return rpa
     # for ko return ks+ka for singlet, ks-3ka for triplet
@@ -68,6 +68,10 @@ function interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
         throw(UndefVarError(int_type))
     end
 
+    if !isnothing(Vph)
+        ks += Vph(q, n, param)[1]
+        ka += Vph(q, n, param)[2]
+    end
     return ks + spin_factor(spin_state) * ka
 end
 
@@ -86,13 +90,13 @@ end
     return (Vs + spin_factor(spin_state) * Va)
 end
 
-@inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state; kwargs...)
+@inline function kernel_integrand(k, p, q, n, channel, param, int_type, spin_state, Vph::Union{Function,Nothing}=nothing; kwargs...)
     legendre_x = (k^2 + p^2 - q^2) / 2 / k / p
     if (abs(abs(legendre_x) - 1) < 1e-12)
         legendre_x = sign(legendre_x) * 1
     end
     # convention changed, now interaction_dynamic already included the V_Bare
-    return q * Pl(legendre_x, channel) * interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
+    return q * Pl(legendre_x, channel) * interaction_dynamic(q, n, param, int_type, spin_state, Vph; kwargs...)
 end
 
 @inline function kernel0_integrand(k, p, q, channel, param, spin_state; kwargs...)
@@ -105,13 +109,13 @@ end
     return q * Pl(legendre_x, channel) * interaction_instant(q, param, spin_state; kwargs...)
 end
 
-@inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state; kwargs...)
+@inline function kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state, Vph::Union{Function,Nothing}=nothing; kwargs...)
     x = cos(θ)
     q2 = (k - p)^2 + 2k * p * (1 - x)
     if x == 1 || q2 <= 0
         q2 = (k - p)^2 + k * p * θ^2
     end
-    return cos(channel * θ) * interaction_dynamic(√q2, n, param, int_type, spin_state; kwargs...)
+    return cos(channel * θ) * interaction_dynamic(√q2, n, param, int_type, spin_state, Vph; kwargs...)
 end
 
 @inline function kernel0_integrand2d(k, p, θ, channel, param, spin_state; kwargs...)
@@ -189,7 +193,7 @@ struct DCKernel
 
 end
 
-function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto; kwargs...)
+function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto, Vph::Union{Function,Nothing}=nothing; kwargs...)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -227,7 +231,7 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
             for (ni, n) in enumerate(bdlr.n)
                 for (θi, θ) in enumerate(θgrid.grid)
                     # data[θi, ni] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state)
-                    data0[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state; kwargs...)
+                    data0[θi] = kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state, Vph; kwargs...)
                 end
                 # data[:, ni] = [kernel_integrand2d(k, p, θ, n, channel, param, int_type, spin_state) for θ in θgrid.grid]
                 kernel[ki, pi, ni] = Interp.integrate1D(data0, θgrid) * 2
@@ -241,11 +245,12 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
-function DCKernel_2d(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, channel=0, spin_state=:auto, kwargs...)
-    return DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state; kwargs...)
+function DCKernel_2d(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7,
+    order=4, int_type=:rpa, channel=0, spin_state=:auto, Vph::Union{Function,Nothing}=nothing, kwargs...)
+    return DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state, Vph; kwargs...)
 end
 
-function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto; kwargs...)
+function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto, Vph::Union{Function,Nothing}=nothing; kwargs...)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -298,7 +303,7 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
                 kernel_bare[ki, pi] = Interp.integrate1D(data, int_grid)
 
                 for (ni, n) in enumerate(bdlr.n)
-                    data = [kernel_integrand(k, p, q, n, channel, param, int_type, spin_state; kwargs...) for q in int_grid.grid]
+                    data = [kernel_integrand(k, p, q, n, channel, param, int_type, spin_state, Vph; kwargs...) for q in int_grid.grid]
                     kernel[ki, pi, ni] = Interp.integrate1D(data, int_grid)
                     @assert isfinite(kernel[ki, pi, ni]) "fail kernel at $ki,$pi,$ni, with $(kernel[ki,pi,ni])"
                 end
@@ -315,15 +320,17 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
-function DCKernel_old(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, channel=0, spin_state=:auto)
-    return DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state)
+function DCKernel_old(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7,
+    order=4, int_type=:rpa, channel=0, spin_state=:auto, Vph::Union{Function,Nothing}=nothing)
+    return DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state, Vph)
 end
 
-function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto, kwargs...)
-    return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
+function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7,
+    order=4, int_type=:rpa, spin_state=:auto, Vph::Union{Function,Nothing}=nothing, kwargs...)
+    return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state, Vph; kwargs...)
 end
 
-function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto; kwargs...)
+function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto, Vph::Union{Function,Nothing}=nothing; kwargs...)
     # use helper function
     @unpack kF, β = param
     channel = 0
@@ -355,7 +362,7 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
         # for (yi, y) in enumerate(helper_grid)
         #     helper[yi] = helper_function(y, 1, u->interaction_dynamic(u,n,param,int_type,spin_state),param)
         # end
-        helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, int_type, spin_state; kwargs...), param)
+        helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, int_type, spin_state, Vph; kwargs...), param)
         for (ki, k) in enumerate(kgrid.grid)
             for (pi, p) in enumerate(qgrids[ki].grid)
                 Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))

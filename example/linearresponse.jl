@@ -17,18 +17,20 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
     return real(CompositeGrids.Interp.integrate1D(integrand, kgrid))
 end
 
-function measure_chi(dim, θ, rs; kwargs...)
+function measure_chi(dim, θ, rs, channel; kwargs...)
     param = Parameter.rydbergUnit(θ, rs, dim)
-    channel = 0
-    lamu, R_freq, F_freq = BSeq.linearResponse(param, channel
-        ; kwargs...)
+
+    println("dim=$dim, θ=$θ, rs=$rs, channel=$channel:")
+
+    lamu, R_freq, F_freq = BSeq.linearResponse(param, channel; kwargs...)
     result = measure_chi(F_freq)
     println("1/chi=", 1 / result)
 
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    fname = "gap_chi_rs$(rs)_l$(channel).txt"
+    fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v1.txt"
+    # fname = "gap$(dim)D_chi_rs$(rs)_l$(channel).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -40,20 +42,24 @@ end
 
 using Test
 using .MeasureChi
+using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     dim = 3
-    rs = 7.0
-    num = 6
-    beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    rs = 2.0
+    num = 14
+    channel = 0
+    # beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    beta = [1.5625 * 2^i for i in LinRange(0, num - 1, num)]
     # beta = [1800, 2000, 2229.78,]
     # num = 6
     # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
-    chi = [measure_chi(dim, 1 / b, rs;
-        atol=1e-10, rtol=1e-10, Nk=8, order=8,
-        sigmatype=:g0w0, int_type=:rpa,
+    chi = [measure_chi(dim, 1 / b, rs, channel;
+        atol=1e-10, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.7,
+        # sigmatype=:none, int_type=:rpa, Vph=phonon,
+        sigmatype=:none, int_type=:rpa,
         verbose=true) for b in beta]
     println(chi)
 end
