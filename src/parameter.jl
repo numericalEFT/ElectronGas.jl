@@ -29,7 +29,11 @@ using ..Parameters
     eph::Float64 = 0.4 * 4 * π^2
     ω_D::Float64 = 0.05EF
 
+    g::Float64 = 1.0
+    γ::Float64 = 0.0
+    Ωph::Float64 = 0.01EF
     # artificial parameters
+    Ωcut::Float64 = 0.5EF
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
     Λa::Float64 = 0.0   # Yukawa-type spin-antisymmetric interaction ~1/(q^2+Λa)
     gs::Float64 = 1.0   # spin-symmetric coupling 
