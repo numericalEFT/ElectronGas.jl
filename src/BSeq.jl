@@ -98,7 +98,7 @@ Otherwise,
 function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
     R_freq = R |> to_dlr |> to_imfreq
     # algebraic in frequency space
-    if length(R.mesh)==1
+    if length(R.mesh) == 1
         for ind in eachindex(F)
             F[ind] = real(R_freq[ind] + R_ins[1]) * G2[ind]
         end
@@ -166,9 +166,9 @@ function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc
     F_imt = real(F_dlr |> to_imtime)
     F_ins = real(dlr_to_imtime(F_dlr, [F.mesh[1].representation.β,])) * (-1)
 
-    R[:] = -F_imt[:].*kernel[:]
+    R[:] = -F_imt[:] .* kernel[:]
     #print("$(F_ins[:])\n")
-    R_ins[:] = -F_ins[:].* kernel_ins[:]
+    R_ins[:] = -F_ins[:] .* kernel_ins[:]
     #print("$(R_ins[:])\n")
     !(source isa Nothing) && (R += source)
 end
@@ -211,14 +211,14 @@ function calcR_2d!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenF
 end
 
 function Sigma_γ(n, param)
-    @unpack β,γ,g = param
-    ωn = (2n+1)*π/β
-    K = (abs(g)*β/2/π)^γ
+    @unpack β, γ, g = param
+    ωn = (2n + 1) * π / β
+    K = (abs(g) * β / 2 / π)^γ
     A = 0
     for i in 1:abs(n)
-        A += 2.0/i^γ
+        A += 2.0 / i^γ
     end
-    Σ =abs(ωn) #+ π/β*K*A*sign(2n+1)
+    Σ = abs(ωn) #+ π/β*K*A*sign(2n+1)
     return Σ
 end
 
@@ -233,7 +233,7 @@ Returns the inverse self-energy in gamma model.
 where g is the interaction strength, and T is the temperature. Here ``K=\\left( \\frac{g}{2\\pi T} \\right)^{γ}``, ``A=\\sum_{n=1}^{\\infty} \\frac{2}{n^{\\gamma}}``.
 """
 function G2γwrapped(Euv, rtol, param)
-    @unpack β,Ωcut = param
+    @unpack β, Ωcut = param
     wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
     print("max frequency $(wn_mesh[end]*β)\n")
     green = GreenFunc.MeshArray(wn_mesh; dtype=Float64)
@@ -246,7 +246,7 @@ function G2γwrapped(Euv, rtol, param)
         # else
         #     green[ind] = 1.0/abs(Sigma_γ(n,param))
         # end
-        green[ind] = 1.0/Sigma_γ(n,param)/(exp((wn-Ωcut)/0.0001)+1) # use fermi distribution to enforce a smooth UV cutoff
+        green[ind] = 1.0 / Sigma_γ(n, param) / (exp((wn - Ωcut) / 0.0001) + 1) # use fermi distribution to enforce a smooth UV cutoff
     end
     return green
 end
@@ -507,16 +507,16 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
 
         # calculation from imfreq F to imtime R
         calcR!(F_freq, R_imt, R_ins, source, kernel, kernel_ins)
-        if n==1
+        if n == 1
             print("R_ins $(R_ins.data) \n ")
-        end       
+        end
         R_ω0 = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1] + R_ins[1])
         # split the low-energy part R0=R(ω₀,kF) and the remaining instant part dR0 for iterative calcualtions 
-        R0_sum =  (source0 + R_ω0) + R0_sum * α
+        R0_sum = (source0 + R_ω0) + R0_sum * α
         dR0_sum = view(R_ins, 1) + view(source_ins, 1) .- (source0 + R_ω0) + dR0_sum .* α
         R0 = R0_sum * (1 - α)
         dR0 = dR0_sum .* (1 - α)
-        R_ins[1] = R0+dR0
+        R_ins[1] = R0 + dR0
 
         # iterative calculation of the dynamical part 
         R_sum = view(R_imt, :) + R_sum .* α
@@ -670,19 +670,19 @@ where ``1`` is the default sourced term, ``\\Gamma(\\omega_n;\\omega_m)`` is the
 with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the product of two single-particle Green's function.
 """
 function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.7, verbose=false, Ntherm=30)
-    @unpack g , β, γ = param
+    @unpack g, β, γ = param
     if verbose
         println("atol=$atol,rtol=$rtol")
     end
     # prepare Legendre decomposed effective interaction
     @time kernel_freq, kernel_ins = Interaction.gamma_wrapped(Euv, rtol, param)
-    G2 = G2γwrapped(Euv,rtol,param)
+    G2 = G2γwrapped(Euv, rtol, param)
     fdlr = Lehmann.DLRGrid(Euv, β, rtol, FERMION, :pha)
     # bdlr = kernel_freq.mesh[1].dlrGrid
     @assert G2.mesh[1].grid == fdlr.n
     # prepare kernel, interpolate into τ-space with fdlr.τ
     # kernel =  kernel_freq |> to_dlr |>to_imtime
-    kernel =  dlr_to_imtime(to_dlr(kernel_freq),fdlr.τ)
+    kernel = dlr_to_imtime(to_dlr(kernel_freq), fdlr.τ)
 
     # calculate F, R by Bethe-Slapter iteration.
     lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, Euv;
@@ -693,6 +693,5 @@ function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.
     # println(view(R_freq, :, kF_label))
     return lamu, R_freq, F_freq
 end
-
 
 end
