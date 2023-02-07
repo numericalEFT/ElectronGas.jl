@@ -108,6 +108,19 @@ function calcF!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc
         end
     end
 end
+function calcF_fromfreq!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray)
+    R_freq = R
+    # algebraic in frequency space
+    if length(R.mesh) == 1
+        for ind in eachindex(F)
+            F[ind] = real(R_freq[ind] + R_ins[1]) * G2[ind]
+        end
+    else
+        for ind in eachindex(F)
+            F[ind] = real(R_freq[ind] + R_ins[1, ind[2]]) * G2[ind]
+        end
+    end
+end
 
 """
     function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray,
@@ -172,8 +185,6 @@ function calcR!(F::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc
     #print("$(R_ins[:])\n")
     !(source isa Nothing) && (R += source)
 end
-
-
 
 
 """
@@ -472,7 +483,8 @@ with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the pro
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
     Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1]; dtype=Float64, data=ones(1)),
-    verbose=false, Ncheck=5)
+    verbose=false, Ncheck=5,
+    delta_correction=G2 * 0.0) # delta_correction corresponds to additional term in s matrix
     @unpack β = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -484,15 +496,16 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
     source0 = source_ins[1]
 
     # Initalize F and R
-    print("G2 $(G2.data)\n $(G2.mesh[1].grid)\n")
+    # print("G2 $(G2.data)\n $(G2.mesh[1].grid)\n")
     G_compare = G2 |> to_dlr |> to_imtime
-    print("G_compare $(G_compare.data)\n")
+    # print("G_compare $(G_compare.data)\n")
     F_freq, R_imt, R_ins = initFR(Euv, G2.mesh[1].representation.rtol, param)
+    R_freq = R_imt |> to_dlr |> to_imfreq
 
     #print("$(typeof(R_imt))")
     R0, R0_sum = 1.0, 0.0
     dR0, dR0_sum = 0.0, 0.0
-    R_sum = zeros(Float64, (R_imt.mesh[1].representation.size))
+    R_sum = zeros(Float64, (R_freq.mesh[1].representation.size))
     lamu, lamu0 = 0.0, 1.0
     n = 0
     # self-consistent iteration with mixing α
@@ -503,14 +516,15 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
         # dlr Fourier transform is much faster than brutal force convolution
 
         # calculation from imtime R to imfreq F
-        calcF!(F_freq, R_imt, R_ins, G2)
+        calcF!(F_freq, R_freq, R_ins, G2)
 
         # calculation from imfreq F to imtime R
         calcR!(F_freq, R_imt, R_ins, source, kernel, kernel_ins)
-        if n == 1
-            print("R_ins $(R_ins.data) \n ")
-        end
-        R_ω0 = real(dlr_to_imfreq(to_dlr(R_imt), [0])[1] + R_ins[1])
+        R_freq = (R_imt |> to_dlr |> to_imfreq) + (R_freq) .* delta_correction + R_ins[1] * delta_correction
+        # if n == 1
+        #     print("R_ins $(R_ins.data) \n ")
+        # end
+        R_ω0 = real(R_freq[1]) + R_ins[1]
         # split the low-energy part R0=R(ω₀,kF) and the remaining instant part dR0 for iterative calcualtions 
         R0_sum = (source0 + R_ω0) + R0_sum * α
         dR0_sum = view(R_ins, 1) + view(source_ins, 1) .- (source0 + R_ω0) + dR0_sum .* α
@@ -519,8 +533,8 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
         R_ins[1] = R0 + dR0
 
         # iterative calculation of the dynamical part 
-        R_sum = view(R_imt, :) + R_sum .* α
-        R_imt[:] = R_sum .* (1 - α)
+        R_sum = view(R_freq, :) + R_sum .* α
+        R_freq[:] = R_sum .* (1 - α)
         @debug "R(ω0) = $R_ω0, 1/R0 = $(-1/R0)  ($(-1/(1 + R_ω0)))"
         # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
 
@@ -591,7 +605,9 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     # prepare Legendre decomposed effective interaction
     if dim == 3
         if channel == 0
-            @time W = LegendreInteraction.DCKernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
+            @time W = LegendreInteraction.DCK    # nmax = G2.mesh[1].grid[end]
+            # delta_correction = Δω_correction(G2, wsph, a2f_iso, nmax)
+            ernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
                 minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
         else
             @time W = LegendreInteraction.DCKernel_old(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
