@@ -106,8 +106,8 @@ function Δω_correction(G2, wsph, a2f_iso, nmax)
     return correction
 end
 
-function linearResponse(param, wsph, a2f_iso;
-    Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.8, verbose=false, Ntherm=30, muc=0.0)
+function linearResponse(param, wsph, a2f_iso; Ecut=100000 * param.EF,
+    Euv=Ecut / param.β, rtol=1e-10, atol=1e-10, α=0.8, verbose=false, Ntherm=30, muc=0.0)
     @unpack β = param
     @time kernel_freq, kernel_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso; muc=muc)
     G2 = G2ωwrapped(Euv, rtol, param)
@@ -136,15 +136,15 @@ function linearResponse(param, wsph, a2f_iso;
 end
 
 function measure_R(betas, prefix;
-    dir="./run/epw/", Euv=100, rtol=1e10)
+    dir="./run/epw/", Ecut=160000, rtol=1e10)
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
     lamus = betas .* 0.0
 
     for i in 1:length(betas)
         param = QE_EPW.Parameter.defaultUnit(1 / betas[i], 1.0)
-        lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
-        lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
+        lambda_dyn, lambda_ins = lambda_wrapped(Ecut / betas[i], rtol, param, wsph, a2f_iso)
+        lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso; Ecut=Ecut)
         lamus[i] = lamu
 
         # measure chi
@@ -171,50 +171,53 @@ using Test
 using Lehmann
 using .QE_EPW
 
-@testset "QE_EPW" begin
+if abspath(PROGRAM_FILE) == @__FILE__
+    @testset "QE_EPW" begin
 
-    # # test read_a2f
+        # # test read_a2f
 
-    # prefix = "pb"
-    # # dir = "~/File/Research/Quantum-Espresso/EPW/Thu.6.Margine/exercise1/epw/"
-    # dir = "./run/epw/"
+        # prefix = "pb"
+        # # dir = "~/File/Research/Quantum-Espresso/EPW/Thu.6.Margine/exercise1/epw/"
+        # dir = "./run/epw/"
 
-    # wsph, a2f_iso = read_a2f(prefix; dir=dir)
-    # # println(wsph)
-    # # println(a2f_iso)
+        # wsph, a2f_iso = read_a2f(prefix; dir=dir)
+        # # println(wsph)
+        # # println(a2f_iso)
 
-    # # test lambdar_iso
+        # # test lambdar_iso
 
-    # println("lambdar_iso(1.0)=", lambdar_iso(1.0, wsph, a2f_iso))
+        # println("lambdar_iso(1.0)=", lambdar_iso(1.0, wsph, a2f_iso))
 
-    # # test DLR
-    # Euv = 100
-    # β = 1000
-    # rtol = 1e-10
-    # bdlr = DLRGrid(Euv, β, rtol, false, :ph)
+        # # test DLR
+        # Euv = 100
+        # β = 1000
+        # rtol = 1e-10
+        # bdlr = DLRGrid(Euv, β, rtol, false, :ph)
 
-    # λ = [lambdar_iso(bdlr.ωn[i], wsph, a2f_iso) for i in 1:length(bdlr)]
+        # λ = [lambdar_iso(bdlr.ωn[i], wsph, a2f_iso) for i in 1:length(bdlr)]
 
-    # # println(bdlr.ωn)
-    # # println(λ)
+        # # println(bdlr.ωn)
+        # # println(λ)
 
-    # # test lambda_wrapped
-    # param = QE_EPW.Parameter.defaultUnit(0.0007, 1.0)
-    # lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
+        # # test lambda_wrapped
+        # param = QE_EPW.Parameter.defaultUnit(0.0007, 1.0)
+        # lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
 
-    # println(lambda_dyn.mesh[1])
-    # println(lambda_dyn.data)
+        # println(lambda_dyn.mesh[1])
+        # println(lambda_dyn.data)
 
-    # # test linear solver
-    # lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
+        # # test linear solver
+        # lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
 
-    # param = QE_EPW.Parameter.defaultUnit(0.0006, 1.0)
-    # lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
-    # lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
+        # param = QE_EPW.Parameter.defaultUnit(0.0006, 1.0)
+        # lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
+        # lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
 
-    num = 17
-    betas = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-    lamus = measure_R(betas, "pb")
-    println(betas)
-    println(lamus)
+        # num = 17
+        # betas = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+        betas = [1 / 0.00044, 1 / 0.00045, 1 / 0.00046]
+        lamus = measure_R(betas, "pb")
+        println(betas)
+        println(lamus)
+    end
 end
