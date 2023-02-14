@@ -6,6 +6,7 @@ include("epw_io.jl")
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
 
 function s_matrix(N, wsph, a2f_iso, β, muc=0.07)
+    println("$N, $(fermi_mat(1, β, N)), $(fermi_mat(N÷2, β, N)), $(fermi_mat(N, β, N)) ")
     smat = zeros(Float64, (N, N))
     for i in 1:N
         for j in 1:N
@@ -36,12 +37,6 @@ function power_method(smat; conv=1e-6, Nmax=200, shift=1.0)
     while (diff > conv && n < Nmax)
         norm = sqnorm(y)
         x = y ./ norm
-        # y = y .* 0
-        # for i in 1:N
-        #     for j in 1:N
-        #         y[i] = y[i] + smat[i, j] * x[j]
-        #     end
-        # end
         y = smat * x
         y = y .+ shift .* x
         diff = abs(a - norm)
@@ -54,19 +49,52 @@ function power_method(smat; conv=1e-6, Nmax=200, shift=1.0)
         # norm = sqnorm(x)
         # diff = norm
         # println(n, ",", a - shift, ",", y[N÷2], ",", y[1])
-
         n = n + 1
     end
     return a - shift
 end
 
+function precursory_cooper_flow(smat;
+    source=ones(Float64, size(smat)[1]), α=0.8,
+    conv=1e-6, Nmax=200)
+
+    N = size(smat)[1]
+
+    invR0 = 0.0
+    diff = 1.0
+    n = 1
+    xsum = source
+    x = xsum .* (1 - α)
+
+    while (diff > conv && n < Nmax)
+        y = smat * x
+        xsum = xsum .* α .+ (source + y)
+        x = xsum .* (1 - α)
+        diff = abs(1 / x[N÷2] - invR0)
+        invR0 = 1 / x[N÷2]
+
+        n = n + 1
+    end
+
+    return invR0
+end
+
 function compute_λ(T, Ec, wsph, a2f_iso)
     β = 1 / T
-    N = floor(Int, 2Ec / T)
+    N = floor(Int, Ec / T) * 2
     smat = s_matrix(N, wsph, a2f_iso, β)
     λ = power_method(smat)
     println("λ=", λ, ", at T=", 1.160451812e4 / β)
     return λ
+end
+
+function compute_invR0(T, Ec, wsph, a2f_iso)
+    β = 1 / T
+    N = floor(Int, Ec / T) * 2
+    smat = s_matrix(N, wsph, a2f_iso, β)
+    invR0 = precursory_cooper_flow(smat)
+    println("1/R0=", invR0, ", at T=", 1.160451812e4 / β)
+    return invR0
 end
 
 @testset "QE_BRUTAL" begin
@@ -76,7 +104,13 @@ end
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
 
-    compute_λ(0.00044, 0.1, wsph, a2f_iso)
-    compute_λ(0.00045, 0.1, wsph, a2f_iso)
-    compute_λ(0.00046, 0.1, wsph, a2f_iso)
+    Ec = 0.1
+
+    # compute_invR0(0.00044, Ec, wsph, a2f_iso)
+    # compute_invR0(0.00042, Ec, wsph, a2f_iso)
+    # compute_invR0(0.0004, Ec, wsph, a2f_iso)
+
+    compute_λ(0.00044, Ec, wsph, a2f_iso)
+    compute_λ(0.00042, Ec, wsph, a2f_iso)
+    compute_λ(0.0004, Ec, wsph, a2f_iso)
 end

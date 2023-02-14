@@ -215,7 +215,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
         # num = 17
         # betas = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-        betas = [1 / 0.00044, 1 / 0.00045, 1 / 0.00046]
+        betas = [1 / 0.0005, 1 / 0.00055, 1 / 0.0006]
         lamus = measure_R(betas, "pb")
         println(betas)
         println(lamus)
