@@ -58,7 +58,7 @@ end
 
 function precursory_cooper_flow(smat;
     source=ones(Float64, size(smat)[1]), α=0.8,
-    conv=1e-6, Nmax=200)
+    conv=1e-6, Nmax=1000)
 
     N = size(smat)[1]
 
@@ -68,13 +68,15 @@ function precursory_cooper_flow(smat;
     xsum = source
     x = xsum .* (1 - α)
 
-    while (diff > conv && n < Nmax)
+    converge = false
+
+    while (!converge && n < Nmax)
         y = smat * x
         xsum = xsum .* α .+ (source + y)
         x = xsum .* (1 - α)
-        diff = abs(1 / x[N÷2] - invR0)
+        # diff = abs(1 / x[N÷2] - invR0)
+        converge = isapprox(1 / x[N÷2], invR0, rtol=conv, atol=1e-10)
         invR0 = 1 / x[N÷2]
-
         n = n + 1
     end
 
@@ -100,6 +102,10 @@ function compute_invR0(T, Ec, wsph, a2f_iso)
     return invR0
 end
 
+function linreg(X, Y)
+    hcat(fill!(similar(X), 1), X) \ Y
+end
+
 @testset "QE_BRUTAL" begin
     prefix = "pb"
     # dir = "~/File/Research/Quantum-Espresso/EPW/Thu.6.Margine/exercise1/epw/"
@@ -117,10 +123,27 @@ end
     # compute_λ(0.00042, Ec, wsph, a2f_iso)
     # compute_λ(0.0004, Ec, wsph, a2f_iso)
 
-    for i in 1:10
-        TinK = 2.75 + 0.25 * i
+    N = 9
+    lnbetas = zeros(Float64, N)
+    invR0s = zeros(Float64, N)
+    lamus = zeros(Float64, N)
+
+    for i in 1:N
+        TinK = 4.9 + 0.1 * i
         T = TinK / ev2Kelvin
-        compute_λ(T, Ec, wsph, a2f_iso)
-        compute_invR0(T, Ec, wsph, a2f_iso)
+        lamus[i] = compute_λ(T, Ec, wsph, a2f_iso)
+        invR0s[i] = compute_invR0(T, Ec, wsph, a2f_iso)
+        lnbetas[i] = log10(1 / TinK)
     end
+
+    println(lnbetas)
+    println(invR0s)
+    println(lamus)
+
+    b, k = linreg(lnbetas, invR0s)
+    println("k=$k, b=$b, Tc=$(10^(b/k))")
+
+    b, k = linreg(lnbetas, lamus .- 1.0)
+    println("k=$k, b=$b, Tc=$(10^(b/k))")
+
 end
