@@ -3,10 +3,12 @@
 
 include("epw_io.jl")
 
+const ev2Kelvin = 1.160451812e4
+
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
 
-function s_matrix(N, wsph, a2f_iso, β, muc=0.07)
-    println("$N, $(fermi_mat(1, β, N)), $(fermi_mat(N÷2, β, N)), $(fermi_mat(N, β, N)) ")
+function s_matrix(N, wsph, a2f_iso, β, muc=0.1)
+    # println("$N, $(fermi_mat(1, β, N)), $(fermi_mat(N÷2, β, N)), $(fermi_mat(N, β, N)) ")
     smat = zeros(Float64, (N, N))
     for i in 1:N
         for j in 1:N
@@ -81,19 +83,20 @@ end
 
 function compute_λ(T, Ec, wsph, a2f_iso)
     β = 1 / T
-    N = floor(Int, Ec / T) * 2
+    N = floor(Int, Ec / π / T / 2) * 2
     smat = s_matrix(N, wsph, a2f_iso, β)
     λ = power_method(smat)
     println("λ=", λ, ", at T=", 1.160451812e4 / β)
+    println("λ from LA: $(eigmax(smat))")
     return λ
 end
 
 function compute_invR0(T, Ec, wsph, a2f_iso)
     β = 1 / T
-    N = floor(Int, Ec / T) * 2
+    N = floor(Int, Ec / π / T / 2) * 2
     smat = s_matrix(N, wsph, a2f_iso, β)
     invR0 = precursory_cooper_flow(smat)
-    println("1/R0=", invR0, ", at T=", 1.160451812e4 / β)
+    println("1/R0=", invR0, ", at T=", ev2Kelvin / β)
     return invR0
 end
 
@@ -110,7 +113,14 @@ end
     # compute_invR0(0.00042, Ec, wsph, a2f_iso)
     # compute_invR0(0.0004, Ec, wsph, a2f_iso)
 
-    compute_λ(0.00044, Ec, wsph, a2f_iso)
-    compute_λ(0.00042, Ec, wsph, a2f_iso)
-    compute_λ(0.0004, Ec, wsph, a2f_iso)
+    # compute_λ(0.00044, Ec, wsph, a2f_iso)
+    # compute_λ(0.00042, Ec, wsph, a2f_iso)
+    # compute_λ(0.0004, Ec, wsph, a2f_iso)
+
+    for i in 1:10
+        TinK = 2.75 + 0.25 * i
+        T = TinK / ev2Kelvin
+        compute_λ(T, Ec, wsph, a2f_iso)
+        compute_invR0(T, Ec, wsph, a2f_iso)
+    end
 end

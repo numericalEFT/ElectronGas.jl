@@ -169,6 +169,7 @@ end
 
 using Test
 using Lehmann
+using LinearAlgebra
 using .QE_EPW
 
 if abspath(PROGRAM_FILE) == @__FILE__
