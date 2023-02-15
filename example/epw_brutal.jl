@@ -29,7 +29,7 @@ end
 
 sqnorm(x) = sqrt(sum(x .^ 2))
 
-function power_method(smat; conv=1e-6, Nmax=200, shift=1.0)
+function power_method(smat; conv=1e-6, Nmax=200, shift=2.0)
     N = size(smat)[1]
     x, y = zeros(Float64, N), ones(Float64, N)
 
@@ -83,27 +83,98 @@ function precursory_cooper_flow(smat;
     return invR0
 end
 
-function compute_λ(T, Ec, wsph, a2f_iso)
+function compute_λ(T, Ec, wsph, a2f_iso; printlv=1)
     β = 1 / T
     N = floor(Int, Ec / π / T / 2) * 2
     smat = s_matrix(N, wsph, a2f_iso, β)
     λ = power_method(smat)
-    println("λ=", λ, ", at T=", 1.160451812e4 / β)
-    println("λ from LA: $(eigmax(smat))")
+    if printlv == 1
+        println("λ=", λ, ", at T=", ev2Kelvin / β)
+        println("λ from LA: $(eigmax(smat))")
+    end
     return λ
 end
 
-function compute_invR0(T, Ec, wsph, a2f_iso)
+function compute_invR0(T, Ec, wsph, a2f_iso; printlv=1)
     β = 1 / T
     N = floor(Int, Ec / π / T / 2) * 2
     smat = s_matrix(N, wsph, a2f_iso, β)
     invR0 = precursory_cooper_flow(smat)
-    println("1/R0=", invR0, ", at T=", ev2Kelvin / β)
+    if printlv == 1
+        println("1/R0=", invR0, ", at T=", ev2Kelvin / β)
+    end
     return invR0
 end
 
 function linreg(X, Y)
     hcat(fill!(similar(X), 1), X) \ Y
+end
+
+function search_tc_pm(Ec, wsph, a2f_iso; T1=0.1Ec, T2=0.001Ec, Nmax=20)
+    lam1 = compute_λ(T1, Ec, wsph, a2f_iso; printlv=0)
+    lam2 = compute_λ(T2, Ec, wsph, a2f_iso; printlv=0)
+
+    @assert lam1 < 1.0 # not SC at T1
+    n = 1
+    while lam2 < 1.0 && n < Nmax
+        # ensure SC at T2
+        T2 = T2 / 10
+        lam2 = compute_λ(T2, Ec, wsph, a2f_iso; printlv=0)
+        n = n + 1
+    end
+    if lam2 < 1.0
+        println("No SC!")
+        return -1.0
+    end
+
+    for i in 1:Nmax
+        # search Tc
+        T3 = sqrt(T1 * T2)
+        lam3 = compute_λ(T3, Ec, wsph, a2f_iso; printlv=0)
+        if lam3 < 1.0
+            lam1 = lam3
+            T1 = T3
+        else
+            lam2 = lam3
+            T2 = T3
+        end
+    end
+
+    return sqrt(T2 * T1)
+end
+
+function search_tc_pcf(Ec, wsph, a2f_iso;
+    T1=0.1Ec, T2=0.001Ec, Nmax=20, atol=1e-6)
+    lam1 = compute_invR0(T1, Ec, wsph, a2f_iso; printlv=0)
+    lam2 = compute_invR0(T2, Ec, wsph, a2f_iso; printlv=0)
+
+    @assert abs(lam1) > atol # not SC at T1
+    n = 1
+    while abs(lam2) > atol && n < Nmax
+        # ensure SC at T2
+        T2 = T2 / 10
+        lam2 = compute_invR0(T2, Ec, wsph, a2f_iso; printlv=0)
+        n = n + 1
+    end
+    if abs(lam2) > atol
+        println("No SC!")
+        return -1.0
+    end
+
+    for i in 1:Nmax
+        # search Tc
+        T3 = sqrt(T1 * T2)
+        lam3 = compute_invR0(T3, Ec, wsph, a2f_iso; printlv=0)
+        if abs(lam3) > atol
+            lam1 = lam3
+            T1 = T3
+        else
+            lam2 = lam3
+            T2 = T3
+        end
+    end
+
+    return sqrt(T2 * T1)
 end
 
 @testset "QE_BRUTAL" begin
@@ -129,7 +200,7 @@ end
     lamus = zeros(Float64, N)
 
     for i in 1:N
-        TinK = 4.9 + 0.1 * i
+        TinK = 5.0 + 0.2 * (i - 1)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso)
         invR0s[i] = compute_invR0(T, Ec, wsph, a2f_iso)
@@ -141,9 +212,13 @@ end
     println(lamus)
 
     b, k = linreg(lnbetas, invR0s)
+    Tcfind = search_tc_pcf(Ec, wsph, a2f_iso) * ev2Kelvin
     println("k=$k, b=$b, Tc=$(10^(b/k))")
+    println("Tc_find=$(Tcfind)")
 
     b, k = linreg(lnbetas, lamus .- 1.0)
-    println("k=$k, b=$b, Tc=$(10^(b/k))")
+    Tcfind = search_tc_pm(Ec, wsph, a2f_iso) * ev2Kelvin
+    println("k=$k, b=$b, Tc_extrap=$(10^(b/k))")
+    println("Tc_find=$(Tcfind)")
 
 end
