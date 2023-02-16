@@ -64,6 +64,15 @@ function interaction_dynamic(q, n, param, int_type, spin_state, Vph::Union{Funct
         elseif dim == 2
             error("not implemented!")
         end
+    elseif int_type == :none
+        if dim == 3
+            # ks, ka = RPA(q, n, param)
+            ks, ka = RPA(q, n, param; regular=true, kwargs...) .* Interaction.coulomb(q, param)
+        elseif dim == 2
+            # ks, ka = RPA(q, n, param; Vinv_Bare=Interaction.coulombinv_2d)
+            ks, ka = RPA(q, n, param; Vinv_Bare=Interaction.coulombinv_2d, regular=true, kwargs...) .* Interaction.coulomb_2d(q, param)
+        end
+        ks, ka = ks .* 0.0, ka .* 0.0
     else
         throw(UndefVarError(int_type))
     end

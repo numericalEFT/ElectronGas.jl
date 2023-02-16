@@ -605,9 +605,9 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     # prepare Legendre decomposed effective interaction
     if dim == 3
         if channel == 0
-            @time W = LegendreInteraction.DCK    # nmax = G2.mesh[1].grid[end]
+            # nmax = G2.mesh[1].grid[end]
             # delta_correction = Δω_correction(G2, wsph, a2f_iso, nmax)
-            ernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
+            @time W = LegendreInteraction.DCKernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
                 minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
         else
             @time W = LegendreInteraction.DCKernel_old(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,

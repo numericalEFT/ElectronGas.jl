@@ -11,7 +11,7 @@ module Interaction
 using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
-export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni, phonoon, gamma, gamma_wrapped
+export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni, phonon, gamma, gamma_wrapped
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
