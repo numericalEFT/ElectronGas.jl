@@ -4,11 +4,12 @@
 include("epw_io.jl")
 
 const ev2Kelvin = 1.160451812e4
+const g0 = 1.2
 
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
 
 function lambdar_iso_fake(w, wsph, a2f_iso)
-    g = 0.2
+    g = 0.25
     Ω = 0.005
     return g * Ω^2 / (Ω^2 + w^2)
 end
@@ -28,7 +29,7 @@ function s_matrix(N, wsph, a2f_iso, β;
                     smat[i, j] = smat[i, j] - lambdar_func(wi - wk, wsph, a2f_iso) * sign(wi * wk)
                 end
             end
-            smat[i, j] = smat[i, j] / abs(wi) * π / β
+            smat[i, j] = smat[i, j] / abs(wj) * π / β
         end
     end
     return smat
@@ -72,7 +73,7 @@ function precursory_cooper_flow(smat;
     # source = zeros(Float64, size(smat)[1])
     # source[N÷2] = 1
     # source[N÷2+1] = 1
-    source = [1 / abs(2(i - (N ÷ 2) - 1) + 1) for i in 1:N]
+    # source = [1 / abs(2(i - (N ÷ 2) - 1) + 1) for i in 1:N]
 
     invR0 = 0.0
     diff = 1.0
@@ -207,17 +208,19 @@ reflectkwargs(; kwargs...) = kwargs
     # compute_λ(0.00042, Ec, wsph, a2f_iso)
     # compute_λ(0.0004, Ec, wsph, a2f_iso)
 
-    N = 15
+    N = 12
     lnbetas = zeros(Float64, N)
     invR0s = zeros(Float64, N)
     lamus = zeros(Float64, N)
 
     kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
+    # kwargs = reflectkwargs(muc=0.1)
     println(kwargs)
 
     for i in 1:N
-        # TinK = 5.0 + 0.2 * (i - 1)
+        # TinK = 4.0 + 0.25 * (i - 1)
         TinK = 0.2 * sqrt(2)^(i - 1)
+        # TinK = 4.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)
         invR0s[i] = compute_invR0(T, Ec, wsph, a2f_iso; kwargs...)
