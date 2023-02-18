@@ -7,12 +7,27 @@ const ev2Kelvin = 1.160451812e4
 const g0 = 1.2
 
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
+lambdar_iso(w1, w2, wsph, a2f_iso) = lambdar_iso(w1 - w2, wsph, a2f_iso)
 
-function lambdar_iso_fake(w, wsph, a2f_iso)
-    g = 0.25
-    Ω = 0.005
-    return g * Ω^2 / (Ω^2 + w^2)
+lambdar_iso_fake(w1, w2, wsph, a2f_iso) = lambdar_iso_fake(w1 - w2)
+function lambdar_iso_fake(w)
+    g = 0.72
+    f = 0.67
+    Ω = 0.01
+    # return g * Ω^2 / (Ω^2 + w^2)
+    return -g * ((1 - f) * Ω^2 + w^2) / (Ω^2 + w^2)
 end
+
+# function lambdar_iso_fake(w1, w2, wsph, a2f_iso)
+#     g = 0.55
+#     f = 0.66
+#     Ω = 0.01
+#     if abs(w1) < Ω && abs(w2) < Ω
+#         return -g * (1 - f)
+#     else
+#         return -g
+#     end
+# end
 
 function s_matrix(N, wsph, a2f_iso, β;
     muc=0.1, zcorrection=true, lambdar_func=lambdar_iso)
@@ -21,12 +36,12 @@ function s_matrix(N, wsph, a2f_iso, β;
     for i in 1:N
         for j in 1:N
             wi, wj = fermi_mat(i, β, N), fermi_mat(j, β, N)
-            λ = lambdar_func(wi - wj, wsph, a2f_iso)
+            λ = lambdar_func(wi, wj, wsph, a2f_iso)
             smat[i, j] = λ - muc
             if i == j && zcorrection
                 for k in 1:N
                     wk = fermi_mat(k, β, N)
-                    smat[i, j] = smat[i, j] - lambdar_func(wi - wk, wsph, a2f_iso) * sign(wi * wk)
+                    smat[i, j] = smat[i, j] - lambdar_func(wi, wk, wsph, a2f_iso) * sign(wi * wk)
                 end
             end
             smat[i, j] = smat[i, j] / abs(wj) * π / β
@@ -37,14 +52,15 @@ end
 
 sqnorm(x) = sqrt(sum(x .^ 2))
 
-function power_method(smat; conv=1e-6, Nmax=200, shift=2.0)
+function power_method(smat;
+    conv=1e-6, Nmax=200, shift=3.0, Ntherm=20)
     N = size(smat)[1]
     x, y = zeros(Float64, N), ones(Float64, N)
 
     a = 0.0
     diff = 1.0
     n = 1
-    while (diff > conv && n < Nmax)
+    while ((diff > conv || n < Ntherm) && n < Nmax)
         norm = sqnorm(y)
         x = y ./ norm
         y = smat * x
@@ -219,7 +235,7 @@ reflectkwargs(; kwargs...) = kwargs
 
     for i in 1:N
         # TinK = 4.0 + 0.25 * (i - 1)
-        TinK = 0.2 * sqrt(2)^(i - 1)
+        TinK = 0.1 * sqrt(2)^(i - 1)
         # TinK = 4.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)
@@ -230,24 +246,29 @@ reflectkwargs(; kwargs...) = kwargs
     println(lnbetas)
     println(invR0s)
     println(lamus)
+
+    b1, k1 = linreg(lnbetas, invR0s)
+    println("k=$k1, b=$b1, Tc=$(10^(b1/k1))")
+    # Tcfind = search_tc_pcf(Ec, wsph, a2f_iso; kwargs...) * ev2Kelvin
+    # println("Tc_find=$(Tcfind)")
+
+    b2, k2 = linreg(lnbetas, lamus .- 1.0)
+    println("k=$k2, b=$b2, Tc=$(10^(b2/k2))")
+    # Tcfind = search_tc_pm(Ec, wsph, a2f_iso; kwargs...) * ev2Kelvin
+    # println("Tc_find=$(Tcfind)")
+
     isplot = true
     if isplot
         using Plots
-        p = plot(lnbetas, invR0s, label="1/R0")
-        plot!(p, lnbetas, lamus .- 1.0, label="λ-1")
+        p = plot(lnbetas, invR0s, label="1/R0", lt=:scatter)
+        plot!(lnbetas, lnbetas .* k1 .+ b1)
+
+        plot!(p, lnbetas, lamus .- 1.0, label="λ-1", lt=:scatter)
+        plot!(lnbetas, lnbetas .* k2 .+ b2)
+
         plot!(p, lnbetas, lnbetas .* 0.0)
         display(p)
         readline()
     end
-
-    b, k = linreg(lnbetas, invR0s)
-    println("k=$k, b=$b, Tc=$(10^(b/k))")
-    # Tcfind = search_tc_pcf(Ec, wsph, a2f_iso; kwargs...) * ev2Kelvin
-    # println("Tc_find=$(Tcfind)")
-
-    b, k = linreg(lnbetas, lamus .- 1.0)
-    println("k=$k, b=$b, Tc=$(10^(b/k))")
-    # Tcfind = search_tc_pm(Ec, wsph, a2f_iso; kwargs...) * ev2Kelvin
-    # println("Tc_find=$(Tcfind)")
 
 end
