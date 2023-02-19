@@ -3,6 +3,8 @@
 
 include("epw_io.jl")
 
+using Random
+
 const ev2Kelvin = 1.160451812e4
 const g0 = 1.2
 
@@ -11,9 +13,12 @@ lambdar_iso(w1, w2, wsph, a2f_iso) = lambdar_iso(w1 - w2, wsph, a2f_iso)
 
 lambdar_iso_fake(w1, w2, wsph, a2f_iso) = lambdar_iso_fake(w1 - w2)
 function lambdar_iso_fake(w)
-    g = 0.72
-    f = 0.67
-    Ω = 0.01
+    # g = 0.72
+    # f = 0.67
+    # Ω = 0.01
+    g = 1.08
+    f = 0.45
+    Ω = 0.005
     # return g * Ω^2 / (Ω^2 + w^2)
     return -g * ((1 - f) * Ω^2 + w^2) / (Ω^2 + w^2)
 end
@@ -53,7 +58,7 @@ end
 sqnorm(x) = sqrt(sum(x .^ 2))
 
 function power_method(smat;
-    conv=1e-6, Nmax=200, shift=3.0, Ntherm=20)
+    conv=1e-6, Nmax=200, shift=8.0, Ntherm=20)
     N = size(smat)[1]
     x, y = zeros(Float64, N), ones(Float64, N)
 
