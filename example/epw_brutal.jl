@@ -5,11 +5,10 @@ include("epw_io.jl")
 
 using Random
 
-const ev2Kelvin = 1.160451812e4
 const g0 = 1.2
 
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
-lambdar_iso(w1, w2, wsph, a2f_iso) = lambdar_iso(w1 - w2, wsph, a2f_iso)
+lambdar_iso_epw(w1, w2, wsph, a2f_iso) = lambdar_iso(w1 - w2, wsph, a2f_iso)
 
 lambdar_iso_fake(w1, w2, wsph, a2f_iso) = lambdar_iso_fake(w1 - w2)
 function lambdar_iso_fake(w)
@@ -35,7 +34,7 @@ end
 # end
 
 function s_matrix(N, wsph, a2f_iso, β;
-    muc=0.1, zcorrection=true, lambdar_func=lambdar_iso)
+    muc=0.1, zcorrection=true, lambdar_func=lambdar_iso_epw)
     # println("$N, $(fermi_mat(1, β, N)), $(fermi_mat(N÷2, β, N)), $(fermi_mat(N, β, N)) ")
     smat = zeros(Float64, (N, N))
     for i in 1:N
@@ -139,10 +138,6 @@ function compute_invR0(T, Ec, wsph, a2f_iso; printlv=1, kwargs...)
     return invR0
 end
 
-function linreg(X, Y)
-    hcat(fill!(similar(X), 1), X) \ Y
-end
-
 function search_tc_pm(Ec, wsph, a2f_iso; T1=0.1Ec, T2=0.001Ec, Nmax=20, kwargs...)
     lam1 = compute_λ(T1, Ec, wsph, a2f_iso; printlv=0, kwargs...)
     lam2 = compute_λ(T2, Ec, wsph, a2f_iso; printlv=0, kwargs...)
@@ -219,7 +214,8 @@ reflectkwargs(; kwargs...) = kwargs
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
 
-    Ec = 0.1
+    # Ec = 0.1
+    Ec = 5.0
 
     # compute_invR0(0.00044, Ec, wsph, a2f_iso)
     # compute_invR0(0.00042, Ec, wsph, a2f_iso)
@@ -229,18 +225,19 @@ reflectkwargs(; kwargs...) = kwargs
     # compute_λ(0.00042, Ec, wsph, a2f_iso)
     # compute_λ(0.0004, Ec, wsph, a2f_iso)
 
-    N = 12
+    N = 9
     lnbetas = zeros(Float64, N)
     invR0s = zeros(Float64, N)
     lamus = zeros(Float64, N)
 
-    kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
-    # kwargs = reflectkwargs(muc=0.1)
+    # kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
+    kwargs = reflectkwargs(muc=0.1)
     println(kwargs)
 
     for i in 1:N
-        # TinK = 4.0 + 0.25 * (i - 1)
-        TinK = 0.1 * sqrt(2)^(i - 1)
+        # TinK = 5.0 + 0.5 * (i - 1)
+        TinK = 5.5 * 2^((i - 1) / N)
+        # TinK = 0.1 * sqrt(2)^(i - 1)
         # TinK = 4.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)

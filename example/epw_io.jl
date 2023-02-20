@@ -107,7 +107,7 @@ function Δω_correction(G2, wsph, a2f_iso, nmax)
 end
 
 function linearResponse(param, wsph, a2f_iso; Ecut=100000 * param.EF,
-    Euv=Ecut / param.β, rtol=1e-10, atol=1e-10, α=0.8, verbose=false, Ntherm=30, muc=0.0)
+    Euv=Ecut / param.β, rtol=1e-10, atol=1e-10, α=0.8, verbose=false, Ntherm=30, muc=0.1)
     @unpack β = param
     @time kernel_freq, kernel_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso; muc=muc)
     G2 = G2ωwrapped(Euv, rtol, param)
@@ -136,7 +136,8 @@ function linearResponse(param, wsph, a2f_iso; Ecut=100000 * param.EF,
 end
 
 function measure_R(betas, prefix;
-    dir="./run/epw/", Ecut=160000, rtol=1e10)
+    dir="./run/epw/", Ecut=160000, rtol=1e10,
+    kwargs...)
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
     lamus = betas .* 0.0
@@ -144,7 +145,7 @@ function measure_R(betas, prefix;
     for i in 1:length(betas)
         param = QE_EPW.Parameter.defaultUnit(1 / betas[i], 1.0)
         lambda_dyn, lambda_ins = lambda_wrapped(Ecut / betas[i], rtol, param, wsph, a2f_iso)
-        lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso; Ecut=Ecut)
+        lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso; Ecut=Ecut, kwargs...)
         lamus[i] = lamu
 
         # measure chi
@@ -171,6 +172,11 @@ using Test
 using Lehmann
 using LinearAlgebra
 using .QE_EPW
+
+const ev2Kelvin = 1.160451812e4
+function linreg(X, Y)
+    hcat(fill!(similar(X), 1), X) \ Y
+end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     @testset "QE_EPW" begin
@@ -214,11 +220,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
         # lambda_dyn, lambda_ins = lambda_wrapped(Euv, rtol, param, wsph, a2f_iso)
         # lamu, R_freq, F_freq = linearResponse(param, wsph, a2f_iso)
 
-        # num = 17
+        num = 9
         # betas = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
-        betas = [1 / 0.0005, 1 / 0.00055, 1 / 0.0006]
-        lamus = measure_R(betas, "pb")
+        # betas = [1 / 0.0005, 1 / 0.00055, 1 / 0.0006]
+        betas = [1 / (5.5 * 2^((i - 1) / num)) for i in 1:num]
+        betas = betas .* ev2Kelvin
+        lamus = measure_R(betas, "pb"; muc=0.1)
         println(betas)
         println(lamus)
+        lnbetas = log10.(betas)
+        b1, k1 = linreg(lnbetas, lamus)
+        println("k=$k1, b=$b1, Tc=$(10^(b1/k1)*ev2Kelvin)")
+
     end
 end
