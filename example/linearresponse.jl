@@ -32,9 +32,9 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v1.txt"
+    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v1.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_v1.txt"
-    # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel).txt"
+    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -53,10 +53,10 @@ using ElectronGas.Interaction
     dim = 3
     rs = 2.0
     # num = 14
-    num = 12
+    num = 21
     channel = 0
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
-    beta = [25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
+    beta = [6.25 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # beta = [1.5625 * 2^i for i in LinRange(0, num - 1, num)]
     # beta = [1800, 2000, 2229.78,]
     # num = 6
@@ -64,9 +64,9 @@ using ElectronGas.Interaction
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     chi = [measure_chi(dim, 1 / b, rs, channel;
         atol=1e-10, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
-        # sigmatype=:none, int_type=:rpa, Vph=phonon,
+        sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
-        sigmatype=:none, int_type=:none, Vph=phonon,
+        # sigmatype=:none, int_type=:none, Vph=phonon,
         verbose=true) for b in beta]
     println(chi)
 end
