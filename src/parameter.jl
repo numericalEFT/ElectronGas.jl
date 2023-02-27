@@ -26,8 +26,8 @@ using ..Parameters
     μ::Float64 = 1.0
 
     # e-ph
-    eph::Float64 = 0.4 * 4 * π^2
-    ω_D::Float64 = 0.05EF
+    eph::Float64 = 0.8 * 4 * π^2
+    ω_D::Float64 = 0.005EF
 
     g::Float64 = 1.0
     γ::Float64 = 0.0

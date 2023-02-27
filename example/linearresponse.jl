@@ -32,9 +32,9 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v1.txt"
+    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v0.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_v1.txt"
-    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel).txt"
+    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_v5.txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -51,7 +51,7 @@ using ElectronGas.Interaction
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     dim = 3
-    rs = 2.0
+    rs = 1.0
     # num = 14
     num = 21
     channel = 0
