@@ -26,8 +26,13 @@ using ..Parameters
     μ::Float64 = 1.0
 
     # e-ph
-    eph::Float64 = 0.8 * 4 * π^2
+    eph::Float64 = 0.4 * 4 * π^2
     ω_D::Float64 = 0.005EF
+
+    # pseudo potential
+    use_psp = true
+    μstar::Float64 = 1.2
+    Ec_μstar::Float64 = 1.0EF
 
     g::Float64 = 1.0
     γ::Float64 = 0.0

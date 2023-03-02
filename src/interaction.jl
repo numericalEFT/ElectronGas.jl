@@ -206,6 +206,7 @@ El-el interaction induced by phonon.
 """
 function phonon(q, n, param)
     @unpack β, eph, ω_D, kF = param
+    Ec = param.Ec_μstar
     kernel = 0
     ω = 2 * π * n / β
     α = eph
@@ -214,7 +215,12 @@ function phonon(q, n, param)
     ω_q2 = β_freq * q^2 / (1 + γ * q^2)
     kernel = -α / (1 + (q / kF)^2) * ω_q2 / (ω^2 + ω_q2)
     #kernel = -α*ω_D^2/(ω^2+ω_D^2) 
-    return kernel, 0.0
+    if !param.use_psp # || ω > param.Ec_μstar
+        return kernel, 0.0
+    else
+        # return kernel + param.μstar / (1 + (q / kF)^2) / (exp((ω / Ec - 1) / 0.1) + 1), 0.0
+        return kernel + param.μstar / (exp((ω / Ec - 1) / 0.1) + 1), 0.0
+    end
 end
 
 """

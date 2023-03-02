@@ -10,28 +10,33 @@ const g0 = 1.2
 fermi_mat(n, β, N) = π * (2(n - (N ÷ 2) - 1) + 1) / β
 lambdar_iso_epw(w1, w2, wsph, a2f_iso) = lambdar_iso(w1 - w2, wsph, a2f_iso)
 
-lambdar_iso_fake(w1, w2, wsph, a2f_iso) = lambdar_iso_fake(w1 - w2)
-function lambdar_iso_fake(w)
-    # g = 0.72
-    # f = 0.67
-    # Ω = 0.01
-    g = 1.08
-    f = 0.45
-    Ω = 0.005
-    # return g * Ω^2 / (Ω^2 + w^2)
-    return -g * ((1 - f) * Ω^2 + w^2) / (Ω^2 + w^2)
-end
-
-# function lambdar_iso_fake(w1, w2, wsph, a2f_iso)
-#     g = 0.55
-#     f = 0.66
-#     Ω = 0.01
-#     if abs(w1) < Ω && abs(w2) < Ω
-#         return -g * (1 - f)
-#     else
-#         return -g
-#     end
+# lambdar_iso_fake(w1, w2, wsph, a2f_iso) = lambdar_iso_fake(w1 - w2)
+# function lambdar_iso_fake(w)
+#     # g = 0.72
+#     # f = 0.67
+#     # Ω = 0.01
+#     g = 1.08
+#     f = 0.45
+#     Ω = 0.005
+#     # return g * Ω^2 / (Ω^2 + w^2)
+#     return -g * ((1 - f) * Ω^2 + w^2) / (Ω^2 + w^2)
 # end
+
+function rs_model(w1, w2, g, f, Ω, Ec)
+    if abs(w1) < Ω && abs(w2) < Ω
+        return g * (1 - f)
+    elseif abs(w1) < Ec && abs(w2) < Ec
+        return g
+    else
+        return 0.0
+    end
+end
+function lambdar_iso_fake(w1, w2, wsph, a2f_iso)
+    result = 0.0
+    result = result - rs_model(w1, w2, 1.0, 0.4, 0.1, 1.0)
+    result = result - rs_model(w1, w2, 1.0, 0.4, 0.05, 0.5)
+    return result
+end
 
 function s_matrix(N, wsph, a2f_iso, β;
     muc=0.1, zcorrection=true, lambdar_func=lambdar_iso_epw)
@@ -214,8 +219,8 @@ reflectkwargs(; kwargs...) = kwargs
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
 
-    Ec = 0.1
-    # Ec = 5.0
+    # Ec = 0.1
+    Ec = 1.0
 
     # compute_invR0(0.00044, Ec, wsph, a2f_iso)
     # compute_invR0(0.00042, Ec, wsph, a2f_iso)
@@ -230,14 +235,14 @@ reflectkwargs(; kwargs...) = kwargs
     invR0s = zeros(Float64, N)
     lamus = zeros(Float64, N)
 
-    # kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
-    kwargs = reflectkwargs(muc=0.1)
+    kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
+    # kwargs = reflectkwargs(muc=0.1)
     println(kwargs)
 
     for i in 1:N
         # TinK = 5.0 + 0.5 * (i - 1)
-        TinK = 5.5 * 8^((i - 1) / N)
-        # TinK = 0.1 * sqrt(2)^(i - 1)
+        TinK = 45.0 * 1.1^((i - 1) / N)
+        # TinK = 1.0 * sqrt(2)^(i - 1)
         # TinK = 4.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)
