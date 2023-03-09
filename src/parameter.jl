@@ -31,7 +31,7 @@ using ..Parameters
 
     # pseudo potential
     use_psp = true
-    μstar::Float64 = 1.2
+    μstar::Float64 = 1.24
     Ec_μstar::Float64 = 1.0EF
 
     g::Float64 = 1.0

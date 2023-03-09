@@ -175,7 +175,7 @@ using .QE_EPW
 
 const ev2Kelvin = 1.160451812e4
 function linreg(X, Y)
-    hcat(fill!(similar(X), 1), X) \ Y
+    return hcat(fill!(similar(X), 1), X) \ Y
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

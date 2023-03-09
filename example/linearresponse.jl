@@ -32,7 +32,7 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vmuflat12.txt"
+    fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vmuflat124.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_v1.txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_v2s.txt"
     open(dir * fname, "a+") do io

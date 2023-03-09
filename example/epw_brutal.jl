@@ -32,9 +32,11 @@ function rs_model(w1, w2, g, f, Ω, Ec)
     end
 end
 function lambdar_iso_fake(w1, w2, wsph, a2f_iso)
+    g = 0.2
+    f = 1.0
     result = 0.0
-    result = result - rs_model(w1, w2, 1.0, 0.4, 0.1, 1.0)
-    result = result - rs_model(w1, w2, 1.0, 0.4, 0.05, 0.5)
+    result = result - rs_model(w1, w2, g, f, 0.1, 1.0)
+    result = result - rs_model(w1, w2, g, f, 0.05, 0.5)
     return result
 end
 
@@ -241,9 +243,9 @@ reflectkwargs(; kwargs...) = kwargs
 
     for i in 1:N
         # TinK = 5.0 + 0.5 * (i - 1)
-        TinK = 45.0 * 1.1^((i - 1) / N)
+        # TinK = 35.0 * 1.1^((i - 1) / N)
         # TinK = 1.0 * sqrt(2)^(i - 1)
-        # TinK = 4.0 * 8^((i - 1) / N)
+        TinK = 1.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)
         invR0s[i] = compute_invR0(T, Ec, wsph, a2f_iso; kwargs...)
@@ -256,6 +258,7 @@ reflectkwargs(; kwargs...) = kwargs
 
     b1, k1 = linreg(lnbetas, invR0s)
     println("k=$k1, b=$b1, Tc=$(10^(b1/k1))")
+    println("Tc=$(10^(b1/k1) / ev2Kelvin)")
     # Tcfind = search_tc_pcf(Ec, wsph, a2f_iso; kwargs...) * ev2Kelvin
     # println("Tc_find=$(Tcfind)")
 
