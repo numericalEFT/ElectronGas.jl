@@ -354,7 +354,7 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids::Vector{CompositeGrid.Composite},
     Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1], G2.mesh[2]; dtype=Float64, data=ones(1, G2.mesh[2].size)),
-    verbose=false, Ncheck=5)
+    verbose=false, Ncheck=5, Nmax=10000)
 
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -426,6 +426,7 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
             # err = abs(lamu - lamu0)
             # Exit the loop if the iteration converges
             isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+            n > Nmax && println("[WARNING] reach Nmax=$Nmax") && break
 
             lamu0 = lamu
             if verbose
@@ -483,7 +484,7 @@ with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the pro
 function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
     Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8, source::Union{Nothing,GreenFunc.MeshArray}=nothing,
     source_ins::GreenFunc.MeshArray=GreenFunc.MeshArray([1]; dtype=Float64, data=ones(1)),
-    verbose=false, Ncheck=5,
+    verbose=false, Ncheck=5, Nmax=10000,
     delta_correction=G2 * 0.0) # delta_correction corresponds to additional term in s matrix
     @unpack β = param
     if verbose
@@ -550,6 +551,7 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins,
             # err = abs(lamu - lamu0)
             # Exit the loop if the iteration converges
             isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+            n > Nmax && println("[WARNING] reach Nmax=$Nmax") && break
 
             lamu0 = lamu
             if verbose
@@ -597,7 +599,7 @@ with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the p
 """
 function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, Vph::Union{Function,Nothing}=nothing,
-    sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30)
+    sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30, Nmax=10000)
     @unpack dim, rs, β, kF = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -649,7 +651,7 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
 
     # calculate F, R by Bethe-Slapter iteration.
     lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, qgrids, Euv;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm)
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
@@ -685,7 +687,7 @@ Implmentation of γ-model linear response approach.
 where ``1`` is the default sourced term, ``\\Gamma(\\omega_n;\\omega_m)`` is the particle-particle four-point vertex 
 with zero incoming momentum and frequency, and ``G^{(2)}(\\omega_m)`` is the product of two single-particle Green's function.
 """
-function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.7, verbose=false, Ntherm=30)
+function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.7, verbose=false, Ntherm=30, Nmax=10000)
     @unpack g, β, γ = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -702,7 +704,7 @@ function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.
 
     # calculate F, R by Bethe-Slapter iteration.
     lamu, F_freq, R_imt, R_ins = BSeq_solver(param, G2, kernel, kernel_ins, Euv;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm)
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
