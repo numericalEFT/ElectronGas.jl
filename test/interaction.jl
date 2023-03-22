@@ -47,6 +47,7 @@
     end
 
     @testset "Phonon" begin
+        param = Parameter.Para(param; eph=0.4 * 4 * π^2, ω_D=0.05 * param.EF, use_psp=false)
         @test isapprox(Interaction.phonon(1.0, 1, param)[1], -6.594066889080548, rtol=1e-4)
     end
 end

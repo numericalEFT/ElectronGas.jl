@@ -597,9 +597,12 @@ Implmentation of Cooper-pair linear response approach.
 where ``1`` is the default sourced term, ``\\Gamma(k,\\omega_n;p,\\omega_m)`` is the particle-particle four-point vertex 
 with zero incoming momentum and frequency, and ``G^{(2)}(p,\\omega_m)`` is the product of two single-particle Green's function.
 """
-function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
-    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, Vph::Union{Function,Nothing}=nothing,
-    sigmatype=:none, int_type=:rpa, α=0.8, verbose=false, Ntherm=30, Nmax=10000)
+function linearResponse(param, channel::Int;
+    Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
+    maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
+    Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
+    α=0.8, verbose=false, Ntherm=30, Nmax=10000,
+    issave=false)
     @unpack dim, rs, β, kF = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -655,6 +658,8 @@ function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10, ato
     println("1/R₀ = $lamu")
 
     R_freq = R_imt |> to_dlr |> to_imfreq
+    if issave
+    end
     # println(view(R_freq, :, kF_label))
     return lamu, R_freq, F_freq
 end
