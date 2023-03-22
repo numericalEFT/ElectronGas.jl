@@ -6,6 +6,7 @@ module BSeq
 using ..Parameter, ..Convention, ..LegendreInteraction, ..Interaction
 using ..Parameters, ..GreenFunc, ..Lehmann, ..CompositeGrids
 using ..SelfEnergy
+using ..JLD2
 
 const freq_sep = 0.01
 
@@ -602,7 +603,7 @@ function linearResponse(param, channel::Int;
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
-    issave=false)
+    issave=false, uid=1, dir="./")
     @unpack dim, rs, β, kF = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -659,6 +660,14 @@ function linearResponse(param, channel::Int;
 
     R_freq = R_imt |> to_dlr |> to_imfreq
     if issave
+        fname = "PCFdata_$(uid).jld2"
+        jldopen(dir * fname, "w") do file
+            file["param"] = param
+            file["lamu"] = lamu
+            file["F_freq"] = F_freq
+            file["R_ins"] = R_ins
+            file["R_freq"] = R_freq
+        end
     end
     # println(view(R_freq, :, kF_label))
     return lamu, R_freq, F_freq
