@@ -22,6 +22,11 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
+    uid = 0
+    if haskey(kwargs, :uid)
+        uid = kwargs[:uid]
+    end
+
 
     println("dim=$dim, θ=$θ, rs=$rs, channel=$channel:")
 
@@ -32,8 +37,8 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
-    # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_v1.txt"
+    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
+    fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
@@ -50,9 +55,9 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 200
+    uid0 = 2500
     dim = 3
-    rs = 2.0
+    rs = 2.5
     # num = 14
     # num = 25
     num = 9
