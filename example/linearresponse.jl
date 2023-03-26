@@ -55,9 +55,9 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 1700000
+    uid0 = 2500000
     dim = 3
-    rs = 1.7
+    rs = 2.5
     # num = 14
     # num = 25
     num = 12

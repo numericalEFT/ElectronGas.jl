@@ -4,6 +4,14 @@ using ElectronGas
 using ElectronGas.CompositeGrids
 using ElectronGas.GreenFunc
 using Roots
+using LsqFit
+
+@. linmodel(x, p) = p[1] * x + p[2]
+# @. chimodel(x, p) = (p[1] * x + p[2]) / (1 + (p[1] * x + p[2]) * (p[3] + x * p[4]))
+@. chimodel(x, p) = (p[1] * x + p[2]) / (1 + (p[1] * x + p[2]) * p[3])
+# @. chimodel(x, p) = (p[1] * x + p[2]) / (p[3] * x + p[2]);
+
+log10Tc(fit) = -fit.param[2] / fit.param[1]
 
 function load_PCFdata(fname)
     data = jldopen(fname, "r")
@@ -38,6 +46,11 @@ function Nfind_zero(data, grid)
     return w0
 end
 
+function interp(data, grid, x)
+    wgrid = CompositeGrids.SimpleG.Arbitrary([w for w in grid])
+    return CompositeGrids.Interp.interp1D(data, wgrid, x)
+end
+
 function measure_chi(F_freq::GreenFunc.MeshArray)
     F_dlr = F_freq |> to_dlr
     F_ins = real(dlr_to_imtime(F_dlr, [F_freq.mesh[1].representation.β,])) * (-1)
@@ -46,33 +59,54 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
     return real(CompositeGrids.Interp.integrate1D(integrand, kgrid))
 end
 
-uid0 = 2000000
+uid0 = 2500000
 Nrun = 12
-params, lamus, Fs, Ris, Rfs = [], [], [], [], []
+params, lamus, Fs, Ris, Rfs, wgs = [], [], [], [], [], []
 Rkfs = []
 for i in 1:Nrun
     uid = uid0 + i
     fname = "run/data/PCFdata_$(uid).jld2"
     param, lamu, F_freq, R_ins, R_freq = load_PCFdata(fname)
     push!(params, param)
-    push!(lamus, lamu)
+    push!(lamus, -lamu)
     push!(Fs, F_freq)
     push!(Ris, R_ins)
     push!(Rfs, R_freq)
     wg, Rk = extract_Rkf(param, R_ins, R_freq)
     push!(Rkfs, Rk)
+    push!(wgs, wg)
 end
 
 lnbetas = [log10(param.beta) for param in params]
 Rinfs = [R[end] for R in Rkfs]
-w0s = [Nfind_zero(Rkfs[i], Rfs[i].mesh[1]) for i in 1:Nrun]
+w0s = [Nfind_zero(Rkfs[i], wgs[i]) for i in 1:Nrun]
 chis = [measure_chi(Fs[i]) for i in 1:Nrun]
 println(lnbetas)
 println(Rinfs)
 println(w0s)
 println(chis)
 
-p = plot(lnbetas, w0s .* Rinfs)
+# aimdata = Rinfs
+# aimdata = chis
+waim = 1.0
+aimdata = [interp(Rkfs[i], wgs[i], waim) for i in 1:Nrun]
+
+lnfit = curve_fit(linmodel, lnbetas, lamus, [0.0, 0.0])
+fit = curve_fit(chimodel, lnbetas, 1 ./ aimdata, [0.0, 0.0, 0.0])
+println(lnfit.param)
+println(fit.param)
+println(log10Tc(lnfit))
+println(log10Tc(fit))
+
+func = (x -> chimodel(x, fit.param))
+func2 = (x -> linmodel(x, lnfit.param))
+
+p = plot(lnbetas, 1 ./ aimdata, seriestype=:scatter)
+plot!(lnbetas, func.(lnbetas))
+plot!(lnbetas, lamus, seriestype=:scatter)
+plot!(lnbetas, func2.(lnbetas))
+
+# p = plot(lnbetas, w0s .* Rinfs)
 # p = plot(lnbetas, (chis))
 # plot!(lnbetas, lamus)
 display(p)
