@@ -59,6 +59,7 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
     return real(CompositeGrids.Interp.integrate1D(integrand, kgrid))
 end
 
+# uid0 = 1849800
 uid0 = 2500000
 Nrun = 12
 params, lamus, Fs, Ris, Rfs, wgs = [], [], [], [], [], []
@@ -101,11 +102,12 @@ println(log10Tc(fit))
 func = (x -> chimodel(x, fit.param))
 func2 = (x -> linmodel(x, lnfit.param))
 
-p = plot(lnbetas, 1 ./ aimdata, seriestype=:scatter)
-plot!(lnbetas, func.(lnbetas))
-plot!(lnbetas, lamus, seriestype=:scatter)
-plot!(lnbetas, func2.(lnbetas))
-
+# p = plot(lnbetas, 1 ./ aimdata, seriestype=:scatter)
+# plot!(lnbetas, func.(lnbetas))
+# plot!(lnbetas, lamus, seriestype=:scatter)
+# plot!(lnbetas, func2.(lnbetas))
+p = plot(lnbetas, w0s ./ lamus)
+# p = plot(1 ./ lnbetas, w0s, xlims=(0.0, 0.4), ylims=(0.0, 0.4))
 # p = plot(lnbetas, w0s .* Rinfs)
 # p = plot(lnbetas, (chis))
 # plot!(lnbetas, lamus)
