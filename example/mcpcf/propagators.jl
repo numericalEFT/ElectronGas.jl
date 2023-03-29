@@ -53,6 +53,35 @@ function rpa(param;
     return rpai, rpat
 end
 
+function phonon(param;
+    mint=0.001,
+    minK=0.001 * sqrt(param.T * param.me), maxK=10.0 * param.kF,
+    order=6)
+
+    Nlog = floor(Int, 2.0 * log10(param.β / mint))
+    tgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, param.β], [0.0, param.β], Nlog, mint, order)
+
+    Nk = floor(Int, 2.0 * log10(maxK / minK))
+    kgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
+
+    Euv = 100 * param.EF
+    rtol = 1e-10
+    β = param.β
+
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green_dyn = GreenFunc.MeshArray(1:2, wn_mesh, kgrid; dtype=ComplexF64)
+
+    for (ki, k) in enumerate(kgrid)
+        for (ni, n) in enumerate(wn_mesh.grid)
+            green_dyn[1, ni, ki], green_dyn[2, ni, ki] = Interaction.phonon(k, n, param)
+        end
+    end
+    phonondlr = Propagators.to_dlr(green_dyn)
+    phonont = Propagators.dlr_to_imtime(phonondlr, tgrid)
+
+    return phonont
+end
+
 function interaction(k, prop; i=1)
     # return Interp.interp1D(view(prop.data, i, 1, :), prop.mesh[3], k)
     return Interp.linear1D(view(prop.data, i, 1, :), prop.mesh[3], k)
@@ -137,6 +166,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
         @time Propagators.response(p..., Rt)
         @time Propagators.response(p[2], Ri)
 
+        pht = Propagators.phonon(param)
+        @time Propagators.interaction(p..., pht)
+        @time Propagators.interaction(p..., pht)
     end
 
 end
