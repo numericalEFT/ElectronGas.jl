@@ -1,7 +1,7 @@
 using MCIntegration
 using LegendrePolynomials
 
-const steps = 1e6
+const steps = 1e8
 const ℓ = 0
 
 
@@ -9,7 +9,7 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const param = Propagators.Parameter.defaultUnit(0.1, 2.0)
+const param = Propagators.Parameter.defaultUnit(0.5, 2.0)
 
 function integrand(vars, config)
     norm = config.normalization
@@ -35,8 +35,10 @@ function integrand(vars, config)
     G1 = G0(t1, p, funcs)
     G021 = G0(t1, -p, funcs)
     G022 = G0(t2, -p, funcs)
-    R0 = response(p, funcs; norm=norm)
-    R = response(t1 - t2, p, funcs; norm=norm)
+    # R0 = response(p, funcs; norm=norm)
+    # R = response(t1 - t2, p, funcs; norm=norm)
+    R0 = 1.0
+    R = 0.0
 
     result1 = -p^2 / (4π^2) * PLX * V * G1 * (G021 * R0 + G022 * R)
 

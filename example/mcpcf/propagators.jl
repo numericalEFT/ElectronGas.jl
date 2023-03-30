@@ -148,7 +148,7 @@ function R0(ri, rt, param)
     kF = param.kF
     kgrid = rw.mesh[2]
     ikF = searchsortedfirst(kgrid, kF)
-    return 1.0 + ri[ikF] + rw[1, ikF]
+    return 1.0 .+ ri[ikF] .+ rw[:, ikF]
 end
 
 function response(k, ri; norm=1)
