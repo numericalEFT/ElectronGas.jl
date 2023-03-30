@@ -10,6 +10,23 @@ using ElectronGas.CompositeGrids
 
 export rpa, interaction, G0, initR, response
 
+# Ri excludes the source term
+
+# wrapper
+struct Funcs{P,II,IT,RI,RT}
+    param::P
+    inti::II
+    intt::IT
+    Ri::RI
+    Rt::RT
+end
+
+interaction(k, funcs::Funcs) = interaction(k, funcs.inti)
+interaction(t, k, funcs::Funcs) = interaction(t, k, funcs.intt)
+response(k, funcs::Funcs) = response(k, funcs.Ri)
+response(t, k, funcs::Funcs) = response(t, k, funcs.Rt)
+G0(t, k, funcs::Funcs) = G0(t, k, funcs.param)
+
 # shift tau to [0, β)
 function tau_fermi(t, β)
     if 0 <= t < β
@@ -115,7 +132,7 @@ function initR(param;
 
     ri = GreenFunc.MeshArray(kgrid; dtype=ComplexF64)
     rt = GreenFunc.MeshArray(tgrid, kgrid; dtype=ComplexF64)
-    ri[:] .= 1.0
+    ri[:] .= 0.0
     rt[:] .= 0.0
 
     return ri, rt
@@ -123,7 +140,7 @@ end
 
 function response(k, ri)
     # return Interp.interp1D(view(ri.data, :), ri.mesh[1], k)
-    return Interp.linear1D(view(ri.data, :), ri.mesh[1], k)
+    return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k)
 end
 
 function response(t, k, rt)
