@@ -23,8 +23,8 @@ end
 
 interaction(k, funcs::Funcs) = interaction(k, funcs.inti)
 interaction(t, k, funcs::Funcs) = interaction(t, k, funcs.intt)
-response(k, funcs::Funcs) = response(k, funcs.Ri)
-response(t, k, funcs::Funcs) = response(t, k, funcs.Rt)
+response(k, funcs::Funcs; norm=1) = response(k, funcs.Ri; norm=norm)
+response(t, k, funcs::Funcs; norm=1) = response(t, k, funcs.Rt; norm=norm)
 G0(t, k, funcs::Funcs) = G0(t, k, funcs.param)
 
 # shift tau to [0, β)
@@ -114,8 +114,12 @@ function G0(t, k, param)
     β = param.β
     t, factor = tau_fermi(t, β)
     ε = k^2 / 2 / param.me - param.μ
-    f = 1 / (exp(ε * β) + 1)
-    return -factor * exp(t * ε) * (1 - f)
+    f = 1 / (exp(-ε * β) + 1)
+    result = factor * exp(-t * ε) * f
+    if isnan(result) || isinf(result)
+        println("t=$t, k=$k, ε=$ε, f=$f")
+    end
+    return result
 end
 
 function initR(param;
@@ -138,15 +142,24 @@ function initR(param;
     return ri, rt
 end
 
-function response(k, ri)
-    # return Interp.interp1D(view(ri.data, :), ri.mesh[1], k)
-    return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k)
+function R0(ri, rt, param)
+    rdlr = Propagators.to_dlr(rt)
+    rw = Propagators.to_imfreq(rdlr)
+    kF = param.kF
+    kgrid = rw.mesh[2]
+    ikF = searchsortedfirst(kgrid, kF)
+    return 1.0 + ri[ikF] + rw[1, ikF]
 end
 
-function response(t, k, rt)
+function response(k, ri; norm=1)
+    # return Interp.interp1D(view(ri.data, :), ri.mesh[1], k)
+    return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k) / norm
+end
+
+function response(t, k, rt; norm=1)
     t, factor = tau_fermi(t, rt.mesh[1].β)
     # return factor * Interp.interpND(view(rt.data, :, :), rt.mesh[:], (t, k))
-    return factor * Interp.linear2D(view(rt.data, :, :), rt.mesh[1], rt.mesh[2], t, k)
+    return factor * Interp.linear2D(view(rt.data, :, :), rt.mesh[1], rt.mesh[2], t, k) / norm
 end
 
 end
