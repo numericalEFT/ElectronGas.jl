@@ -8,7 +8,7 @@ using ElectronGas.Parameter
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
 
-export rpa, interaction, G0, initR, response
+export rpa, interaction, G0, initR, response, coulomb
 
 # Ri excludes the source term
 
@@ -26,6 +26,7 @@ interaction(t, k, funcs::Funcs) = interaction(t, k, funcs.intt)
 response(k, funcs::Funcs; norm=1) = response(k, funcs.Ri; norm=norm)
 response(t, k, funcs::Funcs; norm=1) = response(t, k, funcs.Rt; norm=norm)
 G0(t, k, funcs::Funcs) = G0(t, k, funcs.param)
+coulomb(q, funcs::Funcs) = coulomb(q, funcs.param)
 
 # shift tau to [0, β)
 function tau_fermi(t, β)
@@ -99,26 +100,58 @@ function phonon(param;
     return phonont
 end
 
+function coulomb(q, param)
+    return ElectronGas.Interaction.coulomb(q, param)
+end
+
 function interaction(k, prop; i=1)
+    if k ≈ 0
+        k = 1e-10
+    end
     # return Interp.interp1D(view(prop.data, i, 1, :), prop.mesh[3], k)
     return Interp.linear1D(view(prop.data, i, 1, :), prop.mesh[3], k)
 end
 
 function interaction(t, k, prop; i=1)
-    t, factor = tau_fermi(t, prop.mesh[2].β)
+    t, factor = tau_bose(t, prop.mesh[2].β)
     # return factor * Interp.interpND(view(prop.data, i, :, :), prop.mesh[2:3], (t, k))
     return factor * Interp.linear2D(view(prop.data, i, :, :), prop.mesh[2], prop.mesh[3], t, k)
 end
 
+function green2(Ek, τ, beta)
+    if τ ≈ 0.0
+        τ = -1.0e-10
+    end
+
+    s = 1.0
+    if τ < 0.0
+        τ += beta
+        s = -s
+    elseif τ >= beta
+        τ -= beta
+        s = -s
+    end
+
+    if Ek > 0.0
+        c = exp(-beta * Ek)
+        green = exp(-Ek * τ) / (1.0 + c)^2 * (τ - (beta - τ) * c)
+    else
+        c = exp(beta * Ek)
+        green = exp(Ek * (beta - τ)) / (1.0 + c)^2 * (τ * c - (beta - τ))
+    end
+
+    green *= s
+end
+
 function G0(t, k, param)
     β = param.β
-    t, factor = tau_fermi(t, β)
+    # t, factor = tau_fermi(t, β)
     ε = k^2 / 2 / param.me - param.μ
-    f = 1 / (exp(-ε * β) + 1)
-    result = factor * exp(-t * ε) * f
-    if isnan(result) || isinf(result)
-        println("t=$t, k=$k, ε=$ε, f=$f")
-    end
+    result = green2(ε, t, β)
+    # result = factor * exp(-t * ε) / (exp(-ε * β) + 1)
+    # if isnan(result) || isinf(result)
+    #     println("t=$t, k=$k, ε=$ε")
+    # end
     return result
 end
 

@@ -427,7 +427,7 @@ function BSeq_solver(param, G2::GreenFunc.MeshArray, kernel, kernel_ins, qgrids:
             # err = abs(lamu - lamu0)
             # Exit the loop if the iteration converges
             isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
-            n > Nmax && println("[WARNING] reach Nmax=$Nmax") && break
+            n > Nmax && break
 
             lamu0 = lamu
             if verbose
@@ -670,7 +670,7 @@ function linearResponse(param, channel::Int;
         end
     end
     # println(view(R_freq, :, kF_label))
-    return lamu, R_freq, F_freq
+    return lamu, R_freq, F_freq, R_ins
 end
 
 
