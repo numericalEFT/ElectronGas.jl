@@ -127,9 +127,12 @@ function initR(param;
     minK=0.001 * sqrt(param.T * param.me), maxK=10.0 * param.kF,
     order=6)
 
+    Euv = 100param.EF
+    rtol = 1e-10
+
     Nlog = floor(Int, 2.0 * log10(param.β / mint))
     btgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, param.β], [0.0, param.β], Nlog, mint, order)
-    tgrid = GreenFunc.ImTime(param.β, true; symmetry=:pha, grid=btgrid)
+    tgrid = GreenFunc.ImTime(param.β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha, grid=btgrid)
 
     Nk = floor(Int, 2.0 * log10(maxK / minK))
     kgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
@@ -152,13 +155,13 @@ function R0(ri, rt, param)
 end
 
 function response(k, ri; norm=1)
-    # return Interp.interp1D(view(ri.data, :), ri.mesh[1], k)
+    # return 1.0 + Interp.interp1D(view(ri.data, :), ri.mesh[1], k) / norm
     return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k) / norm
 end
 
 function response(t, k, rt; norm=1)
     t, factor = tau_fermi(t, rt.mesh[1].β)
-    # return factor * Interp.interpND(view(rt.data, :, :), rt.mesh[:], (t, k))
+    # return factor * Interp.interpND(view(rt.data, :, :), rt.mesh[:], (t, k)) / norm
     return factor * Interp.linear2D(view(rt.data, :, :), rt.mesh[1], rt.mesh[2], t, k) / norm
 end
 

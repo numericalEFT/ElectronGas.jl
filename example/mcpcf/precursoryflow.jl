@@ -1,15 +1,13 @@
 using MCIntegration
 using LegendrePolynomials
 
-const steps = 1e8
-const ℓ = 0
-
-
 include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const param = Propagators.Parameter.defaultUnit(0.5, 2.0)
+const steps = 1e7
+const ℓ = 0
+const param = Propagators.Parameter.defaultUnit(0.1, 7.0)
 
 function integrand(vars, config)
     norm = config.normalization
@@ -58,22 +56,24 @@ end
 
 function measure(vars, obs, weight, config)
     extt, extk = vars[1], vars[2]
-    # obs[1][extk[1]] += weight[1]
-    # obs[2][extt[1], extk[1]] += weight[2]
     funcs = config.userdata
     Ri, Rt = funcs.Ri, funcs.Rt
     Ri.data[extk[1]] += weight[1]
     Rt.data[extt[1], extk[1]] += weight[2]
-    obs[1] = config.normalization^2
+    obs[1][extk[1]] += weight[1]
+    obs[2][extt[1], extk[1]] += weight[2]
 end
 
 function run(steps, param, alg=:vegas)
     println("Prepare propagators")
-    mint = 0.01
-    minK, maxK = 0.01 * sqrt(param.T * param.me), 10param.kF
-    order = 4
-
+    mint = 0.001
+    minK, maxK = 0.001 * sqrt(param.T * param.me), 5param.kF
+    order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
+
+    mint = 0.05
+    minK, maxK = 0.05 * sqrt(param.T * param.me), 5param.kF
+    order = 4
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
 
@@ -91,16 +91,18 @@ function run(steps, param, alg=:vegas)
 
     # ExtT, ExtK, X, T, P
     dof = [[0, 1, 1, 2, 1], [1, 1, 1, 2, 1]]
-    obs = [0.0, 0.0]
+    obs = [zeros(ComplexF64, size(Ri)), zeros(ComplexF64, size(Rt))]
 
     println("Start")
     result = integrate(integrand; measure=measure, userdata=funcs,
         var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
         neval=steps, print=0, block=8, type=ComplexF64)
 
-    norm = result[1][1]
-    funcs.Ri.data .= funcs.Ri.data ./ norm
-    funcs.Rt.data .= funcs.Rt.data ./ norm
+    # norm = result[1][1]
+    # funcs.Ri.data .= funcs.Ri.data ./ norm
+    # funcs.Rt.data .= funcs.Rt.data ./ norm
+    funcs.Ri.data .= result[1][1]
+    funcs.Rt.data .= result[2][1]
 
     return result, funcs
 end
@@ -110,5 +112,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     Ri, Rt = funcs.Ri, funcs.Rt
     println(Ri.mesh[1])
     println(Ri.data)
-    println("R0=$(Propagators.R0(Ri, Rt, param))")
+    println(result[1][1])
+    println("R0=$(real(Propagators.R0(Ri, Rt, param)))")
 end
