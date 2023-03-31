@@ -8,6 +8,7 @@ using .Propagators: G0, interaction, response
 const steps = 1e7
 const ℓ = 0
 const param = Propagators.Parameter.defaultUnit(0.1, 3.0, 3)
+println(param)
 
 function integrand(vars, config)
     norm = config.normalization
@@ -29,8 +30,8 @@ function integrand(vars, config)
 
     PLX = Pl(x, ℓ)
     q = sqrt(k^2 + p^2 + 2 * k * p * x)
-    # V = 1.0 / interaction(q, funcs)
-    V = coulomb(q, funcs)[1]
+    V = 1.0 / interaction(q, funcs)
+    # V = coulomb(q, funcs)[1]
     G1 = G0(t1, p, funcs)
     G021 = G0(t1, -p, funcs)
     G022 = G0(t2, -p, funcs)
@@ -39,14 +40,14 @@ function integrand(vars, config)
     R0 = 1.0 / param.β
     R = 0.0
 
-    result1 = p^2 / (4π^2) * PLX * V * G1 * (G021 * R0 + G022 * R)
-    result1 = result1 / length(extT)
+    result1 = -p^2 / (4π^2) * PLX * V * G1 * (G021 * R0 + G022 * R)
+    # result1 = result1 / length(extT)
 
     W = interaction(t, q, funcs) * V
     G21 = G0(t1 - t, -p, funcs)
     G22 = G0(t2 - t, -p, funcs)
 
-    result2 = p^2 / (4π^2) * PLX * W * G1 * (G21 * R0 + G22 * R)
+    result2 = -p^2 / (4π^2) * PLX * W * G1 * (G21 * R0 + G22 * R)
     # if isnan(result1) || isnan(result2) || isinf(result1) || isinf(result2)
     #     println("t=$t, k=$k, x=$x, t1=$t1, t2=$t2, p=$p")
     #     println("PLX=$PLX, q=$q, V=$V,G1=$G1, G021=$G021, G022=$G022, R0=$R0, R=$R")

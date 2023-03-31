@@ -106,7 +106,7 @@ end
 
 function interaction(k, prop; i=1)
     if k ≈ 0
-        k = 1e-10
+        k = 1e-16
     end
     # return Interp.interp1D(view(prop.data, i, 1, :), prop.mesh[3], k)
     return Interp.linear1D(view(prop.data, i, 1, :), prop.mesh[3], k)
@@ -118,37 +118,37 @@ function interaction(t, k, prop; i=1)
     return factor * Interp.linear2D(view(prop.data, i, :, :), prop.mesh[2], prop.mesh[3], t, k)
 end
 
-function green2(Ek, τ, beta)
-    if τ ≈ 0.0
-        τ = -1.0e-10
-    end
+# function green2(Ek, τ, beta)
+#     if τ ≈ 0.0
+#         τ = -1.0e-10
+#     end
 
-    s = 1.0
-    if τ < 0.0
-        τ += beta
-        s = -s
-    elseif τ >= beta
-        τ -= beta
-        s = -s
-    end
+#     s = 1.0
+#     if τ < 0.0
+#         τ += beta
+#         s = -s
+#     elseif τ >= beta
+#         τ -= beta
+#         s = -s
+#     end
 
-    if Ek > 0.0
-        c = exp(-beta * Ek)
-        green = exp(-Ek * τ) / (1.0 + c)^2 * (τ - (beta - τ) * c)
-    else
-        c = exp(beta * Ek)
-        green = exp(Ek * (beta - τ)) / (1.0 + c)^2 * (τ * c - (beta - τ))
-    end
+#     if Ek > 0.0
+#         c = exp(-beta * Ek)
+#         green = exp(-Ek * τ) / (1.0 + c)^2 * (τ - (beta - τ) * c)
+#     else
+#         c = exp(beta * Ek)
+#         green = exp(Ek * (beta - τ)) / (1.0 + c)^2 * (τ * c - (beta - τ))
+#     end
 
-    green *= s
-end
+#     green *= s
+# end
 
 function G0(t, k, param)
     β = param.β
-    # t, factor = tau_fermi(t, β)
+    t, factor = tau_fermi(t, β)
     ε = k^2 / 2 / param.me - param.μ
-    result = green2(ε, t, β)
-    # result = factor * exp(-t * ε) / (exp(-ε * β) + 1)
+    # result = green2(ε, t, β)
+    result = factor * exp(-t * ε) / (exp(-ε * β) + 1)
     # if isnan(result) || isinf(result)
     #     println("t=$t, k=$k, ε=$ε")
     # end
