@@ -35,15 +35,16 @@ function integrand(vars, config)
     G1 = G0(t1, p, funcs)
     G021 = G0(t1, -p, funcs)
     G022 = G0(t2, -p, funcs)
-    # R0 = response(p, funcs; norm=norm)/ param.β
-    # R = response(t1 - t2, p, funcs; norm=norm)
-    R0 = 1.0 / param.β
-    R = 0.0
+    R0 = response(p, funcs; norm=norm) / param.β
+    R = response(t1 - t2, p, funcs; norm=norm)
+    # R0 = 1.0 / param.β
+    # R = 0.0
 
     result1 = -p^2 / (4π^2) * PLX * V * G1 * (G021 * R0 + G022 * R)
     # result1 = result1 / length(extT)
 
-    W = interaction(t, q, funcs) * V
+    # W = interaction(t, q, funcs) * V
+    W = 0.0
     G21 = G0(t1 - t, -p, funcs)
     G22 = G0(t2 - t, -p, funcs)
 
@@ -74,8 +75,8 @@ function run(steps, param, alg=:vegas)
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.05
-    minK, maxK = 0.05 * sqrt(param.T * param.me), 10param.kF
+    mint = 0.5
+    minK, maxK = 0.5 * sqrt(param.T * param.me), 10param.kF
     order = 4
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
@@ -116,5 +117,5 @@ if abspath(PROGRAM_FILE) == @__FILE__
     println(Ri.mesh[1])
     println(real(Ri.data))
     # println(result[1][1])
-    # println("R0=$(real(Propagators.R0(Ri, Rt, param)))")
+    println("R0=$(real(Propagators.R0(Ri, Rt, param)))")
 end
