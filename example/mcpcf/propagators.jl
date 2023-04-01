@@ -189,7 +189,8 @@ end
 
 function response(k, ri; norm=1)
     # return 1.0 + Interp.interp1D(view(ri.data, :), ri.mesh[1], k) / norm
-    return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k) / norm
+    # return 1.0 + Interp.linear1D(view(ri.data, :), ri.mesh[1], k) / norm
+    return Interp.linear1D(view(ri.data, :), ri.mesh[1], k) / norm
 end
 
 function response(t, k, rt; norm=1)

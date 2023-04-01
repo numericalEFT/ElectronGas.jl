@@ -5,10 +5,7 @@ using ElectronGas
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
 
-param = Parameter.rydbergUnit(0.1, 3.0, 3)
-# param = Parameter.defaultUnit(0.1, 3.0, 3)
-
-function integrand(p; param=param, k=param.kF)
+function integrand_instant(p, param; k=param.kF)
     cut = 1e-16
     if abs(k - p) < cut
         return 0.0
@@ -18,11 +15,70 @@ function integrand(p; param=param, k=param.kF)
     return p / k / (4 * π^2) * param.e0s^2 / param.ϵ0 * log(abs((k + p) / (k - p))) / (2ε) * tanh(ε * β / 2)
 end
 
-X = Continuous(0.0, 10.0)
-res = integrate((x, c) -> integrand(x[1]; k=1e-8), solver=:vegasmc; var=X)
-# res = integrate((x, c) -> integrand(x[1]; k=1), solver=:vegasmc; var=X)
-# res = integrate((x, c) -> integrand(x[1]; k=10), solver=:vegasmc; var=X)
-report(res)
+function benchmark_instant_oneloop(θ, rs, k)
+    # param = Parameter.rydbergUnit(θ, rs, 3)
+    param = Parameter.defaultUnit(θ, rs, 3)
+
+    X = Continuous(0.0, 10.0)
+    res = integrate((x, c) -> integrand_instant(x[1], param; k=k), solver=:vegasmc; var=X)
+    report(res)
+end
+
+function integrand(idx, vars, config)
+    if idx == 1
+        return 1.0
+    else
+        norm = config.normalization
+        therm = 10
+        norm = sqrt(norm^2 + therm^2)
+
+        ExtK, P = vars
+        param, kgrid, data = config.userdata
+        k = kgrid[ExtK[1]]
+        p = P[1]
+
+        R = Interp.linear1D(data, kgrid, p) / norm
+        return -integrand_instant(p, param; k=k) * R
+    end
+end
+
+function measure(idx, vars, obs, weight, config)
+    config.userdata[3][vars[1][1]] += weight[1]
+    if idx == 1
+        obs[1][vars[1][1]] += weight[1]
+    else
+        obs[2][vars[1][1]] += weight[1]
+    end
+end
+
+function benchmark_instant_scf(θ, rs; steps=1e6)
+    param = Parameter.defaultUnit(θ, rs, 3)
+    minK, maxK = 0.5 * sqrt(param.T * param.me), 10param.kF
+    order = 4
+    Nk = floor(Int, 2.0 * log10(maxK / minK))
+    kgrid = CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
+
+    ExtK = Discrete(1, length(kgrid); adapt=false)
+    P = Continuous(0.0, maxK; alpha=3.0, adapt=true)
+    dof = [[1, 0], [1, 1]]
+    data = zeros(Float64, length(kgrid))
+    obs = [data, data]
+
+    result = integrate(integrand; measure=measure, userdata=(param, kgrid, data),
+        var=(ExtK, P), dof=dof, obs=obs, solver=:mcmc, neval=steps,
+        print=0, block=8)
+    report(result)
+    println(kgrid)
+    println(result.mean)
+    println(result.mean[1] .+ result.mean[2])
+    println(sqrt.(result.stdev[1] .^ 2 .+ result.stdev[2] .^ 2))
+    # println(data)
+    return result
+end
+
+benchmark_instant_scf(0.1, 0.1; steps=1e7)
+
+# benchmark_instant_oneloop(0.1, 3.0, 1e-8)
 
 # function oneloop(dim, θ, rs, channel; kwargs...)
 #     param = Parameter.defaultUnit(θ, rs, dim)

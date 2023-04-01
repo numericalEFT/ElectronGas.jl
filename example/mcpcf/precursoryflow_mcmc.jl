@@ -7,10 +7,20 @@ using .Propagators: G0, interaction, response
 
 const steps = 1e7
 const ℓ = 0
-const param = Propagators.Parameter.defaultUnit(0.2, 0.2, 3)
+const param = Propagators.Parameter.defaultUnit(0.1, 0.1, 3)
 println(param)
 
-function integrand(vars, config)
+function integrand(idx, vars, config)
+    if idx == 1
+        return 1.0
+    elseif idx == 2
+        return integrand2(vars, config)
+    elseif idx == 3
+        return integrand3(vars, config)
+    end
+end
+
+function integrand2(vars, config)
     norm = config.normalization
     therm = 10
     norm = sqrt(norm^2 + therm^2)
@@ -40,43 +50,70 @@ function integrand(vars, config)
     # R = 0.0
 
     result1 = -p^2 / (4π^2) * PLX * V * G1 * (G021 * R0 + G022 * R)
-    # result1 = result1 / length(extT)
+    return result1
+end
 
+function integrand3(vars, config)
+    norm = config.normalization
+    therm = 10
+    norm = sqrt(norm^2 + therm^2)
+
+    ExtT, ExtK, X, T, P = vars
+    funcs = config.userdata
+    Rt = funcs.Rt
+    extT, extK = Rt.mesh[1], Rt.mesh[2]
+    param = funcs.param
+
+    t = extT[ExtT[1]]
+    k = extK[ExtK[1]]
+    x = X[1]
+    t1, t2 = T[1], T[2]
+    p = P[1]
+
+    PLX = Pl(x, ℓ)
+    q = sqrt(k^2 + p^2 + 2 * k * p * x)
+    V = 1.0 / interaction(q, funcs)
+    # V = coulomb(q, funcs)[1]
+    G1 = G0(t1, p, funcs)
+    R0 = response(p, funcs; norm=norm) / param.β
+    R = response(t1 - t2, p, funcs; norm=norm)
+    # R0 = 1.0 / param.β
+    # R = 0.0
     W = interaction(t, q, funcs) * V
     # W = 0.0
     G21 = G0(t1 - t, -p, funcs)
     G22 = G0(t2 - t, -p, funcs)
 
     result2 = -p^2 / (4π^2) * PLX * W * G1 * (G21 * R0 + G22 * R)
-    # if isnan(result1) || isnan(result2) || isinf(result1) || isinf(result2)
-    #     println("t=$t, k=$k, x=$x, t1=$t1, t2=$t2, p=$p")
-    #     println("PLX=$PLX, q=$q, V=$V,G1=$G1, G021=$G021, G022=$G022, R0=$R0, R=$R")
-    #     println("W=$W, G21=$G21, G22=$G22")
-    #     error("nan!")
-    # end
-    return 1.0, result1, result2
+    return result2
 end
 
-function measure(vars, obs, weight, config)
+function measure(idx, vars, obs, weight, config)
     extt, extk = vars[1], vars[2]
     funcs = config.userdata
     Ri, Rt = funcs.Ri, funcs.Rt
-    Ri.data[extk[1]] += weight[1] + weight[2]
-    Rt.data[extt[1], extk[1]] += weight[3]
-    obs[1][extk[1]] += weight[1]
-    obs[2][extk[1]] += weight[2]
-    obs[3][extt[1], extk[1]] += weight[3]
+    if idx == 1
+        obs[1][extk[1]] += weight[1]
+        Ri.data[extk[1]] += weight[1]
+    elseif idx == 2
+        obs[2][extk[1]] += weight[1]
+        Ri.data[extk[1]] += weight[1]
+    elseif idx == 3
+        obs[3][extt[1], extk[1]] += weight[1]
+        Rt.data[extt[1], extk[1]] += weight[1]
+    end
 end
 
-function run(steps, param, alg=:vegas)
+function run(steps, param)
+    alg = :mcmc
     println("Prepare propagators")
     mint = 0.001
     minK, maxK = 0.001 * sqrt(param.T * param.me), 10param.kF
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.1
-    minK, maxK = 0.1 * sqrt(param.T * param.me), 10param.kF
+    mint = 0.5
+    minK, maxK = 0.5 * sqrt(param.T * param.me), 10param.kF
     order = 4
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
@@ -110,7 +147,7 @@ function run(steps, param, alg=:vegas)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    result, funcs = run(steps, param, :vegasmc)
+    result, funcs = run(steps, param)
     Ri, Rt = funcs.Ri, funcs.Rt
     println(Ri.mesh[1])
     println(real(Ri.data))
