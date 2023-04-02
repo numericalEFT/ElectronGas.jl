@@ -5,7 +5,7 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const steps = 1e7
+const steps = 1e8
 const ℓ = 0
 const param = Propagators.Parameter.defaultUnit(0.2, 0.2, 3)
 println(param)

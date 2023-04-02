@@ -4,6 +4,32 @@ using MCIntegration
 using ElectronGas
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
+using Test
+
+function test_rpa_interaction(t, rs)
+    param = Parameter.defaultUnit(t, rs, 3)
+    mint = 0.5
+    minK, maxK = 0.5 * sqrt(param.T * param.me), 5param.kF
+    order = 3
+    Nk = floor(Int, 2.0 * log10(maxK / minK))
+    kgrid = ElectronGas.CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
+    rpad, rpai = ElectronGas.Interaction.RPAwrapped(100 * param.EF, 1e-10, kgrid, param)
+
+    tgrid = rpad.mesh[2]
+    for (iq, q) in enumerate(kgrid)
+        for (in, n) in enumerate(tgrid)
+            n = tgrid.grid[in]
+            println("q=$q, n=$n")
+            W1 = Interaction.RPA(q, n, param)[1]
+            println(W1)
+            V = 1 / rpai[1, 1, iq]
+            W2 = V * rpad[1, in, iq]
+            println(W2)
+            println(isapprox(W1, W2, rtol=1e-6))
+        end
+    end
+
+end
 
 function integrand_instant(p, param; k=param.kF)
     cut = 1e-16
@@ -76,7 +102,8 @@ function benchmark_instant_scf(θ, rs; steps=1e6)
     return result
 end
 
-benchmark_instant_scf(0.1, 0.1; steps=1e7)
+test_rpa_interaction(0.2, 0.2)
+# benchmark_instant_scf(0.1, 0.1; steps=1e7)
 
 # benchmark_instant_oneloop(0.1, 3.0, 1e-8)
 
