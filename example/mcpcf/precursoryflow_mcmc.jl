@@ -5,9 +5,9 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const steps = 1e7
+const steps = 1e8
 const ℓ = 0
-const param = Propagators.Parameter.defaultUnit(0.1, 0.1, 3)
+const param = Propagators.Parameter.defaultUnit(0.2, 0.2, 3)
 println(param)
 
 function integrand(idx, vars, config)
@@ -112,8 +112,8 @@ function run(steps, param)
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.5
-    minK, maxK = 0.5 * sqrt(param.T * param.me), 10param.kF
+    mint = 0.1
+    minK, maxK = 0.1 * sqrt(param.T * param.me), 10param.kF
     order = 4
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
@@ -139,7 +139,9 @@ function run(steps, param)
         var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
         neval=steps, print=0, block=8, type=ComplexF64)
 
-    println(result.mean)
+    println(result.mean[1])
+    println(result.mean[2])
+    println(result.mean[3])
     funcs.Ri.data .= result.mean[1] .+ result.mean[2]
     funcs.Rt.data .= result.mean[3]
 

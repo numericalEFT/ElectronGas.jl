@@ -5,16 +5,32 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const steps = 1e6 # 2e8/hr
+const Niter = 15
+const steps = 2e6 # 2e8/hr
 const ℓ = 0
 const param = Propagators.Parameter.defaultUnit(0.1, 3.0, 3)
 const α = 0.8
 println(param)
 
+function update!(result; α=α)
+    # update results to funcs
+    funcs = result.config.userdata
+    norm = result.config.normalization
+
+    funcs.Ri.data .+= 1 .+ result.mean[2]
+    funcs.Rt.data .+= result.mean[3]
+end
+
+function normalize!(funcs)
+    funcs.Ri.data .*= (1 - α)
+    funcs.Rt.data .*= (1 - α)
+end
+
 function integrand(vars, config)
-    norm = config.normalization
-    therm = 10
-    norm = sqrt(norm^2 + therm^2)
+    # norm = config.normalization
+    # therm = 10
+    # norm = sqrt(norm^2 + therm^2)
+    norm = 1 / (1 - α)
 
     ExtT, ExtK, X, T, P = vars
     funcs = config.userdata
@@ -60,10 +76,10 @@ end
 
 function measure(vars, obs, weight, config)
     extt, extk = vars[1], vars[2]
-    funcs = config.userdata
-    Ri, Rt = funcs.Ri, funcs.Rt
-    Ri.data[extk[1]] += weight[1] + weight[2]
-    Rt.data[extt[1], extk[1]] += weight[3]
+    # funcs = config.userdata
+    # Ri, Rt = funcs.Ri, funcs.Rt
+    # Ri.data[extk[1]] += weight[1] + weight[2]
+    # Rt.data[extt[1], extk[1]] += weight[3]
     obs[1][extk[1]] += weight[1]
     obs[2][extk[1]] += weight[2]
     obs[3][extt[1], extk[1]] += weight[3]
@@ -102,9 +118,21 @@ function run(steps, param, alg=:vegas)
     result = integrate(integrand; measure=measure, userdata=funcs,
         var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
         neval=steps, print=-1, block=8, type=ComplexF64)
-    println(result.mean)
-    funcs.Ri.data .= result.mean[1] .+ result.mean[2]
-    funcs.Rt.data .= result.mean[3]
+    update!(result)
+    for i in 1:Niter
+        result = integrate(integrand; config=result.config,
+            measure=measure, userdata=funcs,
+            var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
+            neval=steps, print=-1, block=8, type=ComplexF64)
+        update!(result)
+        println(result.mean[1][1])
+        println(result.mean[2][1])
+    end
+    funcs = result.config.userdata
+    normalize!(funcs)
+    # println(result.mean)
+    # funcs.Ri.data .= result.mean[1] .+ result.mean[2]
+    # funcs.Rt.data .= result.mean[3]
 
     return result, funcs
 end
