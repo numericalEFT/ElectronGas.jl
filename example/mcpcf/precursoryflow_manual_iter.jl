@@ -6,9 +6,9 @@ using .Propagators
 using .Propagators: G0, interaction, response
 
 const Niter = 15
-const steps = 2e6 # 2e8/hr
+const steps = 4e6 # 2e8/hr
 const ℓ = 0
-const param = Propagators.Parameter.defaultUnit(0.1, 3.0, 3)
+const param = Propagators.Parameter.defaultUnit(0.01, 3.0, 3)
 const α = 0.8
 println(param)
 
@@ -17,8 +17,10 @@ function update!(result; α=α)
     funcs = result.config.userdata
     norm = result.config.normalization
 
-    funcs.Ri.data .+= 1 .+ result.mean[2]
-    funcs.Rt.data .+= result.mean[3]
+    funcs.Ri.data .= funcs.Ri.data .* α .+ 1 .+ result.mean[2]
+    funcs.Rt.data .= funcs.Rt.data .* α .+ result.mean[3]
+    # funcs.Ri.data .= 1 .+ result.mean[2]
+    # funcs.Rt.data .= result.mean[3]
 end
 
 function normalize!(funcs)
@@ -125,6 +127,7 @@ function run(steps, param, alg=:vegas)
             var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
             neval=steps, print=-1, block=8, type=ComplexF64)
         update!(result)
+        println(result.config.normalization)
         println(result.mean[1][1])
         println(result.mean[2][1])
     end
