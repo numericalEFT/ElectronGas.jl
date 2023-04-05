@@ -726,4 +726,7 @@ function linearResponse(param; Euv=100 * param.EF, rtol=1e-10, atol=1e-10, α=0.
     return lamu, R_freq, F_freq
 end
 
+include("gap_function.jl")
+
 end
+
