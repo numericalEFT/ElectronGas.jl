@@ -59,6 +59,6 @@ lamus = [gapfunction(dim, 1 / beta[i], rs, channel;
     # sigmatype=:none, int_type=:rpa, Vph=phonon,
     sigmatype=:none, int_type=:rpa,
     # sigmatype=:none, int_type=:none, Vph=phonon,
-    issave=false, uid=uid0 + i, dir="./run/data/",
+    issave=true, uid=uid0 + i, dir="./run/data/",
     verbose=true) for i in 1:length(beta)]
 println(lamus)
