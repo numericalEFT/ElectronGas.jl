@@ -5,7 +5,7 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
-const steps = 1e6 # 2e8/hr
+const steps = 1e7 # 2e8/hr
 const ℓ = 0
 const param = Propagators.Parameter.defaultUnit(0.1, 3.0, 3)
 const α = 0.8
@@ -35,8 +35,10 @@ function integrand(vars, config)
     G1 = G0(t1, p, funcs)
     G021 = G0(t1, -p, funcs)
     G022 = G0(t2, -p, funcs)
-    R0 = response(p, funcs; norm=norm) / param.β
-    R = response(t1 - t2, p, funcs; norm=norm)
+    # R0 = response(p, funcs; norm=norm) / param.β
+    # R = response(t1 - t2, p, funcs; norm=norm)
+    R0 = response(p, funcs) / param.β
+    R = response(t1 - t2, p, funcs)
     # R0 = 1.0 / param.β
     # R = 0.0
 
@@ -60,10 +62,10 @@ end
 
 function measure(vars, obs, weight, config)
     extt, extk = vars[1], vars[2]
-    funcs = config.userdata
-    Ri, Rt = funcs.Ri, funcs.Rt
-    Ri.data[extk[1]] += weight[1] + weight[2]
-    Rt.data[extt[1], extk[1]] += weight[3]
+    # funcs = config.userdata
+    # Ri, Rt = funcs.Ri, funcs.Rt
+    # Ri.data[extk[1]] += weight[1] + weight[2]
+    # Rt.data[extt[1], extk[1]] += weight[3]
     obs[1][extk[1]] += weight[1]
     obs[2][extk[1]] += weight[2]
     obs[3][extt[1], extk[1]] += weight[3]
@@ -76,8 +78,8 @@ function run(steps, param, alg=:vegas)
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.1
-    minK, maxK = 0.1 * sqrt(param.T * param.me), 10param.kF
+    mint = 0.001
+    minK, maxK = 0.001 * sqrt(param.T * param.me), 10param.kF
     order = 4
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))

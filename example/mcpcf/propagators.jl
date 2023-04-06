@@ -141,15 +141,27 @@ function initR(param;
     Nlog = floor(Int, 2.0 * log10(param.β / mint))
     btgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, param.β], [0.0, param.β], Nlog, mint, order)
     tgrid = GreenFunc.ImTime(param.β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha, grid=btgrid)
+    wn_mesh = GreenFunc.ImFreq(param.β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
 
     Nk = floor(Int, 2.0 * log10(maxK / minK))
     kgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
 
     ri = GreenFunc.MeshArray(kgrid; dtype=ComplexF64)
-    rt = GreenFunc.MeshArray(tgrid, kgrid; dtype=ComplexF64)
+
+    R_freq = GreenFunc.MeshArray(wn_mesh, kgrid; dtype=Float64)
+    for ind in eachindex(R_freq)
+        Ω_c = 0.01
+        ni, ki = ind[1], ind[2]
+        ωn, k = wn_mesh[ni], kgrid[ki]
+        e = k^2 / 2 / param.me - param.μ
+        R_freq[ni, ki] = (1.0 - 2.0 * ωn^2 / (ωn^2 + Ω_c^2)) / (Ω_c^2 + e^2)
+    end
+    rdlr = to_dlr(R_freq)
+    rt = dlr_to_imtime(rdlr, tgrid)
+    # rt = GreenFunc.MeshArray(tgrid, kgrid; dtype=ComplexF64)
     # ri[:] .= 0.0
     ri[:] .= 1.0
-    rt[:] .= 0.0
+    # rt[:] .= 0.0
 
     return ri, rt
 end
