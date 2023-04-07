@@ -7,7 +7,8 @@ using .Propagators: G0, interaction, response
 
 const steps = 1e7 # 2e8/hr
 const ℓ = 0
-const param = Propagators.Parameter.defaultUnit(0.1, 3.0, 3)
+const θ, rs = 0.1, 3.0
+const param = Propagators.Parameter.defaultUnit(θ, rs, 3)
 const α = 0.8
 println(param)
 
@@ -78,9 +79,9 @@ function run(steps, param, alg=:vegas)
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.001
-    minK, maxK = 0.001 * sqrt(param.T * param.me), 10param.kF
-    order = 4
+    mint = 0.05
+    minK, maxK = 0.1 * sqrt(param.T * param.me), 10param.kF
+    order = 3
     Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
 
@@ -104,7 +105,7 @@ function run(steps, param, alg=:vegas)
     result = integrate(integrand; measure=measure, userdata=funcs,
         var=(ExtT, ExtK, X, T, P), dof=dof, obs=obs, solver=alg,
         neval=steps, print=-1, block=8, type=ComplexF64)
-    println(result.mean)
+    # println(result.mean)
     funcs.Ri.data .= result.mean[1] .+ result.mean[2]
     funcs.Rt.data .= result.mean[3]
 
@@ -114,8 +115,8 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     result, funcs = run(steps, param, :vegasmc)
     Ri, Rt = funcs.Ri, funcs.Rt
-    println(Ri.mesh[1])
-    println(real(Ri.data))
+    # println(Ri.mesh[1])
+    # println(real(Ri.data))
     # println(result[1][1])
     println("R0=$(real(Propagators.R0(Ri, Rt, param)))")
 end

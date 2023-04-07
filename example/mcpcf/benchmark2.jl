@@ -42,7 +42,7 @@ function oneloop_solver(param,
     # Initalize F and R
     F_freq, R_imt, R_ins = initFR(Euv, G2.mesh[1].representation.rtol, kgrid, param)
     R_ins.data .= 1.0
-    R_imt.data .= 0.0
+    # R_imt.data .= 0.0
 
     R0, R0_sum = 1.0, 0.0
     dR0, dR0_sum = zeros(Float64, (kgrid.size)), zeros(Float64, (kgrid.size))
@@ -85,7 +85,7 @@ function oneloop(param, channel::Int;
     Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
-    α=0.8, verbose=false, Ntherm=30, Nmax=10000,
+    verbose=false,
     issave=false, uid=1, dir="./")
     @unpack dim, rs, β, kF = param
     if verbose
@@ -163,7 +163,7 @@ end
 
 param = Parameter.defaultUnit(0.1, 3.0)
 Rw, Fw, Ri = oneloop(param, 0;
-    int_type=:rpa)
+    int_type=:rpa, sigmatype=:none)
 
 println(Ri.mesh[2])
 println(Ri.data)
