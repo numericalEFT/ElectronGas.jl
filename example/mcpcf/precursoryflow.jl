@@ -5,16 +5,17 @@ include("propagators.jl")
 using .Propagators
 using .Propagators: G0, interaction, response
 
+const fname = "run/data/PCFdata_3003.jld2"
 const steps = 1e7 # 2e8/hr
 const ℓ = 0
-const θ, rs = 0.1, 3.0
+const θ, rs = 0.1, 0.3
 const param = Propagators.Parameter.defaultUnit(θ, rs, 3)
 const α = 0.8
 println(param)
 
 function integrand(vars, config)
     norm = config.normalization
-    therm = 10
+    therm = 100000
     norm = sqrt(norm^2 + therm^2)
 
     ExtT, ExtK, X, T, P = vars
@@ -74,15 +75,17 @@ end
 
 function run(steps, param, alg=:vegas)
     println("Prepare propagators")
+
     mint = 0.001
     minK, maxK = 0.001 * sqrt(param.T * param.me), 10param.kF
     order = 6
     rpai, rpat = Propagators.rpa(param; mint=mint, minK=minK, maxK=maxK, order=order)
 
-    mint = 0.05
+    mint = 0.1
     minK, maxK = 0.1 * sqrt(param.T * param.me), 10param.kF
     order = 3
-    Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
+    Ri, Rt = Propagators.loadR(fname, param; mint=mint, minK=minK, maxK=maxK, order=order)
+    # Ri, Rt = Propagators.initR(param; mint=mint, minK=minK, maxK=maxK, order=order)
     println(size(Rt))
 
     # userdata
@@ -115,8 +118,8 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     result, funcs = run(steps, param, :vegasmc)
     Ri, Rt = funcs.Ri, funcs.Rt
-    # println(Ri.mesh[1])
-    # println(real(Ri.data))
+    println(Ri.mesh[1])
+    println(real(Ri.data))
     # println(result[1][1])
     println("R0=$(real(Propagators.R0(Ri, Rt, param)))")
 end

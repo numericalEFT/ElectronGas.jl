@@ -7,6 +7,7 @@ using ElectronGas.Interaction: RPAwrapped
 using ElectronGas.Parameter
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
+using JLD2
 
 export rpa, interaction, G0, initR, response, coulomb
 
@@ -163,6 +164,43 @@ function initR(param;
     ri[:] .= 1.0
     # rt[:] .= 0.0
 
+    return ri, rt
+end
+
+function loadR(fname, param;
+    mint=0.001,
+    minK=0.001 * sqrt(param.T * param.me), maxK=10.0 * param.kF,
+    order=6)
+
+    Euv = 100param.EF
+    rtol = 1e-10
+
+    Nlog = floor(Int, 2.0 * log10(param.β / mint))
+    btgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, param.β], [0.0, param.β], Nlog, mint, order)
+    tgrid = GreenFunc.ImTime(param.β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha, grid=btgrid)
+    wn_mesh = GreenFunc.ImFreq(param.β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
+
+    Nk = floor(Int, 2.0 * log10(maxK / minK))
+    kgrid = Propagators.CompositeG.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
+
+    ri = GreenFunc.MeshArray(kgrid; dtype=ComplexF64)
+
+    rt = GreenFunc.MeshArray(tgrid, kgrid; dtype=ComplexF64)
+
+    # load from file
+    data = jldopen(fname, "r")
+    R_ins = data["R_ins"]
+    R_freq = data["R_freq"]
+
+    rdlr = to_dlr(R_freq)
+    Rt = dlr_to_imtime(rdlr, tgrid)
+
+    for (ik, k) in enumerate(kgrid)
+        ri[ik] = Interp.interp1D(view(R_ins.data, 1, :), R_ins.mesh[2], k)
+        for (it, t) in enumerate(tgrid)
+            rt[it, ik] = Interp.interp1D(view(Rt, it, :), Rt.mesh[2], k)
+        end
+    end
     return ri, rt
 end
 
