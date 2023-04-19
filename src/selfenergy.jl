@@ -142,23 +142,24 @@ function calcΣ_2d(G::GreenFunc.MeshArray, W::LegendreInteraction.DCKernel)
     kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis=3)
 
     # container of Σ
-    Σ = similar(G_imt)
+    Σ = GreenFunc.MeshArray(G_imt.mesh[1], kgrid; dtype=ComplexF64)
 
     # equal-time green (instant)
     G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
-    Σ_ins = similar(G_ins)
+    Σ_ins = GreenFunc.MeshArray(G_ins.mesh[1], kgrid; dtype=ComplexF64)
 
-    for ind in eachindex(G)
-        τi, ki = ind[1], ind[2]
-        Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], kgrid, qgrids[ki].grid)
-        integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
-        Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-        @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
-        if τi == 1
-            Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], kgrid, qgrids[ki].grid)
-            integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
-            Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
+    for τi in eachindex(G_imt.mesh[1])
+        for ki in eachindex(kgrid)
+            Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], G_imt.mesh[2], qgrids[ki].grid)
+            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq .* qgrids[ki].grid
+            Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+            @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
+            if τi == 1
+                Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], G_ins.mesh[2], qgrids[ki].grid)
+                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq .* qgrids[ki].grid
+                Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+                @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
+            end
         end
     end
 
@@ -182,46 +183,65 @@ function calcΣ_3d(G::GreenFunc.MeshArray, W::LegendreInteraction.DCKernel)
     kernel = Lehmann.matfreq2tau(bdlr, kernel_freq, fdlr.τ, bdlr.n; axis=3)
 
     # container of Σ
-    Σ = similar(G_imt)
+    Σ = GreenFunc.MeshArray(G_imt.mesh[1], kgrid; dtype=ComplexF64)
 
     # equal-time green (instant)
     G_ins = dlr_to_imtime(G_dlr, [β,]) * (-1)
-    Σ_ins = similar(G_ins)
+    Σ_ins = GreenFunc.MeshArray(G_ins.mesh[1], kgrid; dtype=ComplexF64)
 
-    for ind in eachindex(G)
-        τi, ki = ind[1], ind[2]
-        k = kgrid.grid[ki]
-        Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], kgrid, qgrids[ki].grid)
-        integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
-        Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-        @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
-        if τi == 1
-            Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], kgrid, qgrids[ki].grid)
-            integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
-            Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
-            @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
+    for τi in eachindex(G_imt.mesh[1])
+        for ki in eachindex(kgrid)
+            k = kgrid[ki]
+            Gq = CompositeGrids.Interp.interp1DGrid(G_imt[τi, :], G_imt.mesh[2], qgrids[ki].grid)
+            integrand = kernel[ki, 1:qgrids[ki].size, τi] .* Gq ./ k .* qgrids[ki].grid
+            Σ[τi, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+            @assert isfinite(Σ[τi, ki]) "fail Δ at $τi, $ki"
+            if τi == 1
+                Gq = CompositeGrids.Interp.interp1DGrid(G_ins[1, :], G_ins.mesh[2], qgrids[ki].grid)
+                integrand = kernel_bare[ki, 1:qgrids[ki].size] .* Gq ./ k .* qgrids[ki].grid
+                Σ_ins[1, ki] = CompositeGrids.Interp.integrate1D(integrand, qgrids[ki])
+                @assert isfinite(Σ_ins[1, ki]) "fail Δ0 at $ki"
+            end
         end
     end
 
     return Σ / (-4 * π^2), Σ_ins / (-4 * π^2)
 end
 
-function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
+function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; kwargs...)
     @unpack dim = param
     # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
     # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
     # kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
     #     Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
     # G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+
+    kGgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
     if dim == 2
-        kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
-            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
-        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+        if isnothing(kgrid)
+            kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+        else
+            if (kgrid isa AbstractVector)
+                kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
+            end
+            kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+        end
+        G0 = G0wrapped(Euv, rtol, kGgrid, param)
         Σ, Σ_ins = calcΣ_2d(G0, kernel)
     elseif dim == 3
-        kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-            Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
-        G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+        if isnothing(kgrid)
+            kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+        else
+            if (kgrid isa AbstractVector)
+                kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
+            end
+            kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+        end
+        G0 = G0wrapped(Euv, rtol, kGgrid, param)
         Σ, Σ_ins = calcΣ_3d(G0, kernel)
     else
         error("No support for G0W0 in $dim dimension!")
@@ -230,8 +250,9 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
     return Σ, Σ_ins
 end
 
-function G0W0(param; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa, kwargs...)
-    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type; kwargs...)
+function G0W0(param, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa,
+    kwargs...)
+    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid; kwargs...)
 end
 
 """
@@ -291,7 +312,7 @@ end
     
 calculate the effective band mass of the self-energy at the momentum kamp
 ```math
-    \\frac{m^*}{m}=z(kamp)^{-1}/\\left(1+\\frac{Re\\Sigma(kamp, 0) - Re\\Sigma(0, 0)}{k^2/2m}\\right)
+    \\frac{m^*_k}{m}=\\frac{1}{z_k}\\cdot \\left(1+\\frac{Re\\Sigma(k, 0) - Re\\Sigma(0, 0)}{k^2/2m}\\right)^{-1}
 ```
 """
 function bandmassratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray; kamp=param.kF)
