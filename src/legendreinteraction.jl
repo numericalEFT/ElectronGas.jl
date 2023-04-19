@@ -169,27 +169,29 @@ function helper_function_grid(ygrid, intgrid, n::Int, W, param)
 end
 
 
-struct DCKernel
+struct DCKernel{C}
     int_type::Symbol
     spin_state::Symbol
     channel::Int
 
     param::Parameter.Para
 
-    kgrid::CompositeGrid.Composite
+    kgrid::C
     qgrids::Vector{CompositeGrid.Composite}
     dlrGrid::DLRGrid
 
     kernel_bare::Array{Float64,2}
     kernel::Array{Float64,3}
 
-    function DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, dlrGrid, kernel_bare, kernel)
-        return new(int_type, spin_state, channel, param, kgrid, qgrids, dlrGrid, kernel_bare, kernel)
+    function DCKernel(int_type, spin_state, channel, param, kgrid::C, qgrids, dlrGrid, kernel_bare, kernel) where {C}
+        return new{C}(int_type, spin_state, channel, param, kgrid, qgrids, dlrGrid, kernel_bare, kernel)
     end
 
 end
 
-function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto; kwargs...)
+function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto;
+    kgrid=CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order),
+    kwargs...)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -201,8 +203,6 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
     end
 
     bdlr = DLRGrid(Euv, β, rtol, false, :ph)
-    kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
-    #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
     # θgrid = SimpleGrid.GaussLegendre{Float64}([0, 2π], 100)
@@ -245,7 +245,9 @@ function DCKernel_2d(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF 
     return DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state; kwargs...)
 end
 
-function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto; kwargs...)
+function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel, spin_state=:auto;
+    kgrid=CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order),
+    kwargs...)
     @unpack kF, β = param
 
     if spin_state == :sigma
@@ -257,8 +259,6 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
     end
 
     bdlr = DLRGrid(Euv, β, rtol, false, :ph)
-    kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
-    #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
     #println(qgridmax)
@@ -323,7 +323,9 @@ function DCKernel0(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 
     return DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
 end
 
-function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto; kwargs...)
+function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:auto;
+    kgrid=CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order),
+    kwargs...)
     # use helper function
     @unpack kF, β = param
     channel = 0
@@ -337,8 +339,6 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
     end
 
     bdlr = DLRGrid(Euv, β, rtol, false, :ph)
-    kgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, kF], Nk, minK, order)
-    #println(kgrid.grid)
     qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
     qgridmax = maximum([qg.size for qg in qgrids])
     #println(qgridmax)
