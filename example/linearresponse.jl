@@ -18,7 +18,7 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
 end
 
 function measure_chi(dim, θ, rs, channel; kwargs...)
-    param = Parameter.defaultUnit(θ, rs, dim)
+    param = Parameter.rydbergUnit(θ, rs, dim)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
@@ -55,14 +55,14 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 3000
+    uid0 = 200
     dim = 3
-    rs = 0.3
+    rs = 0.02
     # num = 14
     # num = 25
     num = 12
     channel = 0
-    beta = [2, 5, 10, 20, 50, 100]
+    beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
