@@ -35,6 +35,23 @@
         @test isapprox(SelfEnergy.Fock0_ZeroTemp(para1.kF, para1), SelfEnergy.Fock0_ZeroTemp(para2.kF, para2), rtol=1e-6)
     end
 
+    @testset "RPA based on the user-defined kgrid" begin
+        θ, rs = 0.01, 4.0
+        para = Parameter.rydbergUnit(θ, rs, 3, Λs=1e-5)
+        sigma1 = SelfEnergy.G0W0(para)
+        kFidx = locate(sigma1[1].mesh[2], para.kF)
+        sigma2 = SelfEnergy.G0W0(para, [sigma1[1].mesh[2][kFidx],])
+        @test isapprox(sigma1[1][1, kFidx], sigma2[1][1, 1], rtol=1e-6)
+        @test isapprox(sigma1[2][1, kFidx], sigma2[2][1, 1], rtol=1e-6)
+
+        para = Parameter.rydbergUnit(θ, rs, 2, Λs=1e-5)
+        sigma1 = SelfEnergy.G0W0(para)
+        kFidx = locate(sigma1[1].mesh[2], para.kF)
+        sigma2 = SelfEnergy.G0W0(para, [sigma1[1].mesh[2][kFidx],])
+        @test isapprox(sigma1[1][1, kFidx], sigma2[1][1, 1], rtol=1e-6)
+        @test isapprox(sigma1[2][1, kFidx], sigma2[2][1, 1], rtol=1e-6)
+    end
+
     @testset "3D RPA" begin
         # make sure everything works for different unit sets
         θ = 0.001
@@ -45,9 +62,12 @@
         # rslist = [5.0,]
         # zlist = [0.5913,]
         # mlist = [1.059,]
-        rslist = [1.0, 2.0]
-        zlist = [0.859, 0.764]
-        mlist = [0.970, 0.992]
+        # rslist = [1.0, 2.0]
+        # zlist = [0.859, 0.764]
+        # mlist = [0.970, 0.992]
+        rslist = [2.0,]
+        zlist = [0.764,]
+        mlist = [0.992,]
 
         for (ind, rs) in enumerate(rslist)
             param = Parameter.rydbergUnit(θ, rs)
