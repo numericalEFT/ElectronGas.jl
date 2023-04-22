@@ -55,13 +55,13 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 200
+    uid0 = 3090
     dim = 3
-    rs = 0.02
+    rs = 0.3
     # num = 14
     # num = 25
     num = 12
-    channel = 0
+    channel = 9
     beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
