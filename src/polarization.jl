@@ -45,10 +45,103 @@ end
     # end
 end
 
+# Analytical calculated integrand of the ladder in 3D.
+@inline function _LadderT3d_integrand(x, q, ω, param)
+    @unpack me, β, μ = param
+    # ω only appears as ω^2 so no need to check sign of ω
+    k = x / (1 - x)
+    nk = 1.0 / (exp(β * (k^2 / 2 / me - μ)) + 1)
+
+    if q > 1e-6 * param.kF
+        a = ω * 1im - k^2 / me - q^2 / 2 / me + 2μ
+        b = q * k / me
+        return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2
+    else
+        return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2
+    end
+
+    # if q is too small, use safe form
+    # if q < 1e-16 && ω ≈ 0
+    #     if abs(q - 2 * k)^2 < 1e-16
+    #         return 0.0
+    #     else
+    #         return -k * me / (4 * π^2) * nk * ((8 * k) / ((q - 2 * k)^2))
+    #     end
+    # elseif q < 1e-16 && !(ω ≈ 0)
+    #     return -k * me / (4 * π^2) * nk * ((8 * k * q^2) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
+    # else
+    #     return -k * me / (4 * π^2 * q) * nk * log1p((8 * k * q^3) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
+    # end
+end
+
+
 function finitetemp_kgrid(q::Float64, kF::Float64, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # dense point near k_F and q/2
     kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
     return kgrid
+end
+
+function finitetemp_kgrid_ladder(μ::Float64, m::Float64, q::Float64, kF::Float64, scaleN=20, minterval=1e-6, gaussN=10)
+    mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    mixX = mink / (1 + mink)
+    if q >= sqrt(8 * μ * m)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], [0.0, kF], scaleN, mink, gaussN)
+    else
+        k1 = abs(q - sqrt(8 * μ * m - q^2)) / 2
+        k2 = (q + sqrt(8 * μ * m - q^2)) / 2
+        x1 = k1 / (1 + k1)
+        x2 = k2 / (1 + k2)
+        x3 = kF / (1 + kF)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], sort([x1, x2, x3]), scaleN, mink, gaussN)
+    end
+    return kgrid
+end
+
+"""
+    function Ladder0_FiniteTemp(q::Float64, n::Int, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+
+Finite temperature ladder function for matsubara frequency and momentum. Analytically sum over total incoming frequency and angular
+dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
+
+The ladder function is defined as 
+```math
+\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ}
+```
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. Ωn=2πTn
+ - param: other system parameters
+ - maxk: optional, upper limit of integral -> maxk*kF
+ - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - minterval: optional, actual minterval of grid is this value times min(q,kF)
+ - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
+"""
+function Ladder0_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6, gaussN=10)
+    @unpack dim, kF, β, me, μ = param
+    if dim != 3
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+
+    # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    kgrid = finitetemp_kgrid_ladder(μ, me, q, kF, scaleN, minterval, gaussN)
+    integrand = zeros(ComplexF64, kgrid.size)
+    if dim == 3
+        for (ki, k) in enumerate(kgrid.grid)
+            integrand[ki] = _LadderT3d_integrand(k, q, 2π * n / β, param)
+            @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
+        end
+    end
+
+    return Interp.integrate1D(integrand, kgrid)
 end
 
 """
@@ -104,6 +197,55 @@ function Polarization0_FiniteTemp(q::Float64, n::Int, param; maxk=20, scaleN=20,
 
     return Interp.integrate1D(integrand, kgrid)
 end
+
+
+"""
+    function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+
+Finite temperature ladder function for matsubara frequency and momentum. Analytically sum over total incoming frequency and angular
+dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
+
+The ladder function is defined as 
+```math
+\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ}
+```
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. Ωn=2πTn
+ - param: other system parameters
+ - maxk: optional, upper limit of integral -> maxk*kF
+ - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - minterval: optional, actual minterval of grid is this value times min(q,kF)
+ - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
+"""
+function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param; scaleN=20, minterval=1e-6, gaussN=10)
+    @unpack dim, kF, β, me, μ = param
+    if dim != 3
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+
+    # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    kgrid = finitetemp_kgrid_ladder(μ, me, q, kF, scaleN, minterval, gaussN)
+    integrand = zeros(ComplexF64, (kgrid.size, length(n)))
+    if dim == 3
+        for (ki, k) in enumerate(kgrid.grid)
+            for (mi, m) in enumerate(n)
+                integrand[ki, mi] = _LadderT3d_integrand(k, q, 2π * m / β, param)
+                @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
+            end
+        end
+    end
+
+    return Interp.integrate1D(integrand, kgrid; axis=1)
+end
+
 
 """
     function Polarization0_FiniteTemp(q::Float64, n::AbstractVector, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
