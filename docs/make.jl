@@ -19,6 +19,7 @@ makedocs(;
             "manual/fock.md",
             "manual/polarization_3D.md",
             "manual/polarization_2D.md",
+            "manual/ladder_3D.md",
             "manual/polarization_approx.md",
             "manual/legendreinteraction.md",
             "manual/G_plus_Moroni.md",

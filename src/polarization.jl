@@ -55,9 +55,9 @@ end
     if q > 1e-6 * param.kF
         a = ω * 1im - k^2 / me - q^2 / 2 / me + 2μ
         b = q * k / me
-        return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2
+        return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
     else
-        return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2
+        return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
     end
 
     # if q is too small, use safe form
@@ -83,6 +83,10 @@ function finitetemp_kgrid(q::Float64, kF::Float64, maxk=20, scaleN=20, minterval
 end
 
 function finitetemp_kgrid_ladder(μ::Float64, m::Float64, q::Float64, kF::Float64, scaleN=20, minterval=1e-6, gaussN=10)
+    # the grid k=(0, \infty) of the momentum is maked to x=k/(1+k) where x is in (0,1) 
+    # the reverse map is k=x/(1-x)
+    # See the box in the link https://numericaleft.github.io/MCIntegration.jl/dev/ titled as "Integrate over different domains"
+
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
     mixX = mink / (1 + mink)
     if q >= sqrt(8 * μ * m)
@@ -107,8 +111,9 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
 
 The ladder function is defined as 
 ```math
-\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ}
+\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ} - \\frac{m}{2π^2}Λ
 ```
+where we subtract the UV divergent term that is a constant proportional to the UV cutoff Λ.
 
 #Arguments:
  - q: momentum
@@ -208,8 +213,9 @@ Assume G_0^{-1} = iω_n - (k^2/(2m) - mu)
 
 The ladder function is defined as 
 ```math
-\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ}
+\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}+μ} \\frac{1}{-iω_n-\\frac{p^2}{2 m}+μ} - \\frac{m}{2π^2}Λ
 ```
+where we subtract the UV divergent term that is a constant proportional to the UV cutoff Λ.
 
 #Arguments:
  - q: momentum
