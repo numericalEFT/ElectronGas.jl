@@ -103,7 +103,7 @@ function finitetemp_kgrid_ladder(μ::Float64, m::Float64, q::Float64, kF::Float6
 end
 
 """
-    function Ladder0_FiniteTemp(q::Float64, n::Int, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+    function Ladder0_FiniteTemp(q::Float64, n::Int, param, scaleN=20, minterval=1e-6, gaussN=10)
 
 Finite temperature ladder function for matsubara frequency and momentum. Analytically sum over total incoming frequency and angular
 dependence of momentum, and numerically calculate integration of magnitude of momentum.
@@ -205,7 +205,7 @@ end
 
 
 """
-    function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
+    function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param, scaleN=20, minterval=1e-6, gaussN=10)
 
 Finite temperature ladder function for matsubara frequency and momentum. Analytically sum over total incoming frequency and angular
 dependence of momentum, and numerically calculate integration of magnitude of momentum.
