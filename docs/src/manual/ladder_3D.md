@@ -8,7 +8,7 @@
 ```
 - In the limit ``k>2k_F``
 
-Define ``\vec{k}+\vec{p}=-\vec{p}' ``, then rename it as ``\vec{p}``,
+Define ``\vec{k}+\vec{p}=-\vec{p}' `` for the first term, then rename it as ``\vec{p}``,
 
 ```math
 \begin{split}
