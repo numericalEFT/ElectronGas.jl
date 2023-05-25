@@ -292,7 +292,7 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
                     push!(subgrids, SubGridType(_bound, order))
                 end
 
-                int_grid = CompositeGrid.Composite{Float64,SimpleGrid.Arbitrary{Float64},SubGridType}(int_panel, subgrids)
+                int_grid = CompositeGrid.Composite{Float64,typeof(int_panel),SubGridType}(int_panel, subgrids)
 
                 data = [kernel0_integrand(k, p, q, channel, param, spin_state; kwargs...) for q in int_grid.grid]
                 kernel_bare[ki, pi] = Interp.integrate1D(data, int_grid)

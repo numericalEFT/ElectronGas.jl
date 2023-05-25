@@ -57,6 +57,17 @@
         # PF = Polarization.Polarization0wrapped(100param.EF, 1e-10, qgrid, param, pifunc=Polarization.Polarization0_FiniteTemp)
     end
 
+    @testset "Ladder" begin
+        para = Parameter.rydbergUnit(1.0 / 10, 4.0, 3)
+        ladder = Polarization.Ladder0_FiniteTemp(0.1 * para.kF, 1, para, gaussN=16, minterval=1e-8)
+        @test abs(real(ladder) - 0.0053666) < 3 * 1.7e-5
+        @test abs(imag(ladder) - 0.006460) < 3 * 1.1e-5
+
+        ladder = Polarization.Ladder0_FiniteTemp(0.1 * para.kF, 0, para, gaussN=16, minterval=1e-8) #zero frequency
+        @test abs(real(ladder) - 0.021199) < 3 * 2.0e-5
+        @test abs(imag(ladder) - 0.0) < 3 * 3.3e-11
+    end
+
     # while true
     #     print("Please enter a whole number between 1 and 5: ")
     #     input = readline(stdin)

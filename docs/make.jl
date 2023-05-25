@@ -19,11 +19,22 @@ makedocs(;
             "manual/fock.md",
             "manual/polarization_3D.md",
             "manual/polarization_2D.md",
+            "manual/ladder_3D.md",
             "manual/polarization_approx.md",
             "manual/legendreinteraction.md",
             "manual/G_plus_Moroni.md",
             "manual/quasiparticle.md",
         ],
+        "Reference" => Any[
+            "lib/convention.md",
+            "lib/parameter.md",
+            "lib/selfenergy.md",
+            "lib/polarization.md",
+            "lib/interaction.md",
+            "lib/legendreinteraction.md",
+            "lib/twopoint.md",
+            "lib/BSeq.md",
+        ]
     ]
 )
 
