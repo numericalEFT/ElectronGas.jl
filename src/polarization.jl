@@ -119,7 +119,6 @@ where we subtract the UV divergent term that is a constant proportional to the U
  - q: momentum
  - n: matsubara frequency given in integer s.t. Ωn=2πTn
  - param: other system parameters
- - maxk: optional, upper limit of integral -> maxk*kF
  - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
  - minterval: optional, actual minterval of grid is this value times min(q,kF)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
@@ -221,7 +220,6 @@ where we subtract the UV divergent term that is a constant proportional to the U
  - q: momentum
  - n: matsubara frequency given in integer s.t. Ωn=2πTn
  - param: other system parameters
- - maxk: optional, upper limit of integral -> maxk*kF
  - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
  - minterval: optional, actual minterval of grid is this value times min(q,kF)
  - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.

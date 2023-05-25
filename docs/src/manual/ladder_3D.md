@@ -14,7 +14,7 @@ Define ``\vec{k}+\vec{p}=-\vec{p}' `` for the first term, then rename it as ``\v
 \begin{split}
 =&  \int \frac{d^3 \vec{p}}{\left(2\pi^3\right)} \frac{f\left(\frac{p^2}{2 m}-\mu\right)-f\left(-\frac{p^2}{2 m}+\mu\right)}{i \Omega_n-\frac{p^2}{2 m}-\frac{(\vec{p}+\vec{k})^2}{2 m}+2 \mu} \\
 =&  \int \frac{d^3 \vec{p}}{\left(2\pi^3\right)} \frac{2f\left(\frac{p^2}{2 m}-\mu\right)-1}{i \Omega_n-\frac{p^2}{2 m}-\frac{(\vec{p}+\vec{k})^2}{2 m}+2 \mu} \\
-=& -\int \frac{d^3 \vec{p}}{\left(2\pi^3\right)} \frac{1}{i \Omega_n-\frac{p^2}{2 m}-\frac{(\vec{p}+\vec{k})^2}{2 m}+2 \mu} +\int \frac{d^3 \vec{p}}{(2 \pi)^3} \frac{2f\left(\frac{p^2}{2 m}-\mu\right)}{i \Omega_n-\frac{p^2}{2 m}-\frac{\left(\vec{p}+k^2\right)}{2 m}+2 \mu}
+=& -\int \frac{d^3 \vec{p}}{\left(2\pi^3\right)} \frac{1}{i \Omega_n-\frac{p^2}{2 m}-\frac{(\vec{p}+\vec{k})^2}{2 m}+2 \mu} +\int \frac{d^3 \vec{p}}{(2 \pi)^3} \frac{2f\left(\frac{p^2}{2 m}-\mu\right)}{i \Omega_n-\frac{p^2}{2 m}-\frac{\left(\vec{p}+\vec{k}\right)^2}{2 m}+2 \mu}
 \end{split}
 ```
 
