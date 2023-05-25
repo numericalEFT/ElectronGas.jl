@@ -6,7 +6,7 @@
  =&\int \frac{d^3 \vec{p}}{\left(2\pi^3\right)}  \frac{f\left(\frac{(\vec{k}+\vec{p})^2}{2 m}-\mu\right)-f\left(-\frac{p^2}{2 m}+\mu\right)}{i \Omega_n-\frac{(k+\vec{p})^2}{2 m}-\frac{p^2}{2 m}+2 \mu}  
  \end{split}
 ```
-- In the limit ``k>2k_F``
+- In the case ``k>2k_F``
 
 Define ``\vec{k}+\vec{p}=-\vec{p}' `` for the first term, then rename it as ``\vec{p}``,
 
