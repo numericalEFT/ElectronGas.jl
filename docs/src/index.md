@@ -12,7 +12,12 @@ Documentation for [ElectronGas](https://github.com/numericalEFT/ElectronGas.jl).
 ## Library Outline
 ```@contents
 Pages = [
-    "lib/twopoint.md",
+    "lib/parameter.md",
+    "lib/selfenergy.md",
+    "lib/polarization.md",
+    "lib/interaction.md",
+    "lib/legendreinteraction.md",
+    "lib/BSeq.md",
 ]
 Depth = 1
 ```

@@ -25,6 +25,16 @@ makedocs(;
             "manual/G_plus_Moroni.md",
             "manual/quasiparticle.md",
         ],
+        "Reference" => Any[
+            "lib/convention.md",
+            "lib/parameter.md",
+            "lib/selfenergy.md",
+            "lib/polarization.md",
+            "lib/interaction.md",
+            "lib/legendreinteraction.md",
+            "lib/twopoint.md",
+            "lib/BSeq.md",
+        ]
     ]
 )
 
