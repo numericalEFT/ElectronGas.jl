@@ -386,11 +386,11 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
 end
 
 
-function DCKernel_Ladder(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto, kwargs...)
-    return DCKernel_Ladder(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
+function DCKernel_Ladder_r(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto, kwargs...)
+    return DCKernel_Ladder_r(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
 end
 
-function DCKernel_Ladder(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:sigma;
+function DCKernel_Ladder_r(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:sigma;
     kgrid=CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order),
     kwargs...)
     # use helper function
@@ -417,7 +417,7 @@ function DCKernel_Ladder(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin
 
     # dynamic
     for (ni, n) in enumerate(bdlr.n)
-        helper = helper_function_grid(helper_grid, intgrid, 1, u -> Interaction.Tmatrix(u, n, param; kwargs...), param)
+        helper = helper_function_grid(helper_grid, intgrid, 1, u -> real(Interaction.Tmatrix(u, n, param; kwargs...)), param)
         for (ki, k) in enumerate(kgrid.grid)
             for (pi, p) in enumerate(qgrids[ki].grid)
                 Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
@@ -426,7 +426,50 @@ function DCKernel_Ladder(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin
         end
     end
 
-    return DCKernel{ComplexF64}(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
+    return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
+end
+
+function DCKernel_Ladder_i(param; Euv=param.EF * 100, rtol=1e-10, Nk=8, maxK=param.kF * 10, minK=param.kF * 1e-7, order=4, int_type=:rpa, spin_state=:auto, kwargs...)
+    return DCKernel_Ladder_i(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state; kwargs...)
+end
+
+function DCKernel_Ladder_i(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state=:sigma;
+    kgrid=CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order),
+    kwargs...)
+    # use helper function
+    @unpack kF, β = param
+    channel = 0
+
+    if spin_state == :sigma
+        # for self-energy, always use ℓ=0
+        channel = 0
+    elseif spin_state == :auto
+        error("not implemented!")
+    end
+
+    bdlr = DLRGrid(Euv, β, rtol, false, :ph)
+    qgrids = [CompositeGrid.LogDensedGrid(:gauss, [0.0, maxK], [k, kF], Nk, minK, order) for k in kgrid.grid]
+    qgridmax = maximum([qg.size for qg in qgrids])
+    #println(qgridmax)
+
+    kernel_bare = zeros(ComplexF64, (length(kgrid.grid), (qgridmax)))
+    kernel = zeros(ComplexF64, (length(kgrid.grid), (qgridmax), length(bdlr.n)))
+
+    helper_grid = CompositeGrid.LogDensedGrid(:cheb, [0.0, 2.1 * maxK], [0.0, kF], 2Nk, 0.01minK, 2order)
+    intgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, helper_grid[end]], [0.0, kF], 2Nk, 0.01minK, 2order)
+
+    # dynamic
+    for (ni, n) in enumerate(bdlr.n)
+        helper = helper_function_grid(helper_grid, intgrid, 1, u -> imag(Interaction.Tmatrix(u, n, param; kwargs...)), param)
+        for (ki, k) in enumerate(kgrid.grid)
+            for (pi, p) in enumerate(qgrids[ki].grid)
+                Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
+                kernel[ki, pi, ni] = (Hp - Hm)
+            end
+        end
+    end
+
+    return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
 end

@@ -574,18 +574,26 @@ function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param;
     # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
     @unpack β = param
     as = 4π * param.as / param.me
-    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:none)
-    green_dyn = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
-    green_tail = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
+    wn_mesh_ph = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    green_dyn_r = GreenFunc.MeshArray(wn_mesh_ph, sgrid; dtype=ComplexF64)
+    green_tail_r = GreenFunc.MeshArray(wn_mesh_ph, sgrid; dtype=ComplexF64)
+
+    wn_mesh_pha = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:pha)
+    green_dyn_i = GreenFunc.MeshArray(wn_mesh_pha, sgrid; dtype=ComplexF64)
+    green_tail_i = GreenFunc.MeshArray(wn_mesh_pha, sgrid; dtype=ComplexF64)
 
     for (ki, k) in enumerate(sgrid)
-        for (ni, n) in enumerate(wn_mesh.grid)
-            green_tail[ni, ki] = Tmatrix(k, n, param; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...)
-            green_dyn[ni, ki] = Tmatrix(k, n, param; ladderfunc=ladderfunc, kwargs...) - green_tail[ni, ki]
+        for (ni, n) in enumerate(wn_mesh_ph.grid)
+            green_tail_r[ni, ki] = real.(Tmatrix(k, n, param; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...))
+            green_dyn_r[ni, ki] = real.(Tmatrix(k, n, param; ladderfunc=ladderfunc, kwargs...)) - green_tail_r[ni, ki]
+        end
+        for (ni, n) in enumerate(wn_mesh_pha.grid)
+            green_tail_i[ni, ki] = 1im .* imag.(Tmatrix(k, n, param; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...))
+            green_dyn_i[ni, ki] = 1im .* imag.(Tmatrix(k, n, param; ladderfunc=ladderfunc, kwargs...)) - green_tail_i[ni, ki]
         end
     end
 
-    return green_dyn, green_tail
+    return green_dyn_r, green_dyn_i, green_tail_r, green_tail_i
 end
 
 end

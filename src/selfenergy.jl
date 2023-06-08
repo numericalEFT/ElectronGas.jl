@@ -273,22 +273,27 @@ function G0Γ0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{A
         error("No support for G0Γ0 in 2d dimension!")
     elseif dim == 3
         if isnothing(kgrid)
-            kernel = SelfEnergy.LegendreInteraction.DCKernel_Ladder(param;
+            kernel_r = SelfEnergy.LegendreInteraction.DCKernel_Ladder_r(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+            kernel_i = SelfEnergy.LegendreInteraction.DCKernel_Ladder_i(param;
                 Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
         else
             if (kgrid isa AbstractVector)
                 kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
             end
-            kernel = SelfEnergy.LegendreInteraction.DCKernel_Ladder(param;
+            kernel_r = SelfEnergy.LegendreInteraction.DCKernel_Ladder_r(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+            kernel_i = SelfEnergy.LegendreInteraction.DCKernel_Ladder_i(param;
                 Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
         end
         G0 = G0wrapped(Euv, rtol, kGgrid, param)
-        Σ, Σ_ins = calcΣ_3d(G0, kernel)
+        Σr, Σ_ins = calcΣ_3d(G0, kernel_r)
+        Σi, Σ_ins = calcΣ_3d(G0, kernel_i)
     else
         error("No support for G0W0 in $dim dimension!")
     end
 
-    return Σ
+    return Σr, Σi
 end
 
 """
