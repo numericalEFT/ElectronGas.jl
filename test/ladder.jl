@@ -1,9 +1,9 @@
 using MCIntegration
 using ElectronGas
 
-const para = Parameter.rydbergUnit(1.0 / 10, 4.0, 3)
+const para = Parameter.rydbergUnit(1.0 / 100, 1.0, 3)
 const n = 0
-const k = 0.1 * para.kF
+const k = 0.0 * para.kF
 
 function integrand(vars, config)
     n, k, para = config.userdata

@@ -24,6 +24,7 @@ using ..Parameters
     EF::Float64 = 1.0     #kF^2 / (2me)
     β::Float64 = 200 # bare inverse temperature
     μ::Float64 = 1.0
+    as::Float64 = 0.0   # s-wave scattering length (local contact interaction)
 
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)
@@ -130,7 +131,7 @@ end
 # end
 
 """
-    function fullUnit(ϵ0, e0, me, EF, β)
+    function fullUnit(ϵ0, e0, me, EF, β, dim=3, spin=2; kwargs...)
 
 generate Para with a complete set of parameters, no value presumed.
 
@@ -140,6 +141,8 @@ generate Para with a complete set of parameters, no value presumed.
  - me: electron mass
  - EF: Fermi energy
  - β: inverse temperature
+- dim: dimension
+- spin: spin
 """
 @inline function fullUnit(ϵ0, e0, me, EF, β, dim=3, spin=2; kwargs...)
     # μ = try

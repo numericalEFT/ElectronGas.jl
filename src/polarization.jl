@@ -5,7 +5,7 @@ using ..Parameter
 using ..Parameters
 using ..Convention
 
-export Polarization0_ZeroTemp, Polarization0_FiniteTemp
+export Polarization0_ZeroTemp, Polarization0_FiniteTemp, Ladder0_FiniteTemp
 
 # Analytical calculated integrand of Π0 in 2D.
 @inline function _ΠT2d_integrand(k, q, ω, param)
@@ -50,14 +50,21 @@ end
     @unpack me, β, μ = param
     # ω only appears as ω^2 so no need to check sign of ω
     k = x / (1 - x)
-    nk = 1.0 / (exp(β * (k^2 / 2 / me - μ)) + 1)
+    ek = β * (k^2 / 2 / me - μ)
+    nk = ek < 0.0 ? 1.0 / (exp(ek) + 1) : exp(-ek) / (1 + exp(-ek))
 
     if q > 1e-6 * param.kF
         a = ω * 1im - k^2 / me - q^2 / 2 / me + 2μ
         b = q * k / me
         return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
     else
-        return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+        if ω != 0.0 || abs(ek) > 1e-4
+            return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+        else # ω==0.0 && abs(ek)<1e-4
+            #expansion of 1/ek*(2/(exp(ek)+1)-1)
+            f = -0.5 + ek^2 / 24 - ek^4 / 240 + 17 * ek^6 / 40320
+            return me / (2π)^2 * (2k^2 / me * (f / 2 * β) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+        end
     end
 
     # if q is too small, use safe form
@@ -90,14 +97,15 @@ function finitetemp_kgrid_ladder(μ::Float64, m::Float64, q::Float64, kF::Float6
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
     mixX = mink / (1 + mink)
     if q >= sqrt(8 * μ * m)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], [0.0, kF], scaleN, mink, gaussN)
+        x = kF / (1 + kF)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0 - 1e-8], [0.0, x], scaleN, mink, gaussN)
     else
         k1 = abs(q - sqrt(8 * μ * m - q^2)) / 2
         k2 = (q + sqrt(8 * μ * m - q^2)) / 2
         x1 = k1 / (1 + k1)
         x2 = k2 / (1 + k2)
         x3 = kF / (1 + kF)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], sort([x1, x2, x3]), scaleN, mink, gaussN)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0 - 1e-8], sort([x1, x2, x3]), scaleN, mink, gaussN)
     end
     return kgrid
 end
@@ -142,11 +150,19 @@ function Ladder0_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6
     if dim == 3
         for (ki, k) in enumerate(kgrid.grid)
             integrand[ki] = _LadderT3d_integrand(k, q, 2π * n / β, param)
-            @assert !isnan(integrand[ki]) "nan at k=$k, q=$q"
+            @assert !isnan(integrand[ki]) "nan at k=$k, q=$q, n=$n"
         end
     end
 
     return Interp.integrate1D(integrand, kgrid)
+end
+
+function Ladder0_FreeElectron(q::Float64, n::Int, param)
+    @unpack dim, kF, β, me, μ = param
+    if dim != 3
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+    return -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * n / β)
 end
 
 """
@@ -250,6 +266,18 @@ function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param; scaleN=20, min
     end
 
     return Interp.integrate1D(integrand, kgrid; axis=1)
+end
+
+function Ladder0_FreeElectron(q::Float64, n::AbstractVector, param)
+    @unpack dim, kF, β, me, μ = param
+    if dim != 3
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+    integrand = zeros(ComplexF64, length(n))
+    for (mi, m) in enumerate(n)
+        integrand[mi] = Ladder0_FreeElectron(q, m, param)
+    end
+    return integrand
 end
 
 

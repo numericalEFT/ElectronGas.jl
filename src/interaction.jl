@@ -525,4 +525,67 @@ function RPA_total(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulomb
     return Ws, Wa
 end
 
+"""
+    function Tmatrix(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
+
+Dynamic part of the T-matrix. Returns the spin symmetric part and asymmetric part separately.
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn (either one frequency or array of frequencies)
+ - param: other system parameters
+ - pifunc: caller to the polarization function 
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+ - regular: regularized RPA or not
+
+# Return:
+```math
+    \\frac{1} {\\frac{m}{4\\pi a_s} +\\Gamma(q, n)} - \\frac{4\\pi a_s}{m}.
+```
+"""
+function Tmatrix(q, n, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+    as = 4π * param.as / param.me
+    if param.as < 1e-6
+        return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
+    else
+        return 1 ./ (1 / as .+ ladderfunc(q, n, param; kwargs...))
+    end
+end
+
+"""
+    function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
+        pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+
+Return dynamic part and instant part of KO-interaction Green's function separately. Each part is a MeshArray with inner state 
+(1: spin symmetric part, 2: asymmetric part), and ImFreq and q-grid mesh.
+
+#Arguments:
+ - Euv: Euv of DLRGrid
+ - rtol: rtol of DLRGrid
+ - sgrid: momentum grid
+ - param: other system parameters
+ - pifunc: caller to the polarization function
+ - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
+ - Vinv_Bare: caller to the bare Coulomb interaction
+"""
+function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param;
+    ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...) where {SGT}
+    # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
+    @unpack β = param
+    as = 4π * param.as / param.me
+    wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:none)
+    green_dyn = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
+    green_tail = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=ComplexF64)
+
+    for (ki, k) in enumerate(sgrid)
+        for (ni, n) in enumerate(wn_mesh.grid)
+            green_tail[ni, ki] = Tmatrix(k, n, param; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...)
+            green_dyn[ni, ki] = Tmatrix(k, n, param; ladderfunc=ladderfunc, kwargs...) - green_tail[ni, ki]
+        end
+    end
+
+    return green_dyn, green_tail
+end
+
 end

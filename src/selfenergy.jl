@@ -255,6 +255,42 @@ function G0W0(param, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; 
     return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid; kwargs...)
 end
 
+function G0Γ0(param, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:none,
+    kwargs...)
+    return G0Γ0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid; kwargs...)
+end
+
+function G0Γ0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; kwargs...)
+    @unpack dim = param
+    # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
+    # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+    # kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
+    #     Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
+    # G0 = G0wrapped(Euv, rtol, kernel.kgrid, param)
+
+    kGgrid = CompositeGrid.LogDensedGrid(:cheb, [0.0, maxK], [0.0, param.kF], Nk, minK, order)
+    if dim == 2
+        error("No support for G0Γ0 in 2d dimension!")
+    elseif dim == 3
+        if isnothing(kgrid)
+            kernel = SelfEnergy.LegendreInteraction.DCKernel_Ladder(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+        else
+            if (kgrid isa AbstractVector)
+                kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
+            end
+            kernel = SelfEnergy.LegendreInteraction.DCKernel_Ladder(param;
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+        end
+        G0 = G0wrapped(Euv, rtol, kGgrid, param)
+        Σ, Σ_ins = calcΣ_3d(G0, kernel)
+    else
+        error("No support for G0W0 in $dim dimension!")
+    end
+
+    return Σ
+end
+
 """
     function zfactor(param, Σ::GreenFunc.MeshArray; kamp=param.kF, ngrid=[0, 1])
     
