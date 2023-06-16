@@ -90,7 +90,8 @@ function finitetemp_kgrid_ladder(μ::Float64, m::Float64, q::Float64, kF::Float6
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
     mixX = mink / (1 + mink)
     if q >= sqrt(8 * μ * m)
-        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], [0.0, kF], scaleN, mink, gaussN)
+        x = kF / (1 + kF)
+        kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, 1.0], [0.0, x], scaleN, mink, gaussN)
     else
         k1 = abs(q - sqrt(8 * μ * m - q^2)) / 2
         k2 = (q + sqrt(8 * μ * m - q^2)) / 2
