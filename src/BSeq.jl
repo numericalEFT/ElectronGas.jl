@@ -603,7 +603,7 @@ function linearResponse(param, channel::Int;
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
-    issave=false, uid=1, dir="./")
+    issave=false, uid=1, dir="./", kwargs...)
     @unpack dim, rs, β, kF = param
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -614,10 +614,10 @@ function linearResponse(param, channel::Int;
             # nmax = G2.mesh[1].grid[end]
             # delta_correction = Δω_correction(G2, wsph, a2f_iso, nmax)
             @time W = LegendreInteraction.DCKernel0(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
-                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
+                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph, kwargs...)
         else
             @time W = LegendreInteraction.DCKernel_old(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,
-                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph)
+                minK=minK, order=order, int_type=int_type, channel=channel, Vph=Vph, kwargs...)
         end
     elseif dim == 2
         @time W = LegendreInteraction.DCKernel_2d(param; Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK,

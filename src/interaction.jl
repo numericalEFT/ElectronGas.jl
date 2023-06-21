@@ -12,6 +12,7 @@ using ..Parameter, ..Convention, ..Polarization
 using ..Parameters, ..CompositeGrids, ..GreenFunc
 
 export RPA, KO, RPAwrapped, KOwrapped, coulomb, coulomb_2d, landauParameterMoroni, phonon, gamma, gamma_wrapped
+export plasmon, plasmon_r, plasmon_s
 
 function inf_sum(q, n)
     # Calculate a series sum for Takada anzats
@@ -602,6 +603,33 @@ function RPA_total(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulomb
     Ws = 1.0 / (Vinvs - (Π))
     Wa = 1.0 / (Vinva - (Π))
     return Ws, Wa
+end
+
+function plasmon(q, n, param)
+    β = param.β
+    g = 1.0
+    ωp = param.ωp
+    κ = param.kF
+    ω = 2 * π * n / β
+    return -g / (ω^2 / ωp^2 + q^2 / κ^2 + g)
+end
+
+function plasmon_s(q, n, param)
+    β = param.β
+    g = 1.0
+    ωp = param.ωp
+    κ = param.kF
+    ω = 2 * π * n / β
+    return -(g + q^2 / κ^2) / (ω^2 / ωp^2 + q^2 / κ^2 + g)
+end
+
+function plasmon_r(q, n, param)
+    β = param.β
+    g = 1.0
+    ωp = param.ωp
+    κ = param.kF
+    ω = 2 * π * n / β
+    return -q^2 / κ^2 / (ω^2 / ωp^2 + q^2 / κ^2 + g)
 end
 
 end
