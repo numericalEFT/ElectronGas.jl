@@ -74,7 +74,7 @@ function interaction_dynamic(q, n, param, int_type, spin_state, Vph::Union{Funct
     elseif int_type == :plasmon_r
         if dim == 3
             # ks, ka = KO(q, n, param)
-            ks, ka = (plasmon_r(q, n, param), 0.0) .* Interaction.coulomb(q, param)
+            ks, ka = (plasmon_r(q, n, param), 0.0)
         elseif dim == 2
             error("not implemented!")
         end
@@ -466,11 +466,12 @@ function DCKernel0_plasmon(param, Euv, rtol, Nk, maxK, minK, order, int_type, sp
         end
         for (ni, n) in enumerate(bdlr.n)
             helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, :plasmon_r, spin_state, Vph; kwargs...), param)
+            k, p = kF, kF # average plasmon_r on FS
+            Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
+            # println(Hp - Hm)
             for (ki, k) in enumerate(kgrid.grid)
                 for (pi, p) in enumerate(qgrids[ki].grid)
-                    k, p = kF, kF # average plasmon_r on FS
-                    Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
-                    kernel[ki, pi, ni] += (Hp - Hm)
+                    kernel[ki, pi, ni] += (Hp - Hm) * k * p / kF^2
                 end
             end
         end

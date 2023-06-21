@@ -38,8 +38,10 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
 
     dir = "./run/"
     # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
-    fname = "plasmon$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
+    # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
+    fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
+    # fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -81,6 +83,7 @@ using ElectronGas.Interaction
         sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         plasmon_type=:plasmon,
+        # plasmon_type=:plasmon_fs,
         issave=true, uid=uid0 + i, dir="./run/data/",
         verbose=true) for i in 1:length(beta)]
     println(chi)

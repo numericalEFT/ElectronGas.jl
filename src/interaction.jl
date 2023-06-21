@@ -629,7 +629,7 @@ function plasmon_r(q, n, param)
     ωp = param.ωp
     κ = param.kF
     ω = 2 * π * n / β
-    return -q^2 / κ^2 / (ω^2 / ωp^2 + q^2 / κ^2 + g)
+    return +1.0 / κ^2 / (ω^2 / ωp^2 + q^2 / κ^2 + g) * (Interaction.coulomb(q, param)[1] * q^2)
 end
 
 end
