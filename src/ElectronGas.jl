@@ -29,4 +29,7 @@ export SelfEnergy
 include("BSeq.jl")
 export BSeq
 
+include("BSeq_resum.jl")
+export BSeq_resum
+
 end

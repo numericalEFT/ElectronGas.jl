@@ -18,7 +18,7 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
 end
 
 function measure_chi(dim, θ, rs, channel; kwargs...)
-    param = Parameter.rydbergUnit(θ, rs, dim)
+    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-4)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
@@ -30,7 +30,7 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
 
     println("dim=$dim, θ=$θ, rs=$rs, channel=$channel:")
 
-    lamu, R_freq, F_freq = BSeq.linearResponse(param, channel; kwargs...)
+    lamu, R_freq, F_freq = BSeq_resum.linearResponse(param, channel; kwargs...)
     result = measure_chi(F_freq)
     println("1/chi=", 1 / result)
 
@@ -40,8 +40,8 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
-    fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
-    # fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
+    # fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
+    fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     open(dir * fname, "a+") do io
         writedlm(io, data, ' ')
     end
@@ -57,12 +57,12 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 3000000
+    uid0 = 1230000
     dim = 3
-    rs = 3.0
+    rs = 1.23
     # num = 14
     # num = 25
-    num = 9
+    num = 5
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     beta = [400 * 2^(i - 1) for i in 1:num]
@@ -82,8 +82,9 @@ using ElectronGas.Interaction
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:none, Vph=phonon,
-        plasmon_type=:plasmon,
+        # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
+        resum=true,
         issave=true, uid=uid0 + i, dir="./run/data/",
         verbose=true) for i in 1:length(beta)]
     println(chi)

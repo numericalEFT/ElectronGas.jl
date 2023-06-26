@@ -464,17 +464,17 @@ function DCKernel0_plasmon(param, Euv, rtol, Nk, maxK, minK, order, int_type, sp
                 end
             end
         end
-        for (ni, n) in enumerate(bdlr.n)
-            helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, :plasmon_r, spin_state, Vph; kwargs...), param)
-            k, p = kF, kF # average plasmon_r on FS
-            Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
-            # println(Hp - Hm)
-            for (ki, k) in enumerate(kgrid.grid)
-                for (pi, p) in enumerate(qgrids[ki].grid)
-                    kernel[ki, pi, ni] += (Hp - Hm) * k * p / kF^2
-                end
-            end
-        end
+        # for (ni, n) in enumerate(bdlr.n)
+        #     helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, :plasmon_r, spin_state, Vph; kwargs...), param)
+        #     k, p = kF, kF # average plasmon_r on FS
+        #     Hp, Hm = Interp.interp1D(helper, helper_grid, k + p), Interp.interp1D(helper, helper_grid, abs(k - p))
+        #     # println(Hp - Hm)
+        #     for (ki, k) in enumerate(kgrid.grid)
+        #         for (pi, p) in enumerate(qgrids[ki].grid)
+        #             kernel[ki, pi, ni] += (Hp - Hm) * k * p / kF^2
+        #         end
+        #     end
+        # end
     else
         for (ni, n) in enumerate(bdlr.n)
             helper = helper_function_grid(helper_grid, intgrid, 1, u -> interaction_dynamic(u, n, param, :plasmon, spin_state, Vph; kwargs...), param)

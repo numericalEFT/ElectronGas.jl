@@ -606,28 +606,29 @@ function RPA_total(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulomb
 end
 
 function plasmon(q, n, param)
-    β = param.β
+    @unpack β, ωp, e0s, ϵ0, gs, NF = param
     g = 1.0
-    ωp = param.ωp
-    κ = param.kF
+    # κ = param.kF
+    κ = sqrt(e0s^2 / ϵ0 * gs * NF)
     ω = 2 * π * n / β
     return -g / (ω^2 / ωp^2 + q^2 / κ^2 + g)
 end
 
 function plasmon_s(q, n, param)
-    β = param.β
+    @unpack β, ωp, e0s, ϵ0, gs, NF = param
     g = 1.0
-    ωp = param.ωp
-    κ = param.kF
+    # κ = param.kF
+    κ = sqrt(e0s^2 / ϵ0 * gs * NF)
     ω = 2 * π * n / β
-    return -(g + q^2 / κ^2) / (ω^2 / ωp^2 + q^2 / κ^2 + g)
+    # return -(g + q^2 / κ^2) / (ω^2 / ωp^2 + q^2 / κ^2 + g)
+    return -(g) / (ω^2 / ωp^2 + g)
 end
 
 function plasmon_r(q, n, param)
-    β = param.β
+    @unpack β, ωp, e0s, ϵ0, gs, NF = param
     g = 1.0
-    ωp = param.ωp
-    κ = param.kF
+    # κ = param.kF
+    κ = sqrt(e0s^2 / ϵ0 * gs * NF)
     ω = 2 * π * n / β
     return +1.0 / κ^2 / (ω^2 / ωp^2 + q^2 / κ^2 + g) * (Interaction.coulomb(q, param)[1] * q^2)
 end
