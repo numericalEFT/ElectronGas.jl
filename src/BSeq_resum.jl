@@ -149,16 +149,16 @@ function calcF_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray, R::Gree
         F[ind] = real(R_freq[ind] + R_ins[1, ind[2]]) * G2[ind]
     end
 
-    # for ind in eachindex(F_fs)
-    #     F_fs[ind] = -real(R_freq[ind[1], ikF]
-    #                       +
-    #                       R_ins[1, ikF]) * Πs[ind]
-    # end
-    for ind in 1:length(F_fs.mesh[1])
-        F_fs[ind, 1] = -real(R_freq[ind, ikF]
-                             +
-                             R_ins[1, ikF]) * Πs[ind, 1]
+    for ind in eachindex(F_fs)
+        F_fs[ind] = -real(R_freq[ind[1], ikF]
+                          +
+                          R_ins[1, ikF]) * Πs[ind]
     end
+    # for ind in 1:length(F_fs.mesh[1])
+    #     F_fs[ind, 1] = -real(R_freq[ind, ikF]
+    #                          +
+    #                          R_ins[1, ikF]) * Πs[ind, 1]
+    # end
 end
 
 """
@@ -359,7 +359,7 @@ function G02wrapped(Euv, rtol, sgrid, param)
 end
 
 function Πs0wrapped(Euv, rtol, param)
-    @unpack me, β, μ, kF, ωp = param
+    @unpack me, β, μ, kF, EF = param
 
     wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
     green = GreenFunc.MeshArray(wn_mesh, [1,]; dtype=Float64)
@@ -367,7 +367,13 @@ function Πs0wrapped(Euv, rtol, param)
         ni, ki = ind[1], ind[2]
         ωn = wn_mesh[ni]
         # green[ind] = kF * me / (π^2 / 4) / abs(ωn) / (1 + abs(ωn) / ωp)
-        green[ind] = 0.0 / abs(ωn) / (1 + abs(ωn) / ωp)
+        # green[ind] = me / (2π * kF) / abs(ωn) # / (1 + exp((abs(ωn) / EF - 1) / 0.1))
+        # green[ind] = me / (2 * kF) / abs(ωn) / (1 + (abs(ωn) / EF)^4)
+        # green[ind] = me / (2 * kF) / (1 + (abs(ωn) / EF)^4) * (abs(ωn) / EF)^2
+        ω_c = 0.05EF
+        ω1 = π * param.T
+        @assert ω1 ≈ wn_mesh[1]
+        green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
     end
     return green
 end
