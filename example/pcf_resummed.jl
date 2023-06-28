@@ -1,7 +1,12 @@
 using ElectronGas
 using JLD2
 
-function load_AB()
+function load_AB(fname)
+    f = jldopen(fname, "r")
+    param = f["param"]
+    A = f["A"]
+    B = f["B"]
+    return param, A, B
 end
 
 function init_AB()

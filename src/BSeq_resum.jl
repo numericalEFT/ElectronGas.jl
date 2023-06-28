@@ -453,7 +453,8 @@ function pcf_resum(param, channel::Int;
         error("No support for $dim dimension!")
     end
 
-    fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :pha)
+    # fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :pha)
+    fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :none)
     bdlr = W.dlrGrid
     kgrid = W.kgrid
     qgrids = W.qgrids
@@ -482,10 +483,10 @@ function pcf_resum(param, channel::Int;
 
     # calculate F, R by Bethe-Slapter iteration.
     Πs = Πs0wrapped(Euv, rtol, param)
-    Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
     lamu, F_fs, F_freq, R_imt, R_ins = BSeq_solver_resum(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
         rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
+    Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
+        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
     R_freq = R_imt |> to_dlr |> to_imfreq
 
     A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
