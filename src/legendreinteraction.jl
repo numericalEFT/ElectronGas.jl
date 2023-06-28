@@ -59,8 +59,18 @@ function interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
         end
     elseif int_type == :ko_const
         if dim == 3
+            @debug "fs (no kwargs): $(Interaction.landauParameterConst(q, n, param))" maxlog = 1
+            @debug "ks, ka (no kwargs): $(KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param)))" maxlog = 1
+
+            @debug "fs (kwargs): $(Interaction.landauParameterConst(q, n, param; kwargs...))" maxlog = 1
+            @debug "ks, ka (kwargs): $(KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param; kwargs...)))" maxlog = 1
+
             # ks, ka = KO(q, n, param)
-            ks, ka = KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param))
+            if bugfix
+                ks, ka = KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param; kwargs...))
+            else
+                ks, ka = KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterConst, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterConst(q, n, param))
+            end
         elseif dim == 2
             error("not implemented!")
         end

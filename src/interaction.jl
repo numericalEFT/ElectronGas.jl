@@ -379,7 +379,7 @@ function landauParameterMoroni(q, n, param; kwargs...)
     Q = q / kF
     G_s = C * Q^2 + B * Q^2 / (D + Q^2) + α * Q^4 * exp(-β_0 * Q^2)
     F_s = 4 * π * e0^2 * G_s / q^2
-    return F_s
+    return F_s, 0.0
 end
 
 
