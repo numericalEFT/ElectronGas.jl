@@ -430,6 +430,7 @@ function pcf_resum(param, channel::Int;
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
+    onlyA=false, ω_c_ratio=0.02,
     issave=false, uid=1, dir="./", kwargs...)
     @unpack dim, rs, β, kF = param
     if verbose
@@ -453,8 +454,8 @@ function pcf_resum(param, channel::Int;
         error("No support for $dim dimension!")
     end
 
-    # fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :pha)
-    fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :none)
+    fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :pha)
+    # fdlr = Lehmann.DLRGrid(Euv, β, rtol, true, :none)
     bdlr = W.dlrGrid
     kgrid = W.kgrid
     qgrids = W.qgrids
@@ -482,28 +483,36 @@ function pcf_resum(param, channel::Int;
     end
 
     # calculate F, R by Bethe-Slapter iteration.
-    Πs = Πs0wrapped(Euv, rtol, param)
+    Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
     lamu, F_fs, F_freq, R_imt, R_ins = BSeq_solver_resum(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
         rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
-    Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
+    if !(onlyA)
+        Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
+            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
+        B = GreenFunc.MeshArray(Bwwk.mesh[1], Bwwk.mesh[2]; dtype=Float64)
+        B.data .= Bwwk.data[:, :, kF_label]
+    end
     R_freq = R_imt |> to_dlr |> to_imfreq
 
     A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
     A.data .= R_freq.data[:, kF_label] .+ R_ins.data[1, kF_label]
-    B = GreenFunc.MeshArray(Bwwk.mesh[1], Bwwk.mesh[2]; dtype=Float64)
-    B.data .= Bwwk.data[:, :, kF_label]
 
     if issave
         fname = "PCFresum_$(uid).jld2"
         jldopen(dir * fname, "w") do file
             file["param"] = param
             file["A"] = A
-            file["B"] = B
+            if !onlyA
+                file["B"] = B
+            end
         end
     end
     # println(view(R_freq, :, kF_label))
-    return A, B
+    if onlyA
+        return A
+    else
+        return A, B
+    end
 end
 
 end

@@ -5,7 +5,7 @@ using ElectronGas.CompositeGrids
 using DelimitedFiles
 
 function pcf_resum_ab(dim, θ, rs, channel; kwargs...)
-    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-2)
+    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-8)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
@@ -41,11 +41,11 @@ using Test
     rs = 1.23
     # num = 14
     # num = 25
-    num = 5
+    num = 9
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    # beta = [400 * 2^(i - 1) for i in 1:num]
-    beta = [400,]
+    beta = [400 * 2^(i - 1) for i in 1:num]
+    # beta = [400,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -65,6 +65,7 @@ using Test
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
         # resum=true,
+        onlyA=true, ω_c_ratio=0.001,
         issave=true, uid=uid0 + i, dir="./run/data/",
         verbose=true) for i in 1:length(beta)]
     # println(chi)
