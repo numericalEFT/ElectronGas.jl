@@ -37,7 +37,7 @@ function initFR_resum_freq(Ec, sgrid, param)
     Ω_c = freq_sep
 
     nec = floor(Int, Ec / 2 / π * β + 0.5)
-    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     R_freq = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=Float64)
     F_freq = similar(R_freq)
     for ind in eachindex(R_freq)
@@ -101,9 +101,9 @@ function initBW_resum_freq(W, Ec, param)
 
     @unpack β, me, μ = param
     nec = floor(Int, Ec / 2 / π * β + 0.5)
-    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     B = GreenFunc.MeshArray(wn_mesh, wn_mesh; dtype=Float64)
-    vn_mesh = GreenFunc.ImFreq(β, BOSON; grid=[i for i in 0:2nec])
+    vn_mesh = GreenFunc.ImFreq(β, BOSON; grid=[i for i in 0:2nec+2])
 
     kernel_dlr = Lehmann.matfreq2dlr(bdlr, kernel_freq; axis=3)
     kernel_freq_dense = real(Lehmann.dlr2matfreq(bdlr, kernel_dlr, vn_mesh.grid; axis=3))
@@ -185,7 +185,7 @@ end
 
 function calcR_freq_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray,
     R::GreenFunc.MeshArray,
-    source::Union{Nothing,GreenFunc.MeshArray},
+    source::GreenFunc.MeshArray,
     kernel, qgrids::Vector{CompositeGrid.Composite}; iqFs)
 
     kgrid = F.mesh[2]
@@ -198,15 +198,15 @@ function calcR_freq_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray,
         result = 0.0
         for (wi, w) in enumerate(wgrid)
             n1, n2 = wgrid.grid[ωi], wgrid.grid[wi]
-            inw = abs(n1 - n2) + 1
+            inw1, inw2 = abs(n1 - n2) + 1, abs(n1 + n2 + 1) + 1
             Fq = CompositeGrids.Interp.interp1DGrid(view(F, wi, :), kgrid, qgrids[ki].grid)
-            integrand = view(kernel, ki, 1:qgrids[ki].size, inw) .* Fq
+            integrand = (view(kernel, ki, 1:qgrids[ki].size, inw1) + view(kernel, ki, 1:qgrids[ki].size, inw2)) .* Fq
             result += CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
-            result += kernel[ki, iqFs[ki], inw] * F_fs[wi, 1] ./ (-4 * π * π)
+            result += (kernel[ki, iqFs[ki], inw1] + kernel[ki, iqFs[ki], inw2]) * F_fs[wi, 1] ./ (-4 * π * π)
         end
         R[ωi, ki] = result / β
     end
-    !(source isa Nothing) && (R += source)
+    R.data .+= source.data
 end
 
 function Rt2Rw!(Rw::GreenFunc.MeshArray, Rt::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray)
@@ -235,7 +235,7 @@ function Πs0wrapped_freq(Ec, param; ω_c=0.02param.EF)
     @unpack me, β, μ, kF, EF = param
 
     nec = floor(Int, Ec / 2 / π * β + 0.5)
-    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     green = GreenFunc.MeshArray(wn_mesh, [1,]; dtype=Float64)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
@@ -250,7 +250,7 @@ end
 function G02wrapped_freq(Ec, sgrid, param)
     @unpack me, β, μ = param
     nec = floor(Int, Ec / 2 / π * β + 0.5)
-    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=Float64)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
@@ -402,8 +402,8 @@ function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.M
     F_freq, F_fs, R_freq = initFR_resum_freq(Ec, kgrid, param)
 
     # R0, R0_sum = 1.0, 0.0
-    R0, R0_sum = source0, 0.0
-    R_sum = zeros(Float64, size(R_freq))
+    R0, R0_sum = source0, source0 ./ (1 - α)
+    R_sum = source.data ./ (1 - α)
 
     lamu, lamu0 = 0.0, 1.0
     n = 0
@@ -437,7 +437,7 @@ function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.M
 
         # record lamu=1/R0 if iterative step n > Ntherm
         if n > Ntherm && (n % Ncheck == 1)
-            lamu = -1 / (1 + R_kF / kF)
+            lamu = -1 / (R_kF / kF)
             if lamu > 0
                 # this condition does not necessarily mean something wrong
                 # it only indicates lamu is not converge to correct sign within Ntherm steps
@@ -452,7 +452,7 @@ function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.M
             lamu0 = lamu
             if verbose
                 println("lamu=$lamu")
-                println("\t R0=$(R_freq[iw0,ikF]), R(∞)=$(R_freq[end, ikF])")
+                println("\t R0=$(R_freq[iw0,ikF]/kF), R(∞)=$(R_freq[end, ikF]/kF)")
             end
         end
     end
@@ -468,10 +468,11 @@ function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.M
     return lamu, F_fs, F_freq, R_freq
 end
 
-function BSeq_solver_resumB(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray,
-    kernel, kernel_ins,
-    qgrids::Vector{CompositeGrid.Composite},
-    Euv; Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8,
+function BSeq_solver_resumB(param,
+    G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray,
+    kernel, B,
+    qgrids::Vector{CompositeGrid.Composite};
+    Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8,
     verbose=false, Ncheck=5, Nmax=10000, W=W)
 
     if verbose
@@ -487,32 +488,27 @@ function BSeq_solver_resumB(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshA
     # println("ikF=$ikF")
     # println("iqFs=$iqFs")
 
-    # B and W in (ω1, ω2, k2)
-    B, W0 = initB_resum(W, Euv, G2.mesh[1].representation.rtol, param)
-    println("B:$(B.data[1, :, ikF])")
-    println("W0:$(W0.data[1, :, ikF])")
-
     # notice that ω1 is decoupled, and for each ω1 solving B 
     # is exactly iteratively solving R with source W0
 
     wgrid = B.mesh[1]
-    source_ins = GreenFunc.MeshArray([1,], kgrid; dtype=Float64)
-    source = GreenFunc.MeshArray(W0.mesh[2], kgrid; dtype=Float64)
-    source_ins.data[1, :] .= [-kernel_ins[ik, iqFs[ik]] for ik in 1:length(kgrid)]
-    println("source_ins=$(source_ins.data[1,:])")
+    source = GreenFunc.MeshArray(wgrid, kgrid; dtype=Float64)
     for (iw, w) in enumerate(wgrid)
-        source.data .= -view(W0.data, iw, :, :)
+        for (ik, k) in enumerate(kgrid)
+            niw = wgrid.grid[iw]
+            for (iv, v) in enumerate(wgrid)
+                niv = wgrid.grid[iv]
+                i1, i2 = abs(niw - niv) + 1, abs(niw + niv + 1) + 1
+                source.data[iv, ik] .= -kernel[ik, iqFs[ik], i1] - kernel[ik, iqFs[ik], i2]
+            end
+        end
         println("source(kF)=$(source.data[:,ikF])")
-        println("source(0)=$(source.data[1,:])")
-        lamu, F_fs, F_freq, R_imt, R_ins = BSeq_solver_resum(param, G2, Πs,
-            kernel, kernel_ins,
-            qgrids, Euv;
+        lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum(param, G2, Πs,
+            kernel, qgrids;
             Ntherm=Ntherm, rtol=rtol, atol=atol, α=α,
             source=source,
-            source_ins=source_ins,
             verbose=verbose, Ncheck=Ncheck, Nmax=Nmax)
-        Rt2Rw!(F_freq, R_imt, R_ins)
-        B.data[iw, :, :] .= F_freq.data
+        B.data[iw, :] .= F_freq.data[:, ikF]
     end
     return B
 end
@@ -702,7 +698,7 @@ function pcf_resum(param, channel::Int;
         B = GreenFunc.MeshArray(Bwwk.mesh[1], Bwwk.mesh[2]; dtype=Float64)
         B.data .= Bwwk.data[:, :, kF_label]
     end
-    R_freq = R_imt |> to_dlr |> to_imfreq
+    # R_freq = R_imt |> to_dlr |> to_imfreq
 
     A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
     A.data .= R_freq.data[:, kF_label] .+ R_ins.data[1, kF_label]
