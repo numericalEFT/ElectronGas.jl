@@ -499,7 +499,7 @@ function BSeq_solver_resumB(param,
             for (iv, v) in enumerate(wgrid)
                 niv = wgrid.grid[iv]
                 i1, i2 = abs(niw - niv) + 1, abs(niw + niv + 1) + 1
-                source.data[iv, ik] .= -kernel[ik, iqFs[ik], i1] - kernel[ik, iqFs[ik], i2]
+                source.data[iv, ik] = -kernel[ik, iqFs[ik], i1] - kernel[ik, iqFs[ik], i2]
             end
         end
         println("source(kF)=$(source.data[:,ikF])")
@@ -690,18 +690,16 @@ function pcf_resum(param, channel::Int;
     Πs = Πs0wrapped_freq(Ec, param; ω_c=ω_c_ratio * param.EF)
     println(size(G2))
     B, kernel_freq_dense = initBW_resum_freq(W, Ec, param)
+    if !(onlyA)
+        B = BSeq_solver_resumB(param, G2, Πs, kernel_freq_dense, B, qgrids;
+            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
+    end
     lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum(param, G2, Πs, kernel_freq_dense, qgrids;
         Ec=Ec, rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
-    if !(onlyA)
-        Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
-            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
-        B = GreenFunc.MeshArray(Bwwk.mesh[1], Bwwk.mesh[2]; dtype=Float64)
-        B.data .= Bwwk.data[:, :, kF_label]
-    end
     # R_freq = R_imt |> to_dlr |> to_imfreq
 
     A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
-    A.data .= R_freq.data[:, kF_label] .+ R_ins.data[1, kF_label]
+    A.data .= R_freq.data[:, kF_label]
 
     if issave
         fname = "PCFresum_$(uid).jld2"
