@@ -9,6 +9,8 @@ using ..SelfEnergy
 using ..JLD2
 using ..BSeq
 
+using ..Base.Threads
+
 const freq_sep = 0.01
 
 function initFR_resum(Euv, rtol, sgrid, param)
@@ -28,6 +30,24 @@ function initFR_resum(Euv, rtol, sgrid, param)
     R_ins = GreenFunc.MeshArray([1], sgrid; dtype=Float64, data=zeros(1, sgrid.size))
     F_fs = GreenFunc.MeshArray(wn_mesh, [1,]; dtype=Float64, data=zeros(length(wn_mesh), 1))
     return F_freq, F_fs, R_imt, R_ins
+end
+
+function initFR_resum_freq(Ec, sgrid, param)
+    @unpack β, me, μ = param
+    Ω_c = freq_sep
+
+    nec = floor(Int, Ec / 2 / π * β + 0.5)
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    R_freq = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=Float64)
+    F_freq = similar(R_freq)
+    for ind in eachindex(R_freq)
+        ni, ki = ind[1], ind[2]
+        ωn, k = wn_mesh[ni], sgrid[ki]
+        e = k^2 / 2 / me - μ
+        R_freq[ni, ki] = (1.0 - 2.0 * ωn^2 / (ωn^2 + Ω_c^2)) / (Ω_c^2 + e^2)
+    end
+    F_fs = GreenFunc.MeshArray(wn_mesh, [1,]; dtype=Float64, data=zeros(length(wn_mesh), 1))
+    return F_freq, F_fs, R_freq
 end
 
 function initB_resum(W, Euv, rtol, param)
@@ -65,6 +85,37 @@ function initB_resum(W, Euv, rtol, param)
     W0dlr = GreenFunc.to_dlr(W0; dim=2)
     W0 = GreenFunc.dlr_to_imtime(W0dlr; dim=2)
     return B, W0
+end
+
+function initBW_resum_freq(W, Ec, param)
+    @unpack dim, kF = param
+
+    sgrid = W.kgrid
+    kgrid = sgrid
+    qgrids = W.qgrids
+    bdlr = W.dlrGrid
+    iqFs = [locate(qgrids[ki], kF) for ki in 1:kgrid.size]
+
+    kernel_ins = W.kernel_bare
+    kernel_freq = W.kernel
+
+    @unpack β, me, μ = param
+    nec = floor(Int, Ec / 2 / π * β + 0.5)
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    B = GreenFunc.MeshArray(wn_mesh, wn_mesh; dtype=Float64)
+    vn_mesh = GreenFunc.ImFreq(β, BOSON; grid=[i for i in 0:2nec])
+
+    kernel_dlr = Lehmann.matfreq2dlr(bdlr, kernel_freq; axis=3)
+    kernel_freq_dense = real(Lehmann.dlr2matfreq(bdlr, kernel_dlr, vn_mesh.grid; axis=3))
+    for (ik, k) in enumerate(kgrid)
+        for (iq, q) in enumerate(qgrids[ik])
+            kernel_freq_dense[ik, iq, :] .+= kernel_ins[ik, iq]
+        end
+    end
+
+    B.data .= 0.0
+
+    return B, kernel_freq_dense
 end
 
 function calcF_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray, R::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray; ikF)
@@ -132,6 +183,32 @@ function calcR_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray,
     !(source isa Nothing) && (R += source)
 end
 
+function calcR_freq_resum!(F::GreenFunc.MeshArray, F_fs::GreenFunc.MeshArray,
+    R::GreenFunc.MeshArray,
+    source::Union{Nothing,GreenFunc.MeshArray},
+    kernel, qgrids::Vector{CompositeGrid.Composite}; iqFs)
+
+    kgrid = F.mesh[2]
+    wgrid = F.mesh[1]
+    β = wgrid.β
+    Threads.@threads for ind in eachindex(R)
+        # for each τ, k, integrate over q
+        ωi, ki = ind[1], ind[2]
+        # interpolate F to q grid of given k
+        result = 0.0
+        for (wi, w) in enumerate(wgrid)
+            n1, n2 = wgrid.grid[ωi], wgrid.grid[wi]
+            inw = abs(n1 - n2) + 1
+            Fq = CompositeGrids.Interp.interp1DGrid(view(F, wi, :), kgrid, qgrids[ki].grid)
+            integrand = view(kernel, ki, 1:qgrids[ki].size, inw) .* Fq
+            result += CompositeGrids.Interp.integrate1D(integrand, qgrids[ki]) ./ (-4 * π * π)
+            result += kernel[ki, iqFs[ki], inw] * F_fs[wi, 1] ./ (-4 * π * π)
+        end
+        R[ωi, ki] = result / β
+    end
+    !(source isa Nothing) && (R += source)
+end
+
 function Rt2Rw!(Rw::GreenFunc.MeshArray, Rt::GreenFunc.MeshArray, R_ins::GreenFunc.MeshArray)
     R_freq = Rt |> to_dlr |> to_imfreq
     for ind in eachindex(Rw)
@@ -150,6 +227,36 @@ function Πs0wrapped(Euv, rtol, param; ω_c=0.02param.EF)
         # ω1 = π * param.T
         # green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
         green[ind] = 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    end
+    return green
+end
+
+function Πs0wrapped_freq(Ec, param; ω_c=0.02param.EF)
+    @unpack me, β, μ, kF, EF = param
+
+    nec = floor(Int, Ec / 2 / π * β + 0.5)
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    green = GreenFunc.MeshArray(wn_mesh, [1,]; dtype=Float64)
+    for ind in eachindex(green)
+        ni, ki = ind[1], ind[2]
+        ωn = wn_mesh[ni]
+        # ω1 = π * param.T
+        # green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
+        green[ind] = 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    end
+    return green
+end
+
+function G02wrapped_freq(Ec, sgrid, param)
+    @unpack me, β, μ = param
+    nec = floor(Int, Ec / 2 / π * β + 0.5)
+    wn_mesh = GreenFunc.ImFreq(β, FERMION; grid=[i for i in -nec:nec])
+    green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=Float64)
+    for ind in eachindex(green)
+        ni, ki = ind[1], ind[2]
+        ωn = wn_mesh[ni]
+        ω = sgrid.grid[ki]^2 / 2 / me - μ
+        green[ind] = 1 / (ωn^2 + ω^2)
     end
     return green
 end
@@ -260,6 +367,104 @@ function BSeq_solver_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshAr
 
     println("R(∞)=$(R_ins[ikF])")
     return lamu, F_fs, F_freq, R_imt, R_ins
+end
+
+
+function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray,
+    kernel, qgrids::Vector{CompositeGrid.Composite};
+    Ec=10 * param.EF,
+    Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8,
+    source::GreenFunc.MeshArray=GreenFunc.MeshArray(G2.mesh[1], G2.mesh[2];
+        dtype=Float64, data=ones(size(G2))),
+    verbose=false, Ncheck=5, Nmax=10000)
+
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+
+    @unpack dim, kF = param
+    wgrid = G2.mesh[1]
+    iw0 = locate(wgrid.grid, 0)
+    kgrid = G2.mesh[2]
+    kF_label = locate(kgrid, kF)
+    ikF = kF_label
+    iqFs = [locate(qgrids[ki], kF) for ki in 1:kgrid.size]
+    println("kF=$kF")
+    # println("ikF=$ikF")
+    # println("iqFs=$iqFs")
+
+    for ni in eachindex(source.mesh[1])
+        source[ni, :] .*= kgrid.grid
+    end
+    source0 = source[iw0, kF_label]
+
+    # Initalize F and R
+    F_freq, F_fs, R_freq = initFR_resum_freq(Ec, kgrid, param)
+
+    # R0, R0_sum = 1.0, 0.0
+    R0, R0_sum = source0, 0.0
+    R_sum = zeros(Float64, size(R_freq))
+
+    lamu, lamu0 = 0.0, 1.0
+    n = 0
+    # self-consistent iteration with mixing α
+    # Note!: all quantites about R, F, and source in the `while` loop are multiplied by momentum k.
+    while (true)
+        n = n + 1
+        # switch between imtime and imfreq to avoid convolution
+        # dlr Fourier transform is much faster than brutal force convolution
+
+        # calculation from imtime R to imfreq F
+        calcF_freq_resum!(F_freq, F_fs, R_freq, G2, Πs; ikF=ikF)
+
+        # calculation from imfreq F to imtime R
+        if dim == 3
+            calcR_freq_resum!(F_freq, F_fs, R_freq, source, kernel, qgrids; iqFs=iqFs)
+            # elseif dim == 2
+            #     calcR_2d!(F_freq, R_imt, R_ins, source, kernel, kernel_ins, qgrids)
+        else
+            error("Not implemented for $dim dimensions.")
+        end
+        R_kF = R_freq[iw0, ikF]
+        R0_sum = R_kF + R0_sum * α
+        R0 = R0_sum * (1 - α)
+
+        # iterative calculation of the dynamical part 
+        R_sum = view(R_freq, :, :) + R_sum .* α
+        R_freq[:, :] = R_sum .* (1 - α)
+        # @debug "R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))"
+        # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
+
+        # record lamu=1/R0 if iterative step n > Ntherm
+        if n > Ntherm && (n % Ncheck == 1)
+            lamu = -1 / (1 + R_kF / kF)
+            if lamu > 0
+                # this condition does not necessarily mean something wrong
+                # it only indicates lamu is not converge to correct sign within Ntherm steps
+                # normally α>0.8 guarantees convergence, then it means Ntherm is too small
+                @warn ("α = $α or Ntherm=$Ntherm is too small!")
+            end
+            # err = abs(lamu - lamu0)
+            # Exit the loop if the iteration converges
+            isapprox(lamu, lamu0, rtol=rtol, atol=atol) && break
+            n > Nmax && break
+
+            lamu0 = lamu
+            if verbose
+                println("lamu=$lamu")
+            end
+        end
+    end
+    println("α = $α, iteration step: $n")
+    lamu = -kF / R0   # calculate 1/R0
+    # calculate real physical quantites F and R
+    for ni in eachindex(F_freq.mesh[1])
+        F_freq[ni, :] ./= kgrid.grid
+        R_freq[ni, :] ./= kgrid.grid
+    end
+    F_fs[:, 1] ./ kF
+
+    return lamu, F_fs, F_freq, R_freq
 end
 
 function BSeq_solver_resumB(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray,
@@ -426,7 +631,7 @@ end
 
 
 function pcf_resum(param, channel::Int;
-    Euv=100 * param.EF, rtol=1e-10, atol=1e-10,
+    Euv=100 * param.EF, rtol=1e-10, atol=1e-10, Ec=10 * param.EF,
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
@@ -483,9 +688,13 @@ function pcf_resum(param, channel::Int;
     end
 
     # calculate F, R by Bethe-Slapter iteration.
-    Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
-    lamu, F_fs, F_freq, R_imt, R_ins = BSeq_solver_resum(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
+    G2 = G02wrapped_freq(Ec, kgrid, param)
+    # Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
+    Πs = Πs0wrapped_freq(Ec, param; ω_c=ω_c_ratio * param.EF)
+    println(size(G2))
+    B, kernel_freq_dense = initBW_resum_freq(W, Ec, param)
+    lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum(param, G2, Πs, kernel_freq_dense, qgrids;
+        Ec=Ec, rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
     if !(onlyA)
         Bwwk = BSeq_solver_resumB(param, G2, Πs, kernel, kernel_ins, qgrids, Euv;
             rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)

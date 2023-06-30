@@ -3,6 +3,7 @@ module ElectronGas
 using Parameters, GreenFunc, CompositeGrids
 using Lehmann, LegendrePolynomials
 using JLD2
+using Base.Threads
 
 # Write your package code here.
 include("twopoint.jl")

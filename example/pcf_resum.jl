@@ -44,8 +44,8 @@ using Test
     num = 9
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    beta = [400 * 2^(i - 1) for i in 1:num]
-    # beta = [400,]
+    # beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [100,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -58,7 +58,7 @@ using Test
     # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     result = [pcf_resum_ab(dim, 1 / beta[i], rs, channel;
-        atol=1e-8, rtol=1e-10, Nk=8, order=4, Ntherm=30, α=0.9,
+        atol=1e-8, rtol=1e-10, Nk=6, order=3, Ntherm=10, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:none, Vph=phonon,
