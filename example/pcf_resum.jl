@@ -5,7 +5,7 @@ using ElectronGas.CompositeGrids
 using DelimitedFiles
 
 function pcf_resum_ab(dim, θ, rs, channel; kwargs...)
-    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-8)
+    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-2)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
@@ -58,14 +58,14 @@ using Test
     # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     result = [pcf_resum_ab(dim, 1 / beta[i], rs, channel;
-        atol=1e-8, rtol=1e-10, Nk=6, order=3, Ntherm=10, α=0.8,
+        atol=1e-8, rtol=1e-10, Nk=6, order=3, Ntherm=5, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
         # resum=true,
-        onlyA=true, ω_c_ratio=0.001,
+        onlyA=true, ω_c_ratio=0.1,
         issave=true, uid=uid0 + i, dir="./run/data/",
         verbose=true) for i in 1:length(beta)]
     # println(chi)

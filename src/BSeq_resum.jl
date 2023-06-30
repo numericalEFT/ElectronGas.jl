@@ -452,6 +452,7 @@ function BSeq_solver_freq_resum(param, G2::GreenFunc.MeshArray, Πs::GreenFunc.M
             lamu0 = lamu
             if verbose
                 println("lamu=$lamu")
+                println("\t R0=$(R_freq[iw0,ikF]), R(∞)=$(R_freq[end, ikF])")
             end
         end
     end
