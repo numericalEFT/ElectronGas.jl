@@ -612,28 +612,30 @@ function T0matrix(q::Float64, n::Int, param)
     as = 4π * param.as / me
     B = me^(3/2)/(4π)
     if as < 1e-6
-        return as/(1. - as * B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β)))
+        return as/(1. - as * B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β * im)))
     else
-        return 1/((1/as) - B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β)))
+        return 1/((1/as) - B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β * im)))
     end
 end
 
 """
-    function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+    function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, vacuumladderfunc=Polarization.LadderVacuum0_FiniteTemp, kwargs...)
 
 Many-body T-matrix in matsubara frequency. 
 #Arguments:
  - q: total incoming momentum
  - n: matsubara frequency given in integer s.t. Ωn=2πTn (either one frequency or array of frequencies)
  - param: other system parameters
+ - ladderfunc: Particle-particle bubble (ladder-diagram of G0G0)
+ - vacuumladderfunc: Vacuum particle-particle bubble
 """
 
-function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, vacuumladderfunc=Polarization.Ladder0Vacuum_FiniteTemp, kwargs...)
     as = 4π * param.as / param.me
     if param.as < 1e-6
-        return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
+        return as ./ (1 .+ as * (ladderfunc(q, n, param; kwargs...) - vacuumladderfunc(q, n, param; kwargs...)))
     else
-        return 1 ./ (1 / as .+ ladderfunc(q, n, param; kwargs...))
+        return 1 ./ (1 / as .+ (ladderfunc(q, n, param; kwargs...) - vacuumladderfunc(q, n, param; kwargs...)))
     end
 end
 
@@ -649,14 +651,14 @@ Difference between Many-body T-matrix and vacuum two-particle T-matrix in imagin
 - ladderfunc: Particle-Particle bubble (ladder-diagram of G0G0)
 """
 
-function δTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...) where {SGT}
+function δTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; ladderfunc=Polarization.Ladder0_FiniteTemp, vacuumladderfunc=Polarization.Ladder0Vacuum_FiniteTemp, kwargs...) where {SGT}
     β= param.β
     Ωn_mesh_ph = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
     δTmatrix_n = GreenFunc.MeshArray(Ωn_mesh_ph, sgrid; dtype=ComplexF64)
 
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(Ωn_mesh_ph.grid)
-            δTmatrix_n[ni, ki] = (Tmatrix(k, n, param; ladderfunc = ladderfunc) - T0matrix(k, n, param))
+            δTmatrix_n[ni, ki] = (Tmatrix(k, n, param; ladderfunc = ladderfunc, vacuumladderfunc = vacuumladderfunc) - T0matrix(k, n, param))
         end
     end
     δTmatrix_tau = δTmatrix_n |> to_dlr |> to_imtime
@@ -664,7 +666,7 @@ function δTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; ladderfunc=Polarization
 end
 
 """
-    function T0maxtrix_wrapped(tau::Float64, q::Float64, param)
+    function T0maxtrix_imtime(tau::Float64, q::Float64, param)
 
 Difference between Many-body T-matrix and vacuum two-particle T-matrix in imaginary time. 
 #Arguments:
@@ -673,7 +675,7 @@ Difference between Many-body T-matrix and vacuum two-particle T-matrix in imagin
 - param: other system parameters
 """
 
-function T0maxtrix_wrapped(tau::Float64, q::Float64,  param)
+function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
     """ Two particle scattering in a vacuum T-matrix in imaginary time """
     β, me, as = param.β, param.me, param.as
     B = me^(3/2)/(4π)

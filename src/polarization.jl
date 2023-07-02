@@ -81,6 +81,43 @@ end
     # end
 end
 
+# Analytical calculated integrand of the vacuum ladder in 3D.
+@inline function _LadderTVacuum3d_integrand(x, q, ω, param)
+    me, β= param.me, param.β
+    # μ = 0.0 for vacuum
+    μ = 0.0
+    # ω only appears as ω^2 so no need to check sign of ω
+    k = x / (1 - x)
+    ek = β * (k^2 / 2 / me - μ)
+    nk = ek < 0.0 ? 1.0 / (exp(ek) + 1) : exp(-ek) / (1 + exp(-ek))
+
+    if q > 1e-6 * param.kF
+        a = ω * 1im - k^2 / me - q^2 / 2 / me + 2μ
+        b = q * k / me
+        return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+    else
+        if ω != 0.0 || abs(ek) > 1e-4
+            return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+        else # ω==0.0 && abs(ek)<1e-4
+            #expansion of 1/ek*(2/(exp(ek)+1)-1)
+            f = -0.5 + ek^2 / 24 - ek^4 / 240 + 17 * ek^6 / 40320
+            return me / (2π)^2 * (2k^2 / me * (f / 2 * β) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+        end
+    end
+
+    # if q is too small, use safe form
+    # if q < 1e-16 && ω ≈ 0
+    #     if abs(q - 2 * k)^2 < 1e-16
+    #         return 0.0
+    #     else
+    #         return -k * me / (4 * π^2) * nk * ((8 * k) / ((q - 2 * k)^2))
+    #     end
+    # elseif q < 1e-16 && !(ω ≈ 0)
+    #     return -k * me / (4 * π^2) * nk * ((8 * k * q^2) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
+    # else
+    #     return -k * me / (4 * π^2 * q) * nk * log1p((8 * k * q^3) / (4 * me^2 * ω^2 + (q^2 - 2 * k * q)^2))
+    # end
+end
 
 function finitetemp_kgrid(q::Float64, kF::Float64, maxk=20, scaleN=20, minterval=1e-6, gaussN=10)
     mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
@@ -163,6 +200,55 @@ function Ladder0_FreeElectron(q::Float64, n::Int, param)
         error("No support for finite-temperature polarization in $dim dimension!")
     end
     return -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * n / β)
+end
+
+"""
+    function Ladder0Vacuum_FiniteTemp(q::Float64, n::Int, param, scaleN=20, minterval=1e-6, gaussN=10)
+
+Finite temperature vacuum ladder function for matsubara frequency and momentum. Analytically sum over total incoming frequency and angular
+dependence of momentum, and numerically calculate integration of magnitude of momentum.
+Assume G_vacuum^{-1} = iω_n - (k^2/(2m))
+
+The ladder function is defined as 
+```math
+\\int \\frac{d^3 \\vec{p}}{\\left(2π^3\\right)} T \\sum_{i ω_n} \\frac{1}{iω_n+iΩ_n-\\frac{(\\vec{k}+\\vec{p})^2}{2 m}} \\frac{1}{-iω_n-\\frac{p^2}{2 m}} - \\frac{m}{2π^2}Λ
+```
+where we subtract the UV divergent term that is a constant proportional to the UV cutoff Λ.
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. Ωn=2πTn
+ - param: other system parameters
+ - maxk: optional, upper limit of integral -> maxk*kF
+ - scaleN: optional, N of Log grid in LogDensedGrid, check CompositeGrids for more detail
+ - minterval: optional, actual minterval of grid is this value times min(q,kF)
+ - gaussN: optional, N of GaussLegendre grid in LogDensedGrid.
+"""
+function Ladder0Vacuum_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6, gaussN=10)
+    dim, kF, β, me = param.dim, param.kF, param.β, param.me
+    # μ = 0.0 for vacuum
+    μ = 0.0
+    if dim != 3
+        error("No support for finite-temperature polarization in $dim dimension!")
+    end
+
+    # check sign of q, use -q if negative
+    if q < 0
+        q = -q
+    end
+
+    # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
+    # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
+    kgrid = finitetemp_kgrid_ladder(μ, me, q, kF, scaleN, minterval, gaussN)
+    integrand = zeros(ComplexF64, kgrid.size)
+    if dim == 3
+        for (ki, k) in enumerate(kgrid.grid)
+            integrand[ki] = _LadderTVacuum3d_integrand(k, q, 2π * n / β, param)
+            @assert !isnan(integrand[ki]) "nan at k=$k, q=$q, n=$n"
+        end
+    end
+
+    return Interp.integrate1D(integrand, kgrid)
 end
 
 """
