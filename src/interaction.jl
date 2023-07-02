@@ -526,7 +526,7 @@ function RPA_total(q, n, param; pifunc=Polarization0_ZeroTemp, Vinv_Bare=coulomb
 end
 
 """
-    function Tmatrix(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
+    function oldTmatrix(q, n, param; pifunc = Polarization0_ZeroTemp, landaufunc = landauParameterTakada, Vinv_Bare = coulombinv, regular = false, kwargs...)
 
 Dynamic part of the T-matrix. Returns the spin symmetric part and asymmetric part separately.
 
@@ -544,7 +544,7 @@ Dynamic part of the T-matrix. Returns the spin symmetric part and asymmetric par
     \\frac{1} {\\frac{m}{4\\pi a_s} +\\Gamma(q, n)} - \\frac{4\\pi a_s}{m}.
 ```
 """
-function Tmatrix(q, n, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+function oldTmatrix(q, n, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
     as = 4π * param.as / param.me
     if param.as < 1e-6
         return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
@@ -554,7 +554,7 @@ function Tmatrix(q, n, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs
 end
 
 """
-    function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
+    function oldTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
         pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
 
 Return dynamic part and instant part of KO-interaction Green's function separately. Each part is a MeshArray with inner state 
@@ -569,7 +569,7 @@ Return dynamic part and instant part of KO-interaction Green's function separate
  - landaufunc: caller to the Landau parameter (exchange-correlation kernel)
  - Vinv_Bare: caller to the bare Coulomb interaction
 """
-function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param;
+function oldTmatrix_wrapped(Euv, rtol, sgrid::SGT, param;
     ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...) where {SGT}
     # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
     @unpack β = param
@@ -594,6 +594,130 @@ function Tmatrix_wrapped(Euv, rtol, sgrid::SGT, param;
     end
 
     return green_dyn_r, green_dyn_i, green_tail_r, green_tail_i
+end
+
+
+"""
+    function T0(q::Float64, n::Int, param)
+
+Vacuum two-particle T-matrix in matsubara frequency. 
+#Arguments:
+ - q: total incoming momentum
+ - n: matsubara frequency given in integer s.t. Ωn=2πTn (either one frequency or array of frequencies)
+ - param: other system parameters
+"""
+
+function T0matrix(q::Float64, n::Int, param)
+    β, me = param.β, param.me
+    as = 4π * param.as / me
+    B = me^(3/2)/(4π)
+    if as < 1e-6
+        return as/(1. - as * B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β)))
+    else
+        return 1/((1/as) - B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β)))
+    end
+end
+
+"""
+    function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+
+Many-body T-matrix in matsubara frequency. 
+#Arguments:
+ - q: total incoming momentum
+ - n: matsubara frequency given in integer s.t. Ωn=2πTn (either one frequency or array of frequencies)
+ - param: other system parameters
+"""
+
+function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
+    as = 4π * param.as / param.me
+    if param.as < 1e-6
+        return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
+    else
+        return 1 ./ (1 / as .+ ladderfunc(q, n, param; kwargs...))
+    end
+end
+
+"""
+    function δTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...) where {SGT}
+
+Difference between Many-body T-matrix and vacuum two-particle T-matrix in imaginary time. 
+#Arguments:
+- Euv: Euv of DLRGrid
+- rtol: rtol of DLRGrid
+- sgrid: momentum grid
+- param: other system parameters
+- ladderfunc: Particle-Particle bubble (ladder-diagram of G0G0)
+"""
+
+function δTmatrix_wrapped(Euv, rtol, sgrid::SGT, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...) where {SGT}
+    β= param.β
+    Ωn_mesh_ph = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
+    δTmatrix_n = GreenFunc.MeshArray(Ωn_mesh_ph, sgrid; dtype=ComplexF64)
+
+    for (ki, k) in enumerate(sgrid)
+        for (ni, n) in enumerate(Ωn_mesh_ph.grid)
+            δTmatrix_n[ni, ki] = (Tmatrix(k, n, param; ladderfunc = ladderfunc) - T0matrix(k, n, param))
+        end
+    end
+    δTmatrix_tau = δTmatrix_n |> to_dlr |> to_imtime
+    return δTmatrix_tau
+end
+
+"""
+    function T0maxtrix_wrapped(tau::Float64, q::Float64, param)
+
+Difference between Many-body T-matrix and vacuum two-particle T-matrix in imaginary time. 
+#Arguments:
+- tau: imaginary time
+- q: total incoming momentum
+- param: other system parameters
+"""
+
+function T0maxtrix_wrapped(tau::Float64, q::Float64,  param)
+    """ Two particle scattering in a vacuum T-matrix in imaginary time """
+    β, me, as = param.β, param.me, param.as
+    B = me^(3/2)/(4π)
+    m = me * as^2
+
+    # Pole Term contribution
+    poletermnumerator = exp(tau/ m)
+    poletermdenominator = 1- exp(β * (1. / (me*as^2) - q^2/ (4 * me)))
+    poleterm = - poletermnumerator/ poletermdenominator
+    # Integral Terms
+
+    function integrand1(vars, q, tau, param)
+        me, as = param.me, param.as
+        m = me * as^2
+        u = vars[1][1]
+        y = u/(1-u)
+        fraction = y^2/(y^2 + tau/ m)
+        return 2 * exp(-y^2) * fraction
+    end
+    
+    function integrand2(vars, q, tau, param)
+        β, me = param.β, param.me
+        u = vars[1][1]
+        y = u/(1-u)
+        factor = 1/(exp(β * (y^2/ tau + q^2/ (4 * me)))-1)
+        return factor * integrand1(vars, q, tau, param)
+    end
+
+    tgrid = CompositeGrid.LogDensedGrid(
+        :gauss,# The top layer grid is :gauss, optimized for integration. For interpolation use :cheb
+        [0.0, 1.0],# The grid is defined on [0.0, 1.0] s.t. the integral in the original variable is from [0.0 , infinity]
+        [0.0],# and is densed at 0.0 and β, as given by 2nd and 3rd parameter.
+        5,# N of log grid
+        0.005, # minimum interval length of log grid
+        5 # N of bottom layer
+    )
+    data = [(integrand1(t, q, tau, param)+integrand2(t, q, tau, param)) for (ti, t) in  enumerate(tgrid.grid)]
+    int_result = Interp.integrate1D(data, tgrid)
+    integralfactor = 1/(B * pi * sqrt(tau))
+
+    # Propagator factor
+    propfactor = exp(-q^2/ (4 * me) * tau)
+
+    return propfactor*(poleterm + int_result * integralfactor)
 end
 
 end
