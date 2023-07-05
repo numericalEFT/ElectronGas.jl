@@ -747,6 +747,60 @@ function BSeq_solver_resumB(param,
     return B
 end
 
+function BSeq_solver_resumB_smooth(param,
+    G2::GreenFunc.MeshArray, Πs::GreenFunc.MeshArray,
+    kernel, B, kwgrid,
+    qgrids::Vector{CompositeGrid.Composite};
+    winit=0, wend=0,
+    Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8,
+    verbose=false, Ncheck=5, Nmax=10000, W=W)
+
+    if verbose
+        println("atol=$atol,rtol=$rtol")
+    end
+
+    @unpack dim, kF = param
+    kgrid = G2.mesh[2]
+    kF_label = locate(kgrid, kF)
+    ikF = kF_label
+    iqFs = [locate(qgrids[ki], kF) for ki in 1:kgrid.size]
+    println("kF=$kF")
+    # println("ikF=$ikF")
+    # println("iqFs=$iqFs")
+
+    # notice that ω1 is decoupled, and for each ω1 solving B 
+    # is exactly iteratively solving R with source W0
+
+    wgrid = B.mesh[1]
+    source = GreenFunc.MeshArray(wgrid, kgrid; dtype=Float64)
+    if winit == 0
+        winit = 1
+    end
+    if wend == 0
+        wend = length(wgrid)
+    end
+    for iw in winit:wend
+        w = wgrid[iw]
+        for (ik, k) in enumerate(kgrid)
+            niw = wgrid.grid[iw]
+            for (iv, v) in enumerate(wgrid)
+                wp, wm = w + v, abs(w - v)
+                intp = CompositeGrids.Interp.interp1D(view(kernel, ik, iqFs[ik], :), kwgrid, wp)
+                intm = CompositeGrids.Interp.interp1D(view(kernel, ik, iqFs[ik], :), kwgrid, wm)
+                source.data[iv, ik] = -(intp + intm)
+            end
+        end
+        println("source(kF)=$(source.data[:,ikF])")
+        lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum_smooth(param, G2, Πs,
+            kernel, kwgrid, qgrids;
+            Ntherm=Ntherm, rtol=rtol, atol=atol, α=α,
+            source=source,
+            verbose=verbose, Ncheck=Ncheck, Nmax=Nmax)
+        B.data[iw, :] .= R_freq.data[:, ikF]
+    end
+    return B
+end
+
 """
     function linearResponse(param, channel::Int; Euv=100 * param.EF, rtol=1e-10,
         maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8, sigmatype=:none, int_type=:rpa, α=0.7)
@@ -1087,15 +1141,16 @@ function pcf_resum_smooth(param, channel::Int;
 
     # calculate F, R by Bethe-Slapter iteration.
     α = 0.882
-    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], 5, 0.005, 5)
-    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:uniform, [0.0, 2Euv], [0.0,], 5, 0.005, 5)
+    minterval = π / β
+    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], Nk, minterval, order)
+    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:uniform, [0.0, 2Euv], [0.0,], Nk, minterval, order)
     G2 = G02wrapped_freq_smooth(wgrid, kgrid, param)
     # Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
     Πs = Πs0wrapped_freq_smooth(wgrid, param; ω_c=ω_c_ratio * param.EF)
     println(size(G2))
     B, kernel_freq_dense = initBW_resum_freq_smooth(W, wgrid, kwgrid, param)
     if !(onlyA)
-        B = BSeq_solver_resumB(param, G2, Πs, kernel_freq_dense, B, qgrids;
+        B = BSeq_solver_resumB_smooth(param, G2, Πs, kernel_freq_dense, B, kwgrid, qgrids;
             rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
     end
     lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum_smooth(param, G2, Πs, kernel_freq_dense, kwgrid, qgrids;
