@@ -753,7 +753,8 @@ function BSeq_solver_resumB_smooth(param,
     qgrids::Vector{CompositeGrid.Composite};
     winit=0, wend=0,
     Ntherm=30, rtol=1e-10, atol=1e-10, α=0.8,
-    verbose=false, Ncheck=5, Nmax=10000, W=W)
+    verbose=false, Ncheck=5, Nmax=10000, W=W,
+    issave=false, fname="run/a.jld2")
 
     if verbose
         println("atol=$atol,rtol=$rtol")
@@ -797,6 +798,11 @@ function BSeq_solver_resumB_smooth(param,
             source=source,
             verbose=verbose, Ncheck=Ncheck, Nmax=Nmax)
         B.data[iw, :] .= R_freq.data[:, ikF]
+        if issave
+            jldopen(fname, "w") do file
+                file["B"] = B
+            end
+        end
     end
     return B
 end
@@ -1140,10 +1146,11 @@ function pcf_resum_smooth(param, channel::Int;
     end
 
     # calculate F, R by Bethe-Slapter iteration.
+    fname = "PCFresumdlr_$(uid).jld2"
     α = 0.882
     minterval = π / β
     wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], Nk, minterval, order)
-    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:uniform, [0.0, 2Euv], [0.0,], Nk, minterval, order)
+    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0,], Nk, minterval, order)
     G2 = G02wrapped_freq_smooth(wgrid, kgrid, param)
     # Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
     Πs = Πs0wrapped_freq_smooth(wgrid, param; ω_c=ω_c_ratio * param.EF)
@@ -1151,7 +1158,7 @@ function pcf_resum_smooth(param, channel::Int;
     B, kernel_freq_dense = initBW_resum_freq_smooth(W, wgrid, kwgrid, param)
     if !(onlyA)
         B = BSeq_solver_resumB_smooth(param, G2, Πs, kernel_freq_dense, B, kwgrid, qgrids;
-            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W)
+            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W, fname=dir * fname, issave=issave)
     end
     lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum_smooth(param, G2, Πs, kernel_freq_dense, kwgrid, qgrids;
         rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
@@ -1161,7 +1168,6 @@ function pcf_resum_smooth(param, channel::Int;
     A.data .= R_freq.data[:, kF_label]
 
     if issave
-        fname = "PCFresumdlr_$(uid).jld2"
         jldopen(dir * fname, "w") do file
             file["param"] = param
             file["A"] = A

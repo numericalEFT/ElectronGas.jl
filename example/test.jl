@@ -80,3 +80,8 @@ println((int1, int2, log(0.1 * β) / π))
 
 # wgrid = rw.mesh[1]
 # ngrid = wgrid.grid
+
+# using ElectronGas, JLD2
+# f = jldopen("run/data/PCFresumdlr_3000010.jld2", "r")
+# f["B"].mesh[1].grid[1:3:end]'
+# f["B"].data[1:3:end, 1]'
