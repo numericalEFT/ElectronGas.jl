@@ -11,7 +11,7 @@ using ..BSeq
 
 using ..Base.Threads
 
-const freq_sep = 0.01
+const freq_sep = 0.1
 
 function initFR_resum(Euv, rtol, sgrid, param)
     @unpack β, me, μ = param
@@ -141,6 +141,7 @@ function initBW_resum_freq_smooth(W, wgrid, kwgrid, param)
     kgrid = sgrid
     qgrids = W.qgrids
     bdlr = W.dlrGrid
+    ikF = locate(kgrid, kF)
     iqFs = [locate(qgrids[ki], kF) for ki in 1:kgrid.size]
 
     kernel_ins = W.kernel_bare
@@ -164,11 +165,18 @@ function initBW_resum_freq_smooth(W, wgrid, kwgrid, param)
                 d0, d1 = data[1], data[2]
                 g = d0 * dx1 + d1 * dx0
                 gx = g / (dx0 + dx1)
-                kernel_freq_dense[ik, iq, :] .+= gx
+                kernel_freq_dense[ik, iq, iw] = gx
+                # if ik == ikF && iq == iqFs[ikF]
+                #     println((w, n0, n, data, gx))
+                # end
             end
             kernel_freq_dense[ik, iq, :] .+= kernel_ins[ik, iq]
         end
     end
+    # println(kernel_freq[ikF, iqFs[ikF], :])
+    # kfd = view(kernel_freq_dense, ikF, iqFs[ikF], :) .- kernel_ins[ikF, iqFs[ikF]]
+    # println(kfd)
+    # println(CompositeGrids.Interp.interp1DGrid(kfd, kwgrid, bdlr.ωn))
 
     B.data .= 0.0
 

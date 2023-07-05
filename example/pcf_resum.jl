@@ -48,8 +48,8 @@ using Test
     num = 1
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    beta = [400 * 2^(i - 1) for i in 1:num]
-    # beta = [100,]
+    # beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [3200,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -65,8 +65,8 @@ using Test
         # atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=30, α=0.8,
         atol=1e-8, rtol=1e-10, Nk=6, order=4, Ntherm=5, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
-        # sigmatype=:none, int_type=:rpa,
-        sigmatype=:none, int_type=:ko,
+        sigmatype=:none, int_type=:rpa,
+        # sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
