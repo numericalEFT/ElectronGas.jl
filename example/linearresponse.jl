@@ -30,7 +30,8 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
 
     println("dim=$dim, θ=$θ, rs=$rs, channel=$channel:")
 
-    lamu, R_freq, F_freq = BSeq_resum.linearResponse(param, channel; kwargs...)
+    # lamu, R_freq, F_freq = BSeq_resum.linearResponse(param, channel; kwargs...)
+    lamu, R_freq, F_freq, R_ins = BSeq.linearResponse(param, channel; kwargs...)
     result = measure_chi(F_freq)
     println("1/chi=", 1 / result)
 
@@ -57,15 +58,16 @@ using ElectronGas.Interaction
 
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 1230000
+    # uid0 = 1230300
+    uid0 = 3000
     dim = 3
-    rs = 1.23
+    rs = 0.3
     # num = 14
     # num = 25
     num = 5
     channel = 0
-    # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
+    # beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
