@@ -77,8 +77,8 @@ end
 
 function interp_AB_brutal(β, A, B, param; Ec=10param.EF)
     # interp AB to different temperature
-    nec = floor(Int, Ec / 2 / π * param.β + 0.5)
-    wgrid = GreenFunc.ImFreq(param.β, FERMION; grid=[i for i in 0:nec])
+    nec = floor(Int, Ec / 2 / π * β + 0.5)
+    wgrid = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     oldwgrid = A.mesh[1]
     newA = GreenFunc.MeshArray(wgrid; dtype=Float64)
     newB = GreenFunc.MeshArray(wgrid, wgrid; dtype=Float64)
@@ -89,7 +89,8 @@ function interp_AB_brutal(β, A, B, param; Ec=10param.EF)
         end
     end
     sB, aB = symmetrize_b(newB)
-    return newA, sB
+    newparam = ElectronGas.Parameter.Para(param; β=β)
+    return newparam, newA, sB
 end
 
 function RS_inva(g, f, Q1, Q2)
@@ -100,11 +101,11 @@ function RS_inva(g, f, Q1, Q2)
 end
 
 function RS_interaction(w1, w2, param)
-    g, f, Ω, Ec = 0.5 * param.EF * 4 * π^2, 0.8, 0.2param.EF, 10param.EF
+    g, f, Ω, Ec = 0.5 * 2 / π / param.kF * 4 * π^2, 0.8, 0.2param.EF, 10param.EF
     if abs(w1) < Ω && abs(w2) < Ω
-        return -2g * (1 - f)
+        return -g * (1 - f)
     elseif abs(w1) < Ec && abs(w2) < Ec
-        return -2g
+        return -g
     else
         return 0.0
     end
@@ -164,7 +165,7 @@ function calcR_brutal!(R, A, B, Π, param)
             result[wi] += B[wi, vi] * Π[vi] * R[vi]
         end
     end
-    result .= result ./ (param.β * 4 * π^2)
+    result .= result ./ (param.β * 2 * π^2) .* param.kF^2
     R.data .= result .+ A.data
 end
 
@@ -237,10 +238,11 @@ using Test
     for i in 1:length(betas)
         beta = betas[i]
         # newA, newB = interp_AB(beta / param.EF, A, B, param)
-        # newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
+        # newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
         println(newparam.β)
-        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=10param.EF)
+        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
+        # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
         println("lamu=$lamu")
         lamus[i] = lamu
     end
