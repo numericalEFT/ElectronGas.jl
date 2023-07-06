@@ -1098,7 +1098,7 @@ function pcf_resum_smooth(param, channel::Int;
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
-    onlyA=false, ω_c_ratio=0.02,
+    onlyA=false, onlyB=false, nB=0, ω_c_ratio=0.02,
     issave=false, uid=1, dir="./", kwargs...)
     @unpack dim, rs, β, kF = param
     if verbose
@@ -1150,27 +1150,37 @@ function pcf_resum_smooth(param, channel::Int;
     α = 0.882
     minterval = π / β
     wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], Nk, minterval, order)
-    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0,], Nk, minterval, order)
+    kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 16, 0.5minterval, 8)
+    # kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 2Nk, minterval, 2order)
     G2 = G02wrapped_freq_smooth(wgrid, kgrid, param)
     # Πs = Πs0wrapped(Euv, rtol, param; ω_c=ω_c_ratio * param.EF)
     Πs = Πs0wrapped_freq_smooth(wgrid, param; ω_c=ω_c_ratio * param.EF)
     println(size(G2))
     B, kernel_freq_dense = initBW_resum_freq_smooth(W, wgrid, kwgrid, param)
     if !(onlyA)
-        B = BSeq_solver_resumB_smooth(param, G2, Πs, kernel_freq_dense, B, kwgrid, qgrids;
-            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W, fname=dir * fname, issave=issave)
+        if nB == 0
+            B = BSeq_solver_resumB_smooth(param, G2, Πs, kernel_freq_dense, B, kwgrid, qgrids;
+                rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W, fname=dir * fname, issave=issave)
+        else
+            B = BSeq_solver_resumB_smooth(param, G2, Πs, kernel_freq_dense, B, kwgrid, qgrids;
+                rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax, W=W, fname=dir * fname, issave=issave,
+                winit=nB, wend=nB)
+        end
     end
-    lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum_smooth(param, G2, Πs, kernel_freq_dense, kwgrid, qgrids;
-        rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
+    if !(onlyB)
+        lamu, F_fs, F_freq, R_freq = BSeq_solver_freq_resum_smooth(param, G2, Πs, kernel_freq_dense, kwgrid, qgrids;
+            rtol=rtol, α=α, atol=atol, verbose=verbose, Ntherm=Ntherm, Nmax=Nmax)
+        A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
+        A.data .= R_freq.data[:, kF_label]
+    end
     # R_freq = R_imt |> to_dlr |> to_imfreq
-
-    A = GreenFunc.MeshArray(R_freq.mesh[1]; dtype=Float64)
-    A.data .= R_freq.data[:, kF_label]
 
     if issave
         jldopen(dir * fname, "w") do file
             file["param"] = param
-            file["A"] = A
+            if !onlyB
+                file["A"] = A
+            end
             if !onlyA
                 file["B"] = B
             end
@@ -1179,6 +1189,8 @@ function pcf_resum_smooth(param, channel::Int;
     # println(view(R_freq, :, kF_label))
     if onlyA
         return A
+    elseif onlyB
+        return B
     else
         return A, B
     end

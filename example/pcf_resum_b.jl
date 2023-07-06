@@ -1,3 +1,4 @@
+# compute b at a frequency point
 using ElectronGas
 using ElectronGas.GreenFunc
 using ElectronGas.CompositeGrids
@@ -38,7 +39,12 @@ end
 
 using Test
 
-@testset "pcf resum" begin
+nB = 0
+if !isempty(ARGS)
+    nB = parse(Int, ARGS[1])
+end
+
+@testset "pcf resum b" begin
     # println(measure_chi(3, 1e-2, 2.0))
     uid0 = 3000021
     dim = 3
@@ -49,7 +55,7 @@ using Test
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
-    beta = [3200,]
+    beta = [6400,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -63,7 +69,7 @@ using Test
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     result = [pcf_resum_ab(dim, 1 / beta[i], rs, channel;
         # atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=30, α=0.8,
-        atol=1e-8, rtol=1e-10, Nk=8, order=4, Ntherm=5, α=0.75,
+        atol=1e-8, rtol=1e-10, Nk=12, order=4, Ntherm=5, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
         sigmatype=:none, int_type=:ko,
@@ -72,7 +78,8 @@ using Test
         # plasmon_type=:plasmon_fs,
         # resum=true,
         Ec_ratio=6,
-        onlyA=true,
+        # onlyA=true,
+        onlyB=true, nB=nB,
         ω_c_ratio=0.1,
         issave=true, uid=uid0 + i, dir="./run/data/",
         verbose=true) for i in 1:length(beta)]
