@@ -18,7 +18,7 @@ function measure_chi(F_freq::GreenFunc.MeshArray)
 end
 
 function measure_chi(dim, θ, rs, channel; kwargs...)
-    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-8)
+    param = Parameter.rydbergUnit(θ, rs, dim; Λs=1e-6)
     if haskey(kwargs, :int_type) && kwargs[:int_type] == :none
         param = Parameter.Para(param; gs=0, ga=0)
     end
@@ -59,15 +59,15 @@ using ElectronGas.Interaction
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 1230300
-    uid0 = 3000
+    uid0 = 300000
     dim = 3
-    rs = 0.3
+    rs = 3.0
     # num = 14
     # num = 25
     num = 5
     channel = 0
-    beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    # beta = [400 * 2^(i - 1) for i in 1:num]
+    # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
+    beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -82,7 +82,8 @@ using ElectronGas.Interaction
     chi = [measure_chi(dim, 1 / beta[i], rs, channel;
         atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
-        sigmatype=:none, int_type=:rpa,
+        # sigmatype=:none, int_type=:rpa,
+        sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
