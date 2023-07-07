@@ -80,9 +80,11 @@ function interp_AB_brutal(β, A, B, param; Ec=10param.EF)
     nec = floor(Int, Ec / 2 / π * β + 0.5)
     wgrid = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
     oldwgrid = A.mesh[1]
+    # println((oldwgrid[1], oldwgrid[end]))
+    # println((wgrid[1], wgrid[end]))
     newA = GreenFunc.MeshArray(wgrid; dtype=Float64)
     newB = GreenFunc.MeshArray(wgrid, wgrid; dtype=Float64)
-    newA.data .= CompositeGrids.Interp.interp1DGrid(A.data, A.mesh[1], newA.mesh[1])
+    newA.data .= CompositeGrids.Interp.interp1DGrid(A.data, A.mesh[1], [w for w in wgrid])
     for i in 1:length(wgrid)
         for j in 1:length(wgrid)
             newB.data[i, j] = CompositeGrids.Interp.linear2D(B.data, B.mesh[1], B.mesh[2], wgrid[i], wgrid[j])
@@ -150,7 +152,7 @@ function calcR!(R, A, B, Π, param)
         for (vi, v) in enumerate(wgrid)
             integrand[vi] = B[wi, vi] * Π[vi] * R[vi]
         end
-        factor = 1 / 2 / π / (2 * π^2) * param.kF^2
+        factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor
     end
     R.data .= result
@@ -165,7 +167,9 @@ function calcR_brutal!(R, A, B, Π, param)
             result[wi] += B[wi, vi] * Π[vi] * R[vi]
         end
     end
-    result .= result ./ (param.β * 2 * π^2) .* param.kF^2
+    # factor = param.kF^2 / (param.β * 2 * π^2)
+    factor = param.kF^2 / (param.β * 4 * π^2)
+    result .= result .* factor
     R.data .= result .+ A.data
 end
 
@@ -233,7 +237,7 @@ using Test
     println(param)
     println((A[1], A[end]))
     println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
-    # A, B = extend_AB(A, B, param)
+    A, B = extend_AB(A, B, param)
     num = 5
     betas = [200 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
@@ -242,7 +246,11 @@ using Test
         newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
         # newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
+
         # println(newparam.β)
+        # println((newA[1], newA[end]))
+        # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))
+
         lamu, R = pcf_loop_ab(newA, newB, newparam)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
