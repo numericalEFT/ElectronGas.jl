@@ -253,15 +253,17 @@ end
 using Test
 @testset "pcf resummed" begin
     # fname = "run/data/PCFresumdlr_3000010.jld2"
-    fname = "run/data/PCFresumrs3_3000022.jld2"
+    # fname = "run/data/PCFresumrs3_3000022.jld2"
+    fname = "run/data/PCFresumrs3_3055022.jld2"
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
     println((B[1, 1], B[1, end]))
 
-    fname = "run/data/PCFresumdlr_3000044.jld2"
-    param, B = load_B(fname)
-    println((B[1, 1], B[1, end]))
+    # fname = "run/data/PCFresumdlr_3000044.jld2"
+    # param, B = load_B(fname)
+    # B.data .*= param.kF
+    # println((B[1, 1], B[1, end]))
 
     # println(size(B))
     # println(param)
@@ -273,18 +275,17 @@ using Test
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
         beta = betas[i]
-        # newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
-        newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
+        newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
+        # newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
 
-        newB.data .*= newparam.kF
         # println(newparam.β)
         # println((newA[1], newA[end]))
         # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))
 
-        # lamu, R = pcf_loop_ab(newA, newB, newparam)
+        lamu, R = pcf_loop_ab(newA, newB, newparam)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
-        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
+        # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
         println("lamu=$lamu")
         lamus[i] = lamu
     end

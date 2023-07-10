@@ -69,7 +69,7 @@ end
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     result = [pcf_resum_ab(dim, 1 / beta[i], rs, channel;
         # atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=30, α=0.8,
-        atol=1e-6, rtol=1e-10, Nk=5, order=3, Ntherm=5, α=0.75,
+        atol=1e-6, rtol=1e-10, Nk=8, order=4, Ntherm=5, α=0.75,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
         sigmatype=:none, int_type=:ko,
