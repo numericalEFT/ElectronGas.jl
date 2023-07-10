@@ -49,7 +49,7 @@ using Test
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
-    beta = [3200,]
+    beta = [6400,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]

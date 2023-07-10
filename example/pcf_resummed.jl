@@ -12,6 +12,20 @@ function load_AB(fname)
     return param, A, B
 end
 
+function load_B(fname)
+    f = jldopen(fname, "r")
+    param = f["param"]
+    B = f["B"]
+    return param, B
+end
+
+function load_A(fname)
+    f = jldopen(fname, "r")
+    param = f["param"]
+    A = f["A"]
+    return param, A
+end
+
 function extend_AB(A, B, param;
     Nk=8, minterval=0.001, order=4)
     # extend A and B to 0
@@ -103,7 +117,12 @@ function RS_inva(g, f, Q1, Q2)
 end
 
 function RS_interaction(w1, w2, param)
-    g, f, Ω, Ec = 0.5 / π * 2 / param.kF * 4 * π^2, 0.8, 0.2param.EF, 10param.EF
+    # 2 from freq symmetry
+    # 4π^2/kF^2*kF from momentum integral and Πs
+    # π from definition of Vrs
+    # 2/π from atan in Πs
+    factor = 2 / param.kF * 4 * π^2 * π * 2 / π
+    g, f, Ω, Ec = 0.2 * factor, 0.8, 0.2param.EF, 10param.EF
     if abs(w1) < Ω && abs(w2) < Ω
         return -g * (1 - f)
     elseif abs(w1) < Ec && abs(w2) < Ec
@@ -152,6 +171,7 @@ function calcR!(R, A, B, Π, param)
         for (vi, v) in enumerate(wgrid)
             integrand[vi] = B[wi, vi] * Π[vi] * R[vi]
         end
+        # factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor
     end
@@ -167,7 +187,7 @@ function calcR_brutal!(R, A, B, Π, param)
             result[wi] += B[wi, vi] * Π[vi] * R[vi]
         end
     end
-    # factor = param.kF^2 / (param.β * 2 * π^2)
+    # factor = param.kF^2 / (param.β * 4 * π^2)
     factor = param.kF^2 / (param.β * 4 * π^2)
     result .= result .* factor
     R.data .= result .+ A.data
@@ -232,28 +252,37 @@ end
 
 using Test
 @testset "pcf resummed" begin
-    fname = "run/data/PCFresumdlr_3000010.jld2"
+    # fname = "run/data/PCFresumdlr_3000010.jld2"
+    fname = "run/data/PCFresumrs3_3000022.jld2"
     param, A, B = load_AB(fname)
-    println(param)
-    println((A[1], A[end]))
-    println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
+    # println(size(A))
+    # println(size(B))
+
+    # fname = "run/data/PCFresumdlr_3000033.jld2"
+    # param, B = load_B(fname)
+
+    # println(size(B))
+    # println(param)
+    # println((A[1], A[end]))
+    # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
     num = 5
     betas = [200 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
         beta = betas[i]
-        newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
-        # newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
+        # newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
+        newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
 
+        newB.data .*= π
         # println(newparam.β)
         # println((newA[1], newA[end]))
         # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))
 
-        lamu, R = pcf_loop_ab(newA, newB, newparam)
+        # lamu, R = pcf_loop_ab(newA, newB, newparam)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
-        # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
+        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
         println("lamu=$lamu")
         lamus[i] = lamu
     end

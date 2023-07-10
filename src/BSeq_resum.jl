@@ -788,7 +788,7 @@ function BSeq_solver_resumB_smooth(param,
                 wp, wm = w + v, abs(w - v)
                 intp = CompositeGrids.Interp.interp1D(view(kernel, ik, iqFs[ik], :), kwgrid, wp)
                 intm = CompositeGrids.Interp.interp1D(view(kernel, ik, iqFs[ik], :), kwgrid, wm)
-                source.data[iv, ik] = -(intp + intm)
+                source.data[iv, ik] = -(intp + intm) / k
             end
         end
         println("source(kF)=$(source.data[:,ikF])")
@@ -797,7 +797,7 @@ function BSeq_solver_resumB_smooth(param,
             Ntherm=Ntherm, rtol=rtol, atol=atol, α=α,
             source=source,
             verbose=verbose, Ncheck=Ncheck, Nmax=Nmax)
-        B.data[iw, :] .= R_freq.data[:, ikF]
+        B.data[iw, :] .= R_freq.data[:, ikF] ./ kF^2
         if issave
             jldopen(fname, "w") do file
                 file["B"] = B
@@ -1098,7 +1098,7 @@ function pcf_resum_smooth(param, channel::Int;
     maxK=10param.kF, minK=1e-7param.kF, Nk=8, order=8,
     Vph::Union{Function,Nothing}=nothing, sigmatype=:none, int_type=:rpa,
     α=0.8, verbose=false, Ntherm=30, Nmax=10000,
-    onlyA=false, onlyB=false, nB=0, ω_c_ratio=0.02,
+    onlyA=false, onlyB=false, nB=0, ω_c_ratio=0.1,
     issave=false, uid=1, dir="./", kwargs...)
     @unpack dim, rs, β, kF = param
     if verbose
@@ -1149,7 +1149,8 @@ function pcf_resum_smooth(param, channel::Int;
     fname = "PCFresumdlr_$(uid).jld2"
     α = 0.882
     minterval = π / β
-    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], Nk, minterval, order)
+    # wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, ω_c_ratio * param.EF], Nk, minterval, order)
+    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [α / β, Euv], [α / β, param.EF], Nk, minterval, order)
     kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 16, 0.5minterval, 8)
     # kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 2Nk, minterval, 2order)
     G2 = G02wrapped_freq_smooth(wgrid, kgrid, param)
