@@ -257,9 +257,11 @@ using Test
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
+    println((B[1, 1], B[1, end]))
 
-    # fname = "run/data/PCFresumdlr_3000033.jld2"
-    # param, B = load_B(fname)
+    fname = "run/data/PCFresumdlr_3000044.jld2"
+    param, B = load_B(fname)
+    println((B[1, 1], B[1, end]))
 
     # println(size(B))
     # println(param)
@@ -275,7 +277,7 @@ using Test
         newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
 
-        newB.data .*= π
+        newB.data .*= newparam.kF
         # println(newparam.β)
         # println((newA[1], newA[end]))
         # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))

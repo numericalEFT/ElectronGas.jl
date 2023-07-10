@@ -46,7 +46,7 @@ end
 
 @testset "pcf resum b" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 3000043
+    uid0 = 3000054
     dim = 3
     rs = 3.0
     # num = 14

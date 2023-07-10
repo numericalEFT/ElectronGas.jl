@@ -40,7 +40,7 @@ using Test
 
 @testset "pcf resum" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 3000021
+    uid0 = 3000076
     dim = 3
     rs = 3.0
     # num = 14

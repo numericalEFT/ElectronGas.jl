@@ -797,7 +797,7 @@ function BSeq_solver_resumB_smooth(param,
             Ntherm=Ntherm, rtol=rtol, atol=atol, α=α,
             source=source,
             verbose=verbose, Ncheck=Ncheck, Nmax=Nmax)
-        B.data[iw, :] .= R_freq.data[:, ikF] ./ kF^2
+        B.data[iw, :] .= R_freq.data[:, ikF] ./ kF
         if issave
             jldopen(fname, "w") do file
                 file["B"] = B
