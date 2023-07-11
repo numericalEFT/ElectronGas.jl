@@ -685,7 +685,7 @@ function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
     poleterm = - poletermnumerator/ poletermdenominator
     # Integral Terms
 
-    function integrand1(vars, q, tau, param)
+    function integrand1(vars, tau, param)
         me, as = param.me, param.as
         m = me * as^2
         u = vars[1][1]
