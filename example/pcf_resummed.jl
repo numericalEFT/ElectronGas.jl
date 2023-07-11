@@ -163,7 +163,18 @@ function Πs0wrapped(wgrid, param; ω_c=0.1param.EF)
     return Π
 end
 
-function calcR!(R, A, B, Π, param)
+function Πstail(wi, wf, param; ω_c=0.1param.EF)
+    result = 0.0
+    ni = floor(Int, wi / 2 / π * param.β + 0.5)
+    nf = floor(Int, wf / 2 / π * param.β + 0.5)
+    for i in ni:nf
+        ω = π / param.β * (2 * i + 1)
+        result += Πs0(ω, param; ω_c=ω_c)
+    end
+    return result
+end
+
+function calcR!(R, A, B, Π, param; tail=0.0)
     wgrid = A.mesh[1]
     result = similar(R.data)
     for (wi, w) in enumerate(wgrid)
@@ -172,20 +183,22 @@ function calcR!(R, A, B, Π, param)
             integrand[vi] = B[wi, vi] * Π[vi] * R[vi]
         end
         # factor = 1 / 2 / π / (4 * π^2) * param.kF^2
+        integraltail = B[wi, end] * tail * R[end]
         factor = 1 / 2 / π / (4 * π^2) * param.kF^2
-        result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor
+        result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor + integraltail * factor
     end
     R.data .= result
 end
 
-function calcR_brutal!(R, A, B, Π, param)
+function calcR_brutal!(R, A, B, Π, param; tail=0.0)
     wgrid = A.mesh[1]
     result = similar(R.data)
     result .= 0.0
-    for (vi, v) in enumerate(wgrid)
-        for (wi, w) in enumerate(wgrid)
+    for (wi, w) in enumerate(wgrid)
+        for (vi, v) in enumerate(wgrid)
             result[wi] += B[wi, vi] * Π[vi] * R[vi]
         end
+        result[wi] += B[wi, end] * tail * R[end]
     end
     # factor = param.kF^2 / (param.β * 4 * π^2)
     factor = param.kF^2 / (param.β * 4 * π^2)
@@ -225,6 +238,7 @@ function pcf_loop_ab_brutal(A, B, param; ω_c=0.1param.EF,
     α=0.9, Nmax=1e4)
     wgrid = A.mesh[1]
     Π = Πs0wrapped(wgrid, param; ω_c=ω_c)
+    tail = Πstail(wgrid[end], 10.0 * wgrid[end], param; ω_c=ω_c)
     R = similar(A)
     R.data .= A.data
     Rsum = similar(R)
@@ -236,7 +250,7 @@ function pcf_loop_ab_brutal(A, B, param; ω_c=0.1param.EF,
     converge = false
     n = 1
     while (!converge && n < Nmax)
-        calcR_brutal!(R, A, B, Π, param)
+        calcR_brutal!(R, A, B, Π, param; tail=tail)
         Rsum.data .= Rsum.data .* α .+ R.data
         R.data .= Rsum.data .* (1 - α)
         converge = isapprox(1 / R[iw0], invR0, rtol=1e-10, atol=1e-10)
@@ -258,6 +272,9 @@ using Test
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
+    for i in 80:84
+        B.data[i, :] .= B.data[79, :]
+    end
     println((B[1, 1], B[1, end]))
 
     # fname = "run/data/PCFresumdlr_3000044.jld2"
