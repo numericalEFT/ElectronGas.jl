@@ -40,7 +40,7 @@ using Test
 
 @testset "pcf resum" begin
     # println(measure_chi(3, 1e-2, 2.0))
-    uid0 = 3000076
+    uid0 = 3000087
     dim = 3
     rs = 3.0
     # num = 14
@@ -66,7 +66,8 @@ using Test
         # atol=1e-8, rtol=1e-10, Nk=8, order=4, Ntherm=5, α=0.75,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
-        sigmatype=:none, int_type=:ko,
+        # sigmatype=:none, int_type=:ko,
+        sigmatype=:none, int_type=:ko, Vph=BSeq.phonon,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,

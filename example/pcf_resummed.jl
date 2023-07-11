@@ -185,7 +185,8 @@ function calcR!(R, A, B, Π, param; tail=0.0)
         # factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         integraltail = B[wi, end] * tail * R[end]
         factor = 1 / 2 / π / (4 * π^2) * param.kF^2
-        result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor + integraltail * factor
+        tailfactor = param.kF^2 / (param.β * 4 * π^2)
+        result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor + integraltail * tailfactor
     end
     R.data .= result
 end
@@ -210,6 +211,7 @@ function pcf_loop_ab(A, B, param; ω_c=0.1param.EF,
     α=0.9, Nmax=1e4)
     wgrid = A.mesh[1]
     Π = Πs0wrapped(wgrid, param; ω_c=ω_c)
+    tail = Πstail(wgrid[end], 10.0 * wgrid[end], param; ω_c=ω_c)
     R = similar(A)
     R.data .= A.data
     Rsum = similar(R)
@@ -221,7 +223,7 @@ function pcf_loop_ab(A, B, param; ω_c=0.1param.EF,
     converge = false
     n = 1
     while (!converge && n < Nmax)
-        calcR!(R, A, B, Π, param)
+        calcR!(R, A, B, Π, param; tail=tail)
         Rsum.data .= Rsum.data .* α .+ R.data
         R.data .= Rsum.data .* (1 - α)
         converge = isapprox(1 / R[iw0], invR0, rtol=1e-10, atol=1e-10)
@@ -272,13 +274,11 @@ using Test
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
-    for i in 80:84
-        B.data[i, :] .= B.data[79, :]
-    end
     println((B[1, 1], B[1, end]))
 
     # fname = "run/data/PCFresumdlr_3000044.jld2"
-    # param, B = load_B(fname)
+    fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
+    param, B = load_B(fname)
     # B.data .*= param.kF
     # println((B[1, 1], B[1, end]))
 
@@ -287,8 +287,8 @@ using Test
     # println((A[1], A[end]))
     # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
-    num = 5
-    betas = [200 * 2^(i - 1) for i in 1:num]
+    num = 9
+    betas = [400 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
         beta = betas[i]
