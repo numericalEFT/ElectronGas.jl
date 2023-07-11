@@ -59,7 +59,7 @@ end
         return me / (2π)^2 * (k / q * (log(a + b) - log(a - b)) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
     else
         if ω != 0.0 || abs(ek) > 1e-4
-            return me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
+            me / (2π)^2 * (2k^2 / me / (ω * 1im - k^2 / me + 2μ) * (2 * nk - 1) - 2) / (1 - x)^2 # additional factor 1/(1-x)^2 is from the Jacobian
         else # ω==0.0 && abs(ek)<1e-4
             #expansion of 1/ek*(2/(exp(ek)+1)-1)
             f = -0.5 + ek^2 / 24 - ek^4 / 240 + 17 * ek^6 / 40320
@@ -179,24 +179,32 @@ function Ladder0_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6
     if q < 0
         q = -q
     end
-
+    Ωn = 2π * n / β
     # mink = (q < 1e-16 / minterval) ? minterval * kF : minterval * min(q, kF)
     # kgrid = CompositeGrid.LogDensedGrid(:gauss, [0.0, maxk * kF], [0.5 * q, kF], scaleN, mink, gaussN)
     kgrid = finitetemp_kgrid_ladder(μ, me, q, kF, scaleN, minterval, gaussN)
     integrand = zeros(ComplexF64, kgrid.size)
     if dim == 3
         for (ki, k) in enumerate(kgrid.grid)
-            integrand[ki] = _LadderT3d_integrand(k, q, 2π * n / β, param)
-            @assert !isnan(integrand[ki]) "nan at k=$k, q=$q, n=$n"
+            if Ωn <1000
+                integrand[ki] = _LadderT3d_integrand(k, q, Ωn, param)
+                @assert !isnan(integrand[ki]) "nan at k=$k, q=$q, n=$n"
+            else
+                integrand[ki] = 0 # Do not calculate integrand for high frequency tail
+            end
         end
     end
-
-    return Interp.integrate1D(integrand, kgrid)
+    result = Interp.integrate1D(integrand, kgrid)
+    if Ωn> 1000
+        result = -me^(3 / 2) / (4π) * sqrt(Complex(q^2 / (4me) - 1im * Ωn - 2μ)) # Replace high frequency tail with two-particle particle-particle term
+    end
+    return result
 end
 
 function Ladder0_FreeElectron(q::Float64, n::Int, param)
     @unpack dim, kF, β, me, μ = param
     if dim != 3
+   
         error("No support for finite-temperature polarization in $dim dimension!")
     end
     return -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * n / β)
@@ -345,13 +353,25 @@ function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param; scaleN=20, min
     if dim == 3
         for (ki, k) in enumerate(kgrid.grid)
             for (mi, m) in enumerate(n)
-                integrand[ki, mi] = _LadderT3d_integrand(k, q, 2π * m / β, param)
-                @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
+              Ωm = 2π * m / β
+                if Ωm < 1000
+                    integrand[ki, mi] = _LadderT3d_integrand(k, q, Ωm, param)
+                    @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
+                else 
+                    integrand[ki, mi] = 0 # Don't integrate for high frequencies, we use abrupt two-particle expression first
+                end
             end
         end
     end
+    result = Interp.integrate1D(integrand, kgrid; axis=1)
+    for (mi, m) in enumerate(n)
+       Ωm = 2π * m / β
+        if Ωm > 1000
+            result[mi] = -me^(3 / 2) / (4π) * sqrt(Complex(q^2 / (4me) - 1im * Ωm - 2μ)) # Replace with two-particle particle-particle high frequency tail
+        end
+    end
 
-    return Interp.integrate1D(integrand, kgrid; axis=1)
+    return result
 end
 
 function Ladder0_FreeElectron(q::Float64, n::AbstractVector, param)
