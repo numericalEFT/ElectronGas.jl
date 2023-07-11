@@ -3,6 +3,7 @@ using JLD2
 using ElectronGas.CompositeGrids
 using ElectronGas.Parameters
 using ElectronGas.GreenFunc
+using LsqFit
 
 function load_AB(fname)
     f = jldopen(fname, "r")
@@ -263,7 +264,23 @@ function pcf_loop_ab_brutal(A, B, param; ω_c=0.1param.EF,
     end
 
     return invR0, R
+end
 
+@. model(x, p) = p[1] * x + p[2]
+function fit_invR0(invR0, lnbetas)
+    p0 = [1.0, 1.0]
+    fit = curve_fit(model, lnbetas, invR0, p0)
+    return fit
+end
+
+function crit_beta(betas, lamus; init=0, fin=length(betas))
+    betas = betas[init:fin]
+    lamus = lamus[init:fin]
+    lnbetas = log10.(betas)
+    fitresult = fit_invR0(lamus, lnbetas)
+    fitp = coef(fitresult)
+    println(fitp)
+    return -fitp[2] / fitp[1]
 end
 
 using Test
@@ -277,8 +294,10 @@ using Test
     println((B[1, 1], B[1, end]))
 
     # fname = "run/data/PCFresumdlr_3000044.jld2"
-    fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
-    param, B = load_B(fname)
+    # fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
+    # fname = "run/data/Bsmooth_ko3ph2_beta6400_lam6.jld2"
+    # fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
+    # param, B = load_B(fname)
     # B.data .*= param.kF
     # println((B[1, 1], B[1, end]))
 
@@ -306,4 +325,8 @@ using Test
         println("lamu=$lamu")
         lamus[i] = lamu
     end
+    log10tc = -crit_beta(betas, lamus; init=3)
+    println("Tc=$(10^log10tc)")
+    log10tc = -crit_beta(betas, lamus; init=3, fin=6)
+    println("Tc=$(10^log10tc)")
 end

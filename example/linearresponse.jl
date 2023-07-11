@@ -41,8 +41,8 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
-    fname = "gap$(dim)D_phko2chi_rs$(rs)_l$(channel)_vlarge0.txt"
-    # fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
+    # fname = "gap$(dim)D_ph4kochi_rs$(rs)_l$(channel)_vlarge0.txt"
+    fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     open(dir * fname, "a+") do io
@@ -85,8 +85,8 @@ using ElectronGas.Interaction
         atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
-        # sigmatype=:none, int_type=:ko,
-        sigmatype=:none, int_type=:ko, Vph=phonon,
+        sigmatype=:none, int_type=:ko,
+        # sigmatype=:none, int_type=:ko, Vph=phonon,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,

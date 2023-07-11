@@ -46,8 +46,8 @@ end
 
 fname = "run/data/PCFresumrs3_3055022.jld2"
 param, B = load_B(fname)
-param = Parameter.Para(param; eph=0.1 * 4 * π^2, ω_D=0.005 * param.EF)
+param = Parameter.Para(param; eph=0.4 * 4 * π^2, ω_D=0.005 * param.EF)
 Bph = add_phonon(B, param)
 
-savename = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
+savename = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
 save_B(savename, param, B)
