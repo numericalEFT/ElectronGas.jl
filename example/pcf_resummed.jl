@@ -241,7 +241,7 @@ function pcf_loop_ab_brutal(A, B, param; ω_c=0.1param.EF,
     α=0.9, Nmax=1e4)
     wgrid = A.mesh[1]
     Π = Πs0wrapped(wgrid, param; ω_c=ω_c)
-    tail = Πstail(wgrid[end], 10.0 * wgrid[end], param; ω_c=ω_c)
+    tail = Πstail(wgrid[end], 200.0 * wgrid[end], param; ω_c=ω_c)
     R = similar(A)
     R.data .= A.data
     Rsum = similar(R)
@@ -296,8 +296,8 @@ using Test
     # fname = "run/data/PCFresumdlr_3000044.jld2"
     # fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
     # fname = "run/data/Bsmooth_ko3ph2_beta6400_lam6.jld2"
-    # fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
-    # param, B = load_B(fname)
+    fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
+    param, B = load_B(fname)
     # B.data .*= param.kF
     # println((B[1, 1], B[1, end]))
 
@@ -306,22 +306,22 @@ using Test
     # println((A[1], A[end]))
     # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
-    num = 9
+    num = 5
     betas = [400 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
         beta = betas[i]
-        newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
-        # newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
+        # newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
+        newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
 
         # println(newparam.β)
         # println((newA[1], newA[end]))
         # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))
 
-        lamu, R = pcf_loop_ab(newA, newB, newparam)
+        # lamu, R = pcf_loop_ab(newA, newB, newparam)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
-        # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
+        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
         println("lamu=$lamu")
         lamus[i] = lamu
     end

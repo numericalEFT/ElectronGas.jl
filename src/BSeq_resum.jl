@@ -325,6 +325,16 @@ function Rt2Rw!(Rw::GreenFunc.MeshArray, Rt::GreenFunc.MeshArray, R_ins::GreenFu
     end
 end
 
+function Πs0(ωn, param; ω_c=0.1param.EF)
+    @unpack me, β, μ, kF, EF = param
+    # return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    if abs(ωn) > ω_c
+        return 0.0
+    else
+        return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    end
+end
+
 function Πs0wrapped(Euv, rtol, param; ω_c=0.02param.EF)
     @unpack me, β, μ, kF, EF = param
 
@@ -333,9 +343,7 @@ function Πs0wrapped(Euv, rtol, param; ω_c=0.02param.EF)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
         ωn = wn_mesh[ni]
-        # ω1 = π * param.T
-        # green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
-        green[ind] = 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+        green[ind] = Πs0(ωn, param; ω_c=ω_c)
     end
     return green
 end
@@ -349,9 +357,7 @@ function Πs0wrapped_freq(Ec, param; ω_c=0.02param.EF)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
         ωn = wn_mesh[ni]
-        # ω1 = π * param.T
-        # green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
-        green[ind] = 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+        green[ind] = Πs0(ωn, param; ω_c=ω_c)
     end
     return green
 end
@@ -363,9 +369,7 @@ function Πs0wrapped_freq_smooth(wgrid, param; ω_c=0.02param.EF)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
         ωn = wgrid[ni]
-        # ω1 = π * param.T
-        # green[ind] = π * me / (kF) / abs(ωn) / (1 + (abs(ωn) / (ω_c))^2) * (1 + (ω1 / ω_c)^2)
-        green[ind] = 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+        green[ind] = Πs0(ωn, param; ω_c=ω_c)
     end
     return green
 end
