@@ -90,7 +90,7 @@ function interp_AB(β, A, B, param;
     return newparam, newA, sB
 end
 
-function interp_AB_brutal(β, A, B, param; Ec=10param.EF)
+function interp_AB_brutal_step(β, A, B, param; Ec=0.1param.EF)
     # interp AB to different temperature
     nec = floor(Int, Ec / 2 / π * β + 0.5)
     wgrid = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:nec])
@@ -154,12 +154,12 @@ end
 
 function Πs0(ωn, param; ω_c=0.1param.EF)
     @unpack me, β, μ, kF, EF = param
-    return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
-    # if abs(ωn) > ω_c
-    #     return 0.0
-    # else
-    #     return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
-    # end
+    # return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    if abs(ωn) > ω_c
+        return 0.0
+    else
+        return 2.0 * me / (kF) / abs(ωn) * atan(ω_c / abs(ωn))
+    end
 end
 
 function Πs0wrapped(wgrid, param; ω_c=0.1param.EF)
@@ -242,11 +242,12 @@ function pcf_loop_ab(A, B, param; ω_c=0.1param.EF,
 
 end
 
-function pcf_loop_ab_brutal(A, B, param; ω_c=0.1param.EF,
+function pcf_loop_ab_brutal_step(A, B, param; ω_c=0.1param.EF,
     α=0.9, Nmax=1e4)
     wgrid = A.mesh[1]
     Π = Πs0wrapped(wgrid, param; ω_c=ω_c)
-    tail = Πstail(wgrid[end], 200.0 * wgrid[end], param; ω_c=ω_c)
+    # tail = Πstail(wgrid[end], 200.0 * wgrid[end], param; ω_c=ω_c)
+    tail = 0.0
     R = similar(A)
     R.data .= A.data
     Rsum = similar(R)
@@ -292,7 +293,8 @@ using Test
 @testset "pcf resummed" begin
     # fname = "run/data/PCFresumdlr_3000010.jld2"
     # fname = "run/data/PCFresumrs3_3000022.jld2"
-    fname = "run/data/PCFresumrs3_3055022.jld2"
+    # fname = "run/data/PCFresumrs3_3055022.jld2"
+    fname = "run/data/PCFresumrs3_3066022.jld2"
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
@@ -301,7 +303,8 @@ using Test
     # fname = "run/data/PCFresumdlr_3000044.jld2"
     # fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
     # fname = "run/data/Bsmooth_ko3ph2_beta6400_lam6.jld2"
-    fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
+    # fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
+    fname = "run/data/Bstep_ko3ph4_beta6400_lam6.jld2"
     param, B = load_B(fname)
     # B.data .*= param.kF
     # println((B[1, 1], B[1, end]))
@@ -311,13 +314,13 @@ using Test
     # println((A[1], A[end]))
     # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
-    num = 5
+    num = 9
     betas = [400 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
         beta = betas[i]
         # newparam, newA, newB = interp_AB(beta / param.EF, A, B, param)
-        newparam, newA, newB = interp_AB_brutal(beta / param.EF, A, B, param)
+        newparam, newA, newB = interp_AB_brutal_step(beta / param.EF, A, B, param)
         # newparam, newA, newB = RS_AB_brutal(beta / param.EF, A, B, param)
 
         # println(newparam.β)
@@ -326,7 +329,7 @@ using Test
 
         # lamu, R = pcf_loop_ab(newA, newB, newparam)
         # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
-        lamu, R = pcf_loop_ab_brutal(newA, newB, newparam)
+        lamu, R = pcf_loop_ab_brutal_step(newA, newB, newparam)
         println("lamu=$lamu")
         lamus[i] = lamu
     end
