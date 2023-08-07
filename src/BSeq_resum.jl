@@ -1202,5 +1202,7 @@ function pcf_resum_smooth(param, channel::Int;
 
 end
 
+include("BSeq_resum_minisub.jl")
+
 end
 

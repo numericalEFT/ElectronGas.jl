@@ -221,8 +221,8 @@ reflectkwargs(; kwargs...) = kwargs
 
     wsph, a2f_iso = read_a2f(prefix; dir=dir)
 
-    # Ec = 0.1
-    Ec = 1.0
+    Ec = 0.1
+    # Ec = 1.0
 
     # compute_invR0(0.00044, Ec, wsph, a2f_iso)
     # compute_invR0(0.00042, Ec, wsph, a2f_iso)
@@ -237,15 +237,15 @@ reflectkwargs(; kwargs...) = kwargs
     invR0s = zeros(Float64, N)
     lamus = zeros(Float64, N)
 
-    kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
-    # kwargs = reflectkwargs(muc=0.1)
+    # kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
+    kwargs = reflectkwargs(muc=0.0)
     println(kwargs)
 
     for i in 1:N
-        # TinK = 5.0 + 0.5 * (i - 1)
+        TinK = 7.0 + 0.5 * (i - 1)
         # TinK = 35.0 * 1.1^((i - 1) / N)
         # TinK = 1.0 * sqrt(2)^(i - 1)
-        TinK = 1.0 * 8^((i - 1) / N)
+        # TinK = 1.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)
         invR0s[i] = compute_invR0(T, Ec, wsph, a2f_iso; kwargs...)

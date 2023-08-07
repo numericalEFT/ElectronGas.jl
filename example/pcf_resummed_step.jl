@@ -294,7 +294,8 @@ using Test
     # fname = "run/data/PCFresumdlr_3000010.jld2"
     # fname = "run/data/PCFresumrs3_3000022.jld2"
     # fname = "run/data/PCFresumrs3_3055022.jld2"
-    fname = "run/data/PCFresumrs3_3066022.jld2"
+    # fname = "run/data/PCFresumrs3_3066022.jld2"
+    fname = "run/data/Bstep_ko3_beta6400.jld2"
     param, A, B = load_AB(fname)
     # println(size(A))
     # println(size(B))
@@ -304,8 +305,10 @@ using Test
     # fname = "run/data/Bsmooth_koph3_beta6400_lam6.jld2"
     # fname = "run/data/Bsmooth_ko3ph2_beta6400_lam6.jld2"
     # fname = "run/data/Bsmooth_ko3ph4_beta6400_lam6.jld2"
-    fname = "run/data/Bstep_ko3ph4_beta6400_lam6.jld2"
-    param, B = load_B(fname)
+    # fname = "run/data/Bstep_ko3ph4_beta6400_lam6.jld2"
+    # fname = "run/data/Bstep_ko3ph2_beta6400_lam6.jld2"
+    # fname = "run/data/Bstep_ko3ph1_beta6400_lam6.jld2"
+    # param, B = load_B(fname)
     # B.data .*= param.kF
     # println((B[1, 1], B[1, end]))
 
@@ -314,7 +317,7 @@ using Test
     # println((A[1], A[end]))
     # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
-    num = 9
+    num = 8
     betas = [400 * 2^(i - 1) for i in 1:num]
     lamus = zeros(Float64, length(betas))
     for i in 1:length(betas)
@@ -334,7 +337,7 @@ using Test
         lamus[i] = lamu
     end
     log10tc = -crit_beta(betas, lamus; init=3)
-    println("Tc=$(10^log10tc)")
+    println("$log10tc, Tc=$(10^log10tc)")
     log10tc = -crit_beta(betas, lamus; init=3, fin=6)
-    println("Tc=$(10^log10tc)")
+    println("$log10tc, Tc=$(10^log10tc)")
 end

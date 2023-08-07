@@ -307,7 +307,7 @@ using Test
     # println((B[1, 1], B[1, end]))
 
     # println(size(B))
-    # println(param)
+    println(param)
     # println((A[1], A[end]))
     # println((B[1, 1], B[1, end], B[end, 1], B[end, end]))
     A, B = extend_AB(A, B, param)
