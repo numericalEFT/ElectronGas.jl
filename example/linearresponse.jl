@@ -42,8 +42,8 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap$(dim)D_ph4kochi_rs$(rs)_l$(channel)_vlarge0.txt"
-    fname = "gap$(dim)D_ph4chi_rs$(rs)_l$(channel)_vlarge0.txt"
-    # fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
+    # fname = "gap$(dim)D_ph4chi_rs$(rs)_l$(channel)_vlarge0.txt"
+    fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     open(dir * fname, "a+") do io
@@ -62,9 +62,9 @@ using ElectronGas.Interaction
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 1230300
-    uid0 = 300000
+    uid0 = 1850000
     dim = 3
-    rs = 3.0
+    rs = 1.85
     # num = 14
     # num = 25
     num = 9
@@ -85,10 +85,10 @@ using ElectronGas.Interaction
     chi = [measure_chi(dim, 1 / beta[i], rs, channel;
         atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
-        # sigmatype=:none, int_type=:rpa,
+        sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:ko, Vph=phonon,
-        sigmatype=:none, int_type=:none, Vph=phonon,
+        # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
         # resum=true,

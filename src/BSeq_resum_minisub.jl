@@ -142,9 +142,13 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
         sourcem[ni, :] .*= kgrid.grid
     end
     source0 = sourcep[iw0, kF_label]
+    println("source0=$source0")
 
     # Initalize F and R
     Fp, Fm, Rp, Rm = initFR_resum_freq_smooth_minisub(wgrid, kgrid, param)
+
+    Rp.data .= sourcep.data
+    Rm.data .= sourcem.data
 
     # R0, R0_sum = 1.0, 0.0
     R0, R0_sum = source0, source0 ./ (1 - α)
@@ -166,19 +170,17 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
         calcF_freq!(Fm, Rm, G2)
 
         # calculation from imfreq F to imtime R
-        if dim == 3
+        if dim == 3 && n > Ntherm
             ω_c = 0.1param.EF
             # ΠB00 = R_kF * (1.0 / 2 / π^2 * log(ω_c * param.β))
-            ΠB00 = R_kF * (param.kF / 2 / π^2 * log(ω_c * param.β))
-            println("ΠB00=$ΠB00, R_kF=$R_kF factor=$((param.kF / 2 / π^2 * log(ω_c * param.β)))")
-            if abs(ΠB00) > 0.5
-                ΠB00 = 0.0
-            end
+            factor = (1 / kF / 4 / π^2 * log(ω_c * param.β / 0.882))
+            ΠB00 = Rp[iw0, ikF] * factor
+            # ΠB00 = 0.0
+            println("ΠB00=$ΠB00, R0=$R0, factor=$(factor)")
+            # if abs(ΠB00) > 1.0
+            #     ΠB00 = 1.0 * sign(ΠB00)
+            # end
             calcR_freq_resum_smooth_minisub!(Fp, Fm, Rp, Rm, sourcep, sourcem, ΠB00, kernel, kwgrid, qgrids)
-            # elseif dim == 2
-            #     calcR_2d!(F_freq, R_imt, R_ins, source, kernel, kernel_ins, qgrids)
-        else
-            error("Not implemented for $dim dimensions.")
         end
         R_kF = Rp[iw0, ikF]
         R0_sum = R_kF + R0_sum * α
@@ -186,9 +188,9 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
 
         # iterative calculation of the dynamical part 
         Rp_sum = view(Rp, :, :) + Rp_sum .* α
-        Rp[:, :] = Rp .* (1 - α)
+        Rp[:, :] = Rp_sum .* (1 - α)
         Rm_sum = view(Rm, :, :) + Rm_sum .* α
-        Rm[:, :] = Rm .* (1 - α)
+        Rm[:, :] = Rm_sum .* (1 - α)
         # @debug "R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))"
         # println("R(ω0, kF) = $R_kF, 1/R0 = $(-1/R0)  ($(-1/(kF + R_kF)))")
 
@@ -210,6 +212,7 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
             if verbose
                 println("lamu=$lamu")
                 println("\t R0=$(Rp[iw0,ikF]/kF), R(∞)=$(Rp[end, ikF]/kF)")
+                # println("\t R0=$(R0/kF), R(∞)=$(Rp[end, ikF]/kF)")
             end
         end
     end
@@ -222,6 +225,8 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
         Fm[ni, :] ./= kgrid.grid
         Rm[ni, :] ./= kgrid.grid
     end
+
+    println("R0=$(Rp[iw0, ikF])")
 
     return lamu, Fp, Fm, Rp, Rm
 end
@@ -343,7 +348,7 @@ function pcf_resum_smooth_minisub(param, channel::Int;
     # calculate F, R by Bethe-Slapter iteration.
     fname = "PCFresumdlr_$(uid).jld2"
     alpha = 0.882
-    minterval = π / β
+    minterval = alpha / β / 2.0
     wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [alpha / β, Euv], [alpha / β, ω_c_ratio * param.EF], Nk, minterval, order)
     # wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [-Euv, Euv], [0.0,], Nk, minterval, order)
     kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 16, 0.5minterval, 8)
