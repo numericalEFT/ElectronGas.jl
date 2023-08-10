@@ -49,7 +49,7 @@ end
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 30599999 + nB
     # uid0 = 3000599999 + nB
-    uid0 = 3000599999 + nB
+    uid0 = 300599999 + nB
     dim = 3
     rs = 3.0
     # num = 14
@@ -59,7 +59,7 @@ end
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400,]
-    beta = [6400,]
+    beta = [1600,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]

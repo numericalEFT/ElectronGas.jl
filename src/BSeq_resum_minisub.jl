@@ -173,7 +173,8 @@ function BSeq_solver_freq_resum_smooth_minisub(param, G2::GreenFunc.MeshArray,
         if dim == 3 && n > Ntherm
             ω_c = 0.1param.EF
             # ΠB00 = R_kF * (1.0 / 2 / π^2 * log(ω_c * param.β))
-            factor = (1 / kF / 4 / π^2 * log(ω_c * param.β / 0.882))
+            # factor = (1 / 4 / kF / π^2 * log(ω_c * param.β / 0.882))
+            factor = (1 / 4 / π^2 * log(ω_c * param.β / 0.882))
             ΠB00 = Rp[iw0, ikF] * factor
             # ΠB00 = 0.0
             println("ΠB00=$ΠB00, R0=$R0, factor=$(factor)")
@@ -286,6 +287,7 @@ function BSeq_solver_resumB_smooth_minisub(param,
         B.data[iw, :, 1] .= Rm.data[:, ikF] ./ kF
         if issave
             jldopen(fname, "w") do file
+                file["param"] = param
                 file["B"] = B
             end
         end
@@ -349,7 +351,8 @@ function pcf_resum_smooth_minisub(param, channel::Int;
     fname = "PCFresumdlr_$(uid).jld2"
     alpha = 0.882
     minterval = alpha / β / 2.0
-    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [alpha / β, Euv], [alpha / β, ω_c_ratio * param.EF], Nk, minterval, order)
+    # wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [alpha / β, Euv], [alpha / β, ω_c_ratio * param.EF], Nk, minterval, order)
+    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [alpha / β, Euv], [alpha / β,], 2Nk, minterval, order)
     # wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [-Euv, Euv], [0.0,], Nk, minterval, order)
     kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 16, 0.5minterval, 8)
     # kwgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.0, 2Euv], [0.0, param.ωp], 2Nk, minterval, 2order)
