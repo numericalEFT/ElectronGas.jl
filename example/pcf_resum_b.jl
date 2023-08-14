@@ -49,7 +49,7 @@ end
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 30599999 + nB
     # uid0 = 3000599999 + nB
-    uid0 = 300599999 + nB
+    uid0 = 3000199999 + nB
     dim = 3
     rs = 3.0
     # num = 14
@@ -59,7 +59,7 @@ end
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
     # beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [400,]
-    beta = [1600,]
+    beta = [3200,]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -73,7 +73,7 @@ end
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     result = [pcf_resum_ab(dim, 1 / beta[i], rs, channel;
         # atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=30, α=0.8,
-        atol=1e-7, rtol=1e-10, Nk=6, order=4, Ntherm=20, α=0.9,
+        atol=1e-7, rtol=1e-10, Nk=8, order=4, Ntherm=20, α=0.9,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
         sigmatype=:none, int_type=:ko,
