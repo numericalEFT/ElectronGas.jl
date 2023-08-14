@@ -25,26 +25,44 @@ function Πs0(ωn, param; ω_c=0.1param.EF)
     # end
 end
 
-θ, rs, dim = 0.000001, 1.919, 3
-param = ElectronGas.Parameter.rydbergUnit(θ, rs, dim)
-wc1, wc2 = 0.1param.EF, 0.01param.EF
+function calc_piwpi(θ, wc1_ratio, wc2_ratio)
+    rs, dim = 1.919, 3
+    param = ElectronGas.Parameter.rydbergUnit(θ, rs, dim)
+    wc1, wc2 = wc1_ratio * param.EF, wc2_ratio * param.EF
 
-Ec = 100param.EF
-alpha = 0.882
-wgrid = CompositeGrids.CompositeG.LogDensedGrid(:gauss, [alpha / param.β, Ec], [alpha / param.β,], 24, alpha / param.β / 2, 8)
-dataj = zeros(Float64, length(wgrid))
-datai = zeros(Float64, length(wgrid))
-for i in 1:length(wgrid)
-    for j in 1:length(wgrid)
-        wi, wj = wgrid[i], wgrid[j]
-        dataj[j] = Πs0(wi, param; ω_c=wc1) * Πs0(wj, param; ω_c=wc2) * Ws_freq(wi - wj, param)
+    Ec = 100param.EF
+    alpha = 0.882
+    wgrid = CompositeGrids.CompositeG.LogDensedGrid(:gauss, [alpha / param.β, Ec], [alpha / param.β,], 32, alpha / param.β / 2, 8)
+    dataj = zeros(Float64, length(wgrid))
+    datai = zeros(Float64, length(wgrid))
+    for i in 1:length(wgrid)
+        for j in 1:length(wgrid)
+            wi, wj = wgrid[i], wgrid[j]
+            dataj[j] = Πs0(wi, param; ω_c=wc1) * Πs0(wj, param; ω_c=wc2) * Ws_freq(wi - wj, param)
+        end
+        datai[i] = Interp.integrate1D(dataj, wgrid)
     end
-    datai[i] = Interp.integrate1D(dataj, wgrid)
+    result = Interp.integrate1D(datai, wgrid) / π^2
+    return result
 end
-result = Interp.integrate1D(datai, wgrid) / π^2
-println(result)
 
+println(calc_piwpi(1e-6, 0.1, 0.1))
+num = 9
+θ1 = 0.0001
+# betas = [400 * 2^(i - 1) for i in 1:num]
+betas = [1 / θ1 * 2^(i - 1) for i in 1:num]
+lnbetas = [log10(beta) for beta in betas]
+# piwpis = [calc_piwpi(1 / beta, 0.1, 0.1) for beta in betas]
+piwpis = [calc_piwpi(1 / beta, 10 / betas[1], 0.1) for beta in betas]
+println(lnbetas)
+println(piwpis)
 
+println((piwpis[end] - piwpis[1]) / (lnbetas[end] - lnbetas[1]))
+
+using Plots
+plt = plot(lnbetas, piwpis)
+display(plt)
+readline()
 
 # nec = 5000
 # ngrid = [n for n in -nec:nec]
