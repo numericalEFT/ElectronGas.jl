@@ -26,7 +26,9 @@ using ..Parameters
     μ::Float64 = 1.0
 
     # e-ph
+    # eph::Float64 = 0.4 * 4 * π^2 / sqrt(2 * me * EF)
     eph::Float64 = 0.4 * 4 * π^2
+    # ω_D::Float64 = 0.0025EF
     ω_D::Float64 = 0.005EF
 
     # pseudo potential

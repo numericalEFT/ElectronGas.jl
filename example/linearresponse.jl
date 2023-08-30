@@ -40,10 +40,11 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     dir = "./run/"
     # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
     # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
-    # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge0.txt"
+    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
+    # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge1.txt"
     # fname = "gap$(dim)D_ph4kochi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap$(dim)D_ph4chi_rs$(rs)_l$(channel)_vlarge0.txt"
-    fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
+    # fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap_plasmon_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     # fname = "gap_plasmonfs_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
     open(dir * fname, "a+") do io
@@ -62,15 +63,19 @@ using ElectronGas.Interaction
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 1230300
-    uid0 = 3500000
+    uid0 = 19191600000
     dim = 3
-    rs = 3.5
+    rs = 1.91916
     # num = 14
     # num = 25
-    num = 9
+    # num = 9
+    # num = 21
+    num = 23
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    beta = [400 * 2^(i - 1) for i in 1:num]
+    # beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [6.25 * sqrt(2)^(i - 1) for i in 1:num]
+    # beta = [6400 * sqrt(2) * sqrt(2)^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [100 * 2^(i / num) for i in LinRange(0, num - 1, num)]
@@ -84,9 +89,9 @@ using ElectronGas.Interaction
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     chi = [measure_chi(dim, 1 / beta[i], rs, channel;
         atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
-        # sigmatype=:none, int_type=:rpa, Vph=phonon,
+        sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
-        sigmatype=:none, int_type=:ko,
+        # sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:ko, Vph=phonon,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,

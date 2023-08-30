@@ -22,7 +22,7 @@ end
 using ElectronGas.GreenFunc
 using ElectronGas.GreenFunc.CompositeGrids
 Πs(ω; ω_c=0.1) = atan(ω_c / abs(ω)) / abs(ω)
-β = 3200
+β = 6400
 α = 0.882
 Nmax = 100000
 wg1 = GreenFunc.ImFreq(β, FERMION; grid=[i for i in 0:Nmax])
@@ -31,7 +31,8 @@ data1 = [Πs(wg1[i]) for i in 1:length(wg1)]
 data2 = [Πs(wg2[i]) for i in 1:length(wg2)]
 int1 = sum(data1) / β
 int2 = Interp.integrate1D(data2, wg2) / 2π
-println((int1, int2, log(0.1 * β) / π))
+# println((int1, int2, log(0.1 * β) / π))
+println((int1, int2, log(0.1 * β / α) / 4))
 # using Plots
 # p = plot(xlim=(0.0, 5.0))
 # for duid in 1:5

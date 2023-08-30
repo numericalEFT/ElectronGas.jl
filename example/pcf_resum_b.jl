@@ -49,9 +49,9 @@ end
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 30599999 + nB
     # uid0 = 3000599999 + nB
-    uid0 = 3000199999 + nB
+    uid0 = 1000799999 + nB
     dim = 3
-    rs = 3.0
+    rs = 1.0
     # num = 14
     # num = 25
     num = 1
@@ -76,7 +76,7 @@ end
         atol=1e-7, rtol=1e-10, Nk=8, order=4, Ntherm=20, α=0.9,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
-        sigmatype=:none, int_type=:ko,
+        sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,

@@ -272,6 +272,29 @@ Returns the product of two bare single-particle Green's function.
 ```
 where ``\\omega= k^2/(2m)-\\mu``.
 """
+# function G02wrapped(Euv, rtol, sgrid, param)
+#     @unpack me, β, μ = param
+
+#     wn_mesh = GreenFunc.ImFreq(β, FERMION; Euv=Euv, rtol=rtol, symmetry=:pha)
+#     green = GreenFunc.MeshArray(wn_mesh, sgrid; dtype=Float64)
+#     for ind in eachindex(green)
+#         ni, ki = ind[1], ind[2]
+#         ωn = wn_mesh[ni]
+#         ω = sgrid.grid[ki]^2 / 2 / me - μ
+#         green[ind] = 1 / (ωn^2 + ω^2)
+#     end
+#     return green
+# end
+
+# function load_zph(fname)
+#     f = jldopen(fname, "r")
+#     n, Z = f["n"], f["Z"]
+#     return SimpleG.Arbitrary(n), Z
+# end
+
+# ngrid, Zph = load_zph("run/data/sigma_12800.0.jld2")
+
+# function G02wrapped(Euv, rtol, sgrid, param; Zph=Zph, ngrid=ngrid)
 function G02wrapped(Euv, rtol, sgrid, param)
     @unpack me, β, μ = param
 
@@ -280,6 +303,9 @@ function G02wrapped(Euv, rtol, sgrid, param)
     for ind in eachindex(green)
         ni, ki = ind[1], ind[2]
         ωn = wn_mesh[ni]
+        # n = (ωn / π * β / param.beta * 12800 - 1) / 2
+        # zph = Interp.interp1D(Zph, ngrid, n)
+        # ωn = ωn / zph
         ω = sgrid.grid[ki]^2 / 2 / me - μ
         green[ind] = 1 / (ωn^2 + ω^2)
     end
