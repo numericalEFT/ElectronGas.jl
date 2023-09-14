@@ -208,7 +208,7 @@ function calcΣ_3d(G::GreenFunc.MeshArray, W::LegendreInteraction.DCKernel)
     return Σ / (-4 * π^2), Σ_ins / (-4 * π^2)
 end
 
-function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; kwargs...)
+function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing, w_type=:ee; kwargs...)
     @unpack dim = param
     # kernel = SelfEnergy.LegendreInteraction.DCKernel_old(param;
     # Euv = Euv, rtol = rtol, Nk = Nk, maxK = maxK, minK = minK, order = order, int_type = int_type, spin_state = :sigma)
@@ -220,26 +220,26 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{Ab
     if dim == 2
         if isnothing(kgrid)
             kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
-                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, w_type=w_type, kwargs...)
         else
             if (kgrid isa AbstractVector)
                 kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
             end
             kernel = SelfEnergy.LegendreInteraction.DCKernel_2d(param;
-                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, w_type=w_type, kwargs...)
         end
         G0 = G0wrapped(Euv, rtol, kGgrid, param)
         Σ, Σ_ins = calcΣ_2d(G0, kernel)
     elseif dim == 3
         if isnothing(kgrid)
             kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kwargs...)
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, w_type=w_type, kwargs...)
         else
             if (kgrid isa AbstractVector)
                 kgrid = SimpleG.Arbitrary{eltype(kgrid)}(kgrid)
             end
             kernel = SelfEnergy.LegendreInteraction.DCKernel0(param;
-                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, kwargs...)
+                Euv=Euv, rtol=rtol, Nk=Nk, maxK=maxK, minK=minK, order=order, int_type=int_type, spin_state=:sigma, kgrid=kgrid, w_type=w_type, kwargs...)
         end
         G0 = G0wrapped(Euv, rtol, kGgrid, param)
         Σ, Σ_ins = calcΣ_3d(G0, kernel)
@@ -250,9 +250,9 @@ function G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid::Union{Ab
     return Σ, Σ_ins
 end
 
-function G0W0(param, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa,
+function G0W0(param, kgrid::Union{AbstractGrid,AbstractVector,Nothing}=nothing; Euv=100 * param.EF, rtol=1e-14, Nk=12, maxK=6 * param.kF, minK=1e-8 * param.kF, order=8, int_type=:rpa, w_type=:ee,
     kwargs...)
-    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid; kwargs...)
+    return G0W0(param, Euv, rtol, Nk, maxK, minK, order, int_type, kgrid, w_type; kwargs...)
 end
 
 """
