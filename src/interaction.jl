@@ -598,7 +598,7 @@ end
 
 
 """
-    function T0(q::Float64, n::Int, param)
+    function T0(q::Float64, n::Int, param; ; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...)
 
 Vacuum two-particle T-matrix in matsubara frequency. 
 #Arguments:
@@ -607,14 +607,13 @@ Vacuum two-particle T-matrix in matsubara frequency.
  - param: other system parameters
 """
 
-function T0matrix(q::Float64, n::Int, param)
-    β, me = param.β, param.me
-    as = 4π * param.as / me
-    B = me^(3/2)/(4π)
-    if as < 1e-6
-        return as/(1. - as * B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β * im)))
+
+function T0matrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FreeElectron, kwargs...)
+    as = (4π * param.as) / param.me
+    if param.as < 1e-6
+        return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
     else
-        return 1/((1/as) - B * sqrt(Complex(q^2/ (4 * me) - 2π * n/β * im)))
+        return 1 ./ (1 / as .+ ladderfunc(q, n, param; kwargs...) )
     end
 end
 
@@ -630,9 +629,10 @@ Many-body T-matrix in matsubara frequency.
 """
 
 function Tmatrix(q::Float64, n::Int, param; ladderfunc=Polarization.Ladder0_FiniteTemp, kwargs...)
-    as = 4π * param.as / param.me
+    as = (4π * param.as) / param.me
     if param.as < 1e-6
         return as ./ (1 .+ as * ladderfunc(q, n, param; kwargs...))
+    else
         return 1 ./ (1 / as .+ ladderfunc(q, n, param; kwargs...) )
     end
 end
@@ -673,7 +673,7 @@ Difference between Many-body T-matrix and vacuum two-particle T-matrix in imagin
 - param: other system parameters
 """
 
-function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
+function T0matrix_imtime(tau::Float64, q::Float64,  param)
     """ Two particle scattering in a vacuum T-matrix in imaginary time """
     β, me, as = param.β, param.me, param.as
     B = me^(3/2)/(4π)
@@ -688,7 +688,7 @@ function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
     function integrand1(vars, tau, param)
         me, as = param.me, param.as
         m = me * as^2
-        u = vars[1][1]
+        u = vars
         y = u/(1-u)
         fraction = y^2/(y^2 + tau/ m)
         return 2 * exp(-y^2) * fraction
@@ -696,10 +696,10 @@ function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
     
     function integrand2(vars, q, tau, param)
         β, me = param.β, param.me
-        u = vars[1][1]
+        u = vars
         y = u/(1-u)
         factor = 1/(exp(β * (y^2/ tau + q^2/ (4 * me)))-1)
-        return factor * integrand1(vars, q, tau, param)
+        return factor * integrand1(vars, tau, param)
     end
 
     tgrid = CompositeGrid.LogDensedGrid(
@@ -710,13 +710,15 @@ function T0maxtrix_imtime(tau::Float64, q::Float64,  param)
         0.005, # minimum interval length of log grid
         5 # N of bottom layer
     )
-    data = [(integrand1(t, q, tau, param)+integrand2(t, q, tau, param)) for (ti, t) in  enumerate(tgrid.grid)]
+    data = [(integrand1(t, tau, param)) for (ti, t) in  enumerate(tgrid.grid)]
+    # data = [0.0 for (ti,t) in  enumerate(tgrid.grid)]
     int_result = Interp.integrate1D(data, tgrid)
     integralfactor = 1/(B * pi * sqrt(tau))
 
     # Propagator factor
     propfactor = exp(-q^2/ (4 * me) * tau)
 
+    # return propfactor*(poleterm + int_result * integralfactor)
     return propfactor*(poleterm + int_result * integralfactor)
 end
 

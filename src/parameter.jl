@@ -24,7 +24,7 @@ using ..Parameters
     EF::Float64 = 1.0     #kF^2 / (2me)
     β::Float64 = 200 # bare inverse temperature
     μ::Float64 = 1.0
-    as::Float64 = -2.5   # s-wave scattering length (local contact interaction)
+    as::Float64 = 2.5   # s-wave scattering length (local contact interaction)
 
     # artificial parameters
     Λs::Float64 = 0.0   # Yukawa-type spin-symmetric interaction  ~1/(q^2+Λs)

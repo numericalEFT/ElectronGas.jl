@@ -186,7 +186,8 @@ function Ladder0_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6
     integrand = zeros(ComplexF64, kgrid.size)
     if dim == 3
         for (ki, k) in enumerate(kgrid.grid)
-            if Ωn <1000
+            #integrand[ki] = _LadderT3d_integrand(k, q, Ωn, param)
+            if Ωn <100
                 integrand[ki] = _LadderT3d_integrand(k, q, Ωn, param)
                 @assert !isnan(integrand[ki]) "nan at k=$k, q=$q, n=$n"
             else
@@ -195,7 +196,7 @@ function Ladder0_FiniteTemp(q::Float64, n::Int, param; scaleN=20, minterval=1e-6
         end
     end
     result = Interp.integrate1D(integrand, kgrid)
-    if Ωn> 1000
+    if Ωn> 100
         result = -me^(3 / 2) / (4π) * sqrt(Complex(q^2 / (4me) - 1im * Ωn - 2μ)) # Replace high frequency tail with two-particle particle-particle term
     end
     return result
@@ -207,7 +208,7 @@ function Ladder0_FreeElectron(q::Float64, n::Int, param)
    
         error("No support for finite-temperature polarization in $dim dimension!")
     end
-    return -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * n / β)
+    return -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * n / β - 2μ)
 end
 
 """
@@ -354,6 +355,7 @@ function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param; scaleN=20, min
         for (ki, k) in enumerate(kgrid.grid)
             for (mi, m) in enumerate(n)
               Ωm = 2π * m / β
+              #integrand[ki, mi] = _LadderT3d_integrand(k, q, Ωm, param)
                 if Ωm < 1000
                     integrand[ki, mi] = _LadderT3d_integrand(k, q, Ωm, param)
                     @assert !isnan(integrand[ki, mi]) "nan at k=$k, q=$q"
@@ -366,7 +368,7 @@ function Ladder0_FiniteTemp(q::Float64, n::AbstractVector, param; scaleN=20, min
     result = Interp.integrate1D(integrand, kgrid; axis=1)
     for (mi, m) in enumerate(n)
        Ωm = 2π * m / β
-        if Ωm > 1000
+        if Ωm > 100
             result[mi] = -me^(3 / 2) / (4π) * sqrt(Complex(q^2 / (4me) - 1im * Ωm - 2μ)) # Replace with two-particle particle-particle high frequency tail
         end
     end
@@ -379,11 +381,11 @@ function Ladder0_FreeElectron(q::Float64, n::AbstractVector, param)
     if dim != 3
         error("No support for finite-temperature polarization in $dim dimension!")
     end
-    integrand = zeros(ComplexF64, length(n))
+    result = zeros(ComplexF64, length(n))
     for (mi, m) in enumerate(n)
-        integrand[mi] = Ladder0_FreeElectron(q, m, param)
+        result[mi] = -me^(3 / 2) / (4π) * sqrt(q^2 / (4me) - 1im * 2π * m / β - 2μ)
     end
-    return integrand
+    return result
 end
 
 
