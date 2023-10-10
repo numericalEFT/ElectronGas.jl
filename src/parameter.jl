@@ -27,9 +27,9 @@ using ..Parameters
 
     # e-ph
     # eph::Float64 = 0.4 * 4 * π^2 / sqrt(2 * me * EF)
-    eph::Float64 = 0.4 * 4 * π^2
-    # ω_D::Float64 = 0.0025EF
+    eph::Float64 = 0.1 * 4 * π^2
     ω_D::Float64 = 0.005EF
+    # ω_D::Float64 = 0.005EF
 
     # pseudo potential
     use_psp = false

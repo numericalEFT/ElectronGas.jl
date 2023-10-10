@@ -223,8 +223,9 @@ function calcR!(R, A, B, Π, param; tail=0.0)
         end
         # factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         integraltail = B[wi, end] * tail * R[end]
-        factor = 1 / 2 / π / (4 * π^2) * param.kF^2
-        tailfactor = param.kF^2 / (param.β * 4 * π^2)
+        factor0 = param.kF / (4 * π) * 1.4
+        factor = factor0 / 2 / π
+        tailfactor = factor0 / param.β
         result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor + integraltail * tailfactor
     end
     R.data .= result
@@ -241,7 +242,7 @@ function calcR_brutal!(R, A, B, Π, param; tail=0.0)
         result[wi] += B[wi, end] * tail * R[end]
     end
     # factor = param.kF^2 / (param.β * 4 * π^2)
-    factor = param.kF^2 / (param.β * 4 * π^2)
+    factor = param.kF / (param.β * 2 * π)
     result .= result .* factor
     R.data .= result .+ A.data
 end
@@ -355,11 +356,11 @@ end
 # param, B0 = f["param"], f["B"]
 # println(param)
 
-βmax = 54321
-rs = 1.91916
-U0 = 0.6770001354095592
-# U0 = 0.0
-λratio = 0.4
+βmax = 123456
+rs = 0.5
+# U0 = 0.6770001354095592
+U0 = 0.0
+λratio = 0.1
 ωdratio = 0.005
 
 # savefname = "./run/rpcf3D_phrpaPiph2_rs1.0_l0_vlarge0.txt"
@@ -368,12 +369,12 @@ U0 = 0.6770001354095592
 # savefname = "./run/rpcf3D_rpaPiph_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_v0025.txt"
-savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_sigma.txt"
+# savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_sigma.txt"
 # savefname = "./run/rpcf3D_ph1_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1_rs1.91916_l0_sigma.txt"
 
 # param = ElectronGas.Parameter.rydbergUnit(1 / 23456, 1.0, 3)
-param = ElectronGas.Parameter.rydbergUnit(1 / βmax, rs, 3)
+param = ElectronGas.Parameter.rydbergUnit(1 / βmax, rs, 2)
 wgrid = CompositeGrids.CompositeG.LogDensedGrid(:cheb, [0.882 / param.β, 10param.EF], [0.882 / param.β, 0.1param.EF], 64, 0.882 / param.β, 10)
 B0 = GreenFunc.MeshArray(wgrid, wgrid; dtype=Float64)
 # B0.data .= -4.309799228719428
@@ -387,18 +388,18 @@ B = MeshArray(wgrid, wgrid; dtype=Float64)
 A.data .= 1
 B.data .= B0[1]
 
-param = ElectronGas.Parameter.Para(param; eph=λratio * 4 * π^2 / param.kF, ω_D=ωdratio * param.EF)
+param = ElectronGas.Parameter.Para(param; eph=λratio * 4 * π^2, ω_D=ωdratio * param.EF)
 println(param)
 
 B = add_phonon(B, param)
 
 # A, B = extend_AB(A, B, param)
-# num = 7
-# betas = [400 * 2^(i - 1) for i in 1:num]
+num = 9
+betas = [400 * 2^(i - 1) for i in 1:num]
 # num = 24
 # betas = [50 * sqrt(2)^(i - 1) for i in 1:num]
-num = 41
-betas = [50 * 2^((i - 1) / 4) for i in 1:num]
+# num = 41
+# betas = [50 * 2^((i - 1) / 4) for i in 1:num]
 lamus = zeros(Float64, length(betas))
 for i in 1:length(betas)
     beta = betas[i]
@@ -423,12 +424,12 @@ log10tc = -crit_beta(betas, lamus; init=16)
 # log10tc = -crit_beta(betas, lamus; init=10, fin=7)
 println("$log10tc, Tc=$(10^log10tc)")
 
-open(savefname, "w") do io
-end
+# open(savefname, "w") do io
+# end
 
-for i in 1:num
-    data = [betas[i] lamus[i] lamus[i] 0 1.0]
-    open(savefname, "a+") do io
-        writedlm(io, data, ' ')
-    end
-end
+# for i in 1:num
+#     data = [betas[i] lamus[i] lamus[i] 0 1.0]
+#     open(savefname, "a+") do io
+#         writedlm(io, data, ' ')
+#     end
+# end
