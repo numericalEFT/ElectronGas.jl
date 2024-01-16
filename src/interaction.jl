@@ -407,7 +407,8 @@ function RPAwrapped(Euv, rtol, sgrid::SGT, param;
 
     for (ki, k) in enumerate(sgrid)
         for (ni, n) in enumerate(wn_mesh.grid)
-            green_dyn[1, ni, ki], green_dyn[2, ni, ki] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true, kwargs...)
+            green_dyn[1, ni, ki], green_dyn[2, ni, ki] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, kwargs...)
+            # green_dyn[1, ni, ki], green_dyn[2, ni, ki] = RPA(k, n, param; pifunc=pifunc, Vinv_Bare=Vinv_Bare, regular=true, kwargs...)
         end
         green_ins[1, 1, ki], green_ins[2, 1, ki] = Vinv_Bare(k, param)
     end
@@ -442,7 +443,8 @@ function landauParameterTakada(q, n, param; kwargs...)
     B2 = 2 * A2 / (1.0 - D)
     F_s = A1 * e0^2 / ϵ0 / (kF^2 + B1 * q^2) + A2 * e0^2 / ϵ0 / (kF^2 + B2 * q^2)
     F_a = A1 * e0^2 / ϵ0 / (kF^2 + B1 * q^2) - A2 * e0^2 / ϵ0 / (kF^2 + B2 * q^2)
-    return F_s, F_a
+    # return F_s, F_a
+    return -F_s, -F_a
 end
 
 """
@@ -514,7 +516,8 @@ function landauParameterMoroni(q, n, param; kwargs...)
     Q = q / kF
     G_s = C * Q^2 + B * Q^2 / (D + Q^2) + α * Q^4 * exp(-β_0 * Q^2)
     F_s = 4 * π * e0^2 * G_s / q^2
-    return F_s, 0.0
+    # return F_s, 0.0
+    return -F_s, 0.0
 end
 
 
