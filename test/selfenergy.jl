@@ -108,9 +108,12 @@
             @test isapprox(mratio, m, rtol=3e-3)
             @test isapprox(mratio, mratio1, rtol=1e-4)
 
+            δμ = SelfEnergy.chemicalpotential(param, Σ, Σ_ins)
+
             println("θ = $θ,  rs= $rs")
             println("Z-factor = $Z0 ($z), rtol=$(Z0/z-1)")
             println("m*/m = $mratio ($m), rtol=$(mratio/m-1)")
+            println("δμ = $δμ")
 
             ## test G_RPA
             G = SelfEnergy.Gwrapped(Σ, Σ_ins, param)

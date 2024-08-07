@@ -89,6 +89,27 @@ function _reconstruct(pp::Para, di)
     return Para(; dargs...)
 end
 
+"""
+    function from_string(stringrep::String)
+
+Parses a string representation of the given Para object.
+"""
+function from_string(stringrep::String)
+    local para
+    try
+        kwargs = Dict()
+        for s in split(stringrep, "\n  ")[2:end]
+            namestr, type, val = split(s, " ")
+            name = Symbol(strip(namestr, ':'))
+            kwargs[name] = parse(Float64, val)
+        end
+        para = Para(; kwargs...)
+    catch
+        error("Invalid string representation of Para: $stringrep")
+    end 
+    return para
+end
+
 # function Base.getproperty(obj::Para, sym::Symbol)
 #     if sym === :beta # dimensionless beta
 #         return obj.β * obj.EF
