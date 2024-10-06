@@ -202,7 +202,7 @@ function bubbledysonreg(Vinv::Float64, F::Float64, Π::Float64)
 end
 
 function bubblecorrection(q::Float64, n::Int, param;
-    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, regular=false, massratio=1.0, kwargs...)
+    pifunc=Polarization0_ZeroTemp, landaufunc, Vinv_Bare=coulombinv, regular=false, massratio=1.0, kwargs...)
     Fs::Float64, Fa::Float64 = landaufunc(q, n, param; massratio=massratio, kwargs...)
     Ks::Float64, Ka::Float64 = 0.0, 0.0
     Vinvs::Float64, Vinva::Float64 = Vinv_Bare(q, param)
@@ -457,7 +457,7 @@ end
 
 """
     function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
-        pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+        pifunc=Polarization0_ZeroTemp, landaufunc, Vinv_Bare=coulombinv, kwargs...) where {SGT}
 
 Return dynamic part and instant part of KO-interaction Green's function separately. Each part is a MeshArray with inner state 
 (1: spin symmetric part, 2: asymmetric part), and ImFreq and q-grid mesh.
@@ -472,7 +472,7 @@ Return dynamic part and instant part of KO-interaction Green's function separate
  - Vinv_Bare: caller to the bare Coulomb interaction
 """
 function KOwrapped(Euv, rtol, sgrid::SGT, param; int_type=:ko,
-    pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, kwargs...) where {SGT}
+    pifunc=Polarization0_ZeroTemp, landaufunc, Vinv_Bare=coulombinv, kwargs...) where {SGT}
     # TODO: innerstate should be in the outermost layer of the loop. Hence, the functions such as KO and Vinv_Bare should be fixed with inner state as argument.
     @unpack β = param
     wn_mesh = GreenFunc.ImFreq(β, BOSON; Euv=Euv, rtol=rtol, symmetry=:ph)
@@ -510,7 +510,7 @@ Return the total effective interaction
 ```
 which reduces to the convential KO interaction if ``C_q^{\\pm} \\equiv f_q^{\\pm}``
 """
-function KO_total(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc=landauParameterTakada, Vinv_Bare=coulombinv, counter_term=counterterm, kwargs...)
+function KO_total(q, n, param; pifunc=Polarization0_ZeroTemp, landaufunc, Vinv_Bare=coulombinv, counter_term=counterterm, kwargs...)
     @unpack spin = param
 
     if abs(q) < EPS
