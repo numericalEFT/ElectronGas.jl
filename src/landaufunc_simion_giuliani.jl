@@ -53,8 +53,6 @@ end
 
 @inline function spin_susceptibility_enhancement(rs)
     alpha_ueg = (4 / 9π)^(1 / 3)
-    # return 1 - (alpha_ueg * rs / π) + 3(alpha_ueg * rs)^2 * spin_stiffness(rs)
-    # return 1 - (alpha_ueg * rs / π) - 3(alpha_ueg * rs)^2 * negative_spin_stiffness(rs)
     return 1 - (alpha_ueg * rs / π) - 3(alpha_ueg * rs)^2 * negative_spin_stiffness(rs) / 2
 end
 
@@ -139,6 +137,23 @@ end
     G_a = C * Q^2 + B1 * Q^2 / (D1 + Q^2)  # Eq. (33)
     F_a = 4 * π * e0^2 * G_a / q^2  # F(+-) = G(+-) * V
     return F_a
+end
+
+"""
+    function landauParameterSimionGiulianiPlus(q, n, param; kwargs...)
+
+Ansatz for spin symmetric Landau parameter F_s
+following Simion & Giuliani (doi.org/10.1103/PhysRevB.77.035131).
+The ansatz interpolates Moroni's DMC data for F_S, and sets F_a = 0.
+
+#Arguments:
+ - q: momentum
+ - n: matsubara frequency given in integer s.t. ωn=2πTn
+ - param: other system parameters
+"""
+function landauParameterSimionGiulianiPlus(q, n, param; kwargs...)
+    F_s = F_s_Moroni(q, param)
+    return F_s, 0.0
 end
 
 """

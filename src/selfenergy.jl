@@ -322,7 +322,8 @@ function massratio(param, Σ::GreenFunc.MeshArray, Σ_ins::GreenFunc.MeshArray, 
     δK *= kF
     k_label = locate(Σ.mesh[2], kamp)
     kamp = Σ.mesh[2][k_label]
-    z = zfactor(param, Σ; kamp=kamp)[1]
+    z = zfactor_new(param, Σ; kamp=kamp)[1]
+    # z = zfactor(param, Σ; kamp=kamp)[1]
 
     Σ_freq = dlr_to_imfreq(to_dlr(Σ), [0, 1])
     k1, k2 = k_label, k_label + 1

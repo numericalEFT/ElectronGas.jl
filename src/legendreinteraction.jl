@@ -83,6 +83,14 @@ function interaction_dynamic(q, n, param, int_type, spin_state; kwargs...)
             # ks, ka = KO(q, n, param; Vinv_Bare=Interaction.coulombinv_2d, kwargs...)
             error("not implemented!")
         end
+    elseif int_type == :ko_simion_giuliani_plus
+        if dim == 3
+            # ks, ka = KO(q, n, param)
+            ks, ka = KO(q, n, param; regular=true, landaufunc=Interaction.landauParameterSimionGiulianiPlus, kwargs...) .* (Interaction.coulomb(q, param) .- Interaction.landauParameterSimionGiulianiPlus(q, n, param; kwargs...))
+        elseif dim == 2
+            # ks, ka = KO(q, n, param; Vinv_Bare=Interaction.coulombinv_2d, kwargs...)
+            error("not implemented!")
+        end
     elseif int_type == :ko_const
         if dim == 3
             # ks, ka = KO(q, n, param)
