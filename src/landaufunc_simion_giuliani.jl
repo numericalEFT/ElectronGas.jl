@@ -56,6 +56,12 @@ end
     return 1 - (alpha_ueg * rs / π) - 3(alpha_ueg * rs)^2 * negative_spin_stiffness(rs) / 2
 end
 
+@inline function spin_susceptibility_enhancement(param::Parameter.Para)
+    @unpack rs = param
+    alpha_ueg = (4 / 9π)^(1 / 3)
+    return 1 - (alpha_ueg * rs / π) - 3(alpha_ueg * rs)^2 * negative_spin_stiffness(rs) / 2
+end
+
 @inline function compressibility_enhancement(param::Parameter.Para)
     @unpack kF, rs, e0, qTF, n = param
     if e0 ≈ 0.0
