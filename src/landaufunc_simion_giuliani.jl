@@ -56,10 +56,31 @@ end
     return 1 - (alpha_ueg * rs / π) - 3(alpha_ueg * rs)^2 * negative_spin_stiffness(rs) / 2
 end
 
+@inline function compressibility_enhancement(param::Parameter.Para)
+    @unpack kF, rs, e0, qTF, n = param
+    if e0 ≈ 0.0
+        return 0.0
+    end
+
+    # step for numerical derivatives 
+    step = rs < 1.0 ? 1e-3 : 1e-7  # NOTE: Numerically unstable near rs = 0! TODO: Fix the instability
+    # step = 1e-7
+
+    # Calculate parameter A
+    rs1 = (n / (n + step))^(1.0 / 3.0) * rs
+    rs_1 = (n / (n - step))^(1.0 / 3.0) * rs
+    deriv_1 = (E_corr_z0(rs1) - E_corr_z0(rs)) / step
+    deriv_2 = (E_corr_z0(rs1) + E_corr_z0(rs_1) - 2 * E_corr_z0(rs)) / step^2
+    A = 0.25 - kF^2 / 4 / π / e0^2 * (2 * deriv_1 + n * deriv_2)
+    #println("A=$(A)")
+
+    kappa0_over_kappa = 1 - A * (qTF / kF)^2
+    return kappa0_over_kappa
+end
+
 # F_s from Moroni (doi:10.1103/PhysRevB.57.14569)
 @inline function F_s_Moroni(q, param::Parameter.Para)
-    @unpack kF, rs, e0 = param
-    n0 = (kF)^3 / 3 / π^2
+    @unpack kF, rs, e0, n = param
     if e0 ≈ 0.0
         return 0.0
     end
@@ -70,11 +91,11 @@ end
     x = sqrt(rs)
 
     # Calculate parameter A
-    rs1 = (n0 / (n0 + step))^(1.0 / 3.0) * rs
-    rs_1 = (n0 / (n0 - step))^(1.0 / 3.0) * rs
+    rs1 = (n / (n + step))^(1.0 / 3.0) * rs
+    rs_1 = (n / (n - step))^(1.0 / 3.0) * rs
     deriv_1 = (E_corr_z0(rs1) - E_corr_z0(rs)) / step
     deriv_2 = (E_corr_z0(rs1) + E_corr_z0(rs_1) - 2 * E_corr_z0(rs)) / step^2
-    A = 0.25 - kF^2 / 4 / π / e0^2 * (2 * deriv_1 + n0 * deriv_2)
+    A = 0.25 - kF^2 / 4 / π / e0^2 * (2 * deriv_1 + n * deriv_2)
     #println("A=$(A)")
 
     # Calculate parameter B
