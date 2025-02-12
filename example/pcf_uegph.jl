@@ -275,6 +275,39 @@ function pcf_loop_ab(A, B, param; ω_c=0.1param.EF,
 
 end
 
+function gap_loop_ab(A, B, param; ω_c=0.1param.EF,
+    α=0.9, Nmax=1e4, shift=0.05)
+    wgrid = A.mesh[1]
+    Π = Πs0wrapped(wgrid, param; ω_c=ω_c)
+    tail = Πstail(wgrid[end], 10.0 * wgrid[end], param; ω_c=ω_c)
+    R = similar(A)
+    R.data .= A.data
+    Rsum = similar(R)
+    Rsum.data .= R.data ./ (1 - α)
+    iw0 = 1
+
+    A.data .= 0.0
+    invR0 = 0.0
+    diff = 1.0
+    converge = false
+    n = 1
+    while (!converge && n < Nmax)
+        calcR!(R, A, B, Π, param; tail=tail)
+        R.data .+= Rsum.data .* (1 - α) .* shift # add shift
+
+        Rsum.data .= Rsum.data .* α .+ R.data ./ maximum(R.data)
+        lam = maximum(R.data) - shift # remove shift
+        converge = isapprox(lam, invR0, rtol=1e-10, atol=1e-10)
+        R.data .= Rsum.data .* (1 - α)
+        invR0 = lam
+        n = n + 1
+        println("invR0=$invR0")
+    end
+
+    return 1 - invR0, R
+
+end
+
 function pcf_loop_ab_brutal_step(A, B, param; ω_c=0.1param.EF,
     α=0.9, Nmax=1e4)
     wgrid = A.mesh[1]
@@ -355,10 +388,12 @@ end
 # param, B0 = f["param"], f["B"]
 # println(param)
 
-βmax = 54321
-rs = 1.91916
-U0 = 0.6770001354095592
-# U0 = 0.0
+βmax = 94321
+# rs = 1.91916
+rs = 0.1
+# U0 = 0.6770001354095592
+U0 = -0.2481599527429962
+# U0 = -0.07685794921373744
 λratio = 0.4
 ωdratio = 0.005
 
@@ -368,7 +403,10 @@ U0 = 0.6770001354095592
 # savefname = "./run/rpcf3D_rpaPiph_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_v0025.txt"
-savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_sigma.txt"
+# savefname = "./run/rpcf3D_ph1rpa_rs1.91916_l0_sigma.txt"
+# savefname = "./run/rpcf3D_ph2rpa_rs0.1_l0_v2.txt"
+savefname = "./run/rgap3D_ph2rpa_rs0.1_l0_v1.txt"
+# savefname = "./run/rgap3D_ph2rpa_rs1.91916_l0_v1.txt"
 # savefname = "./run/rpcf3D_ph1_rs1.91916_l0_vlarge0.txt"
 # savefname = "./run/rpcf3D_ph1_rs1.91916_l0_sigma.txt"
 
@@ -395,10 +433,11 @@ B = add_phonon(B, param)
 # A, B = extend_AB(A, B, param)
 # num = 7
 # betas = [400 * 2^(i - 1) for i in 1:num]
-# num = 24
-# betas = [50 * sqrt(2)^(i - 1) for i in 1:num]
-num = 41
-betas = [50 * 2^((i - 1) / 4) for i in 1:num]
+num = 21
+betas = [50 * sqrt(2)^(i - 1) for i in 1:num]
+# num = 41
+# betas = [50 * 2^((i - 1) / 4) for i in 1:num]
+
 lamus = zeros(Float64, length(betas))
 for i in 1:length(betas)
     beta = betas[i]
@@ -412,7 +451,8 @@ for i in 1:length(betas)
     # println((newA[1], newA[end]))
     # println((newB[1, 1], newB[1, end], newB[end, 1], newB[end, end]))
 
-    lamu, R = pcf_loop_ab(newA, newB, newparam)
+    # lamu, R = pcf_loop_ab(newA, newB, newparam)
+    lamu, R = gap_loop_ab(newA, newB, newparam)
     # lamu, R = pcf_loop_ab_brutal(newA, newB, newparam; ω_c=40param.EF)
     # lamu, R = pcf_loop_ab_brutal_step(newA, newB, newparam)
     println("β=$beta, lamu=$lamu")
@@ -422,6 +462,7 @@ log10tc = -crit_beta(betas, lamus; init=16)
 # println("$log10tc, Tc=$(10^log10tc)")
 # log10tc = -crit_beta(betas, lamus; init=10, fin=7)
 println("$log10tc, Tc=$(10^log10tc)")
+# println("$(log10tc*log(10))")
 
 open(savefname, "w") do io
 end

@@ -18,8 +18,8 @@ end
 # ngrid, Zph = load_zph("run/data/sigma_51200_00025.jld2")
 # ngrid, Zph = load_zph("run/data/sigma_51200_00025_nokf.jld2")
 # ngrid, Zph = load_zph("run/data/sigma_51200_0005_nokf.jld2")
-ngrid, Zph = load_zph("run/data/sigma_51200_191916_0005.jld2")
-# ngrid, Zph = nothing, nothing
+# ngrid, Zph = load_zph("run/data/sigma_51200_191916_0005.jld2")
+ngrid, Zph = nothing, nothing
 # Zph .= 1.0
 # println(ngrid, Zph)
 betaZ = 51200
@@ -91,7 +91,7 @@ function symmetrize_b(B)
 end
 
 function interp_AB(β, A, B, param;
-    Nk=24, minterval=0.5 / β, order=6)
+    Nk=32, minterval=0.1 / β, order=6)
     # interp AB to different temperature
     α = 0.882
     Euv = A.mesh[1][end]
@@ -223,7 +223,7 @@ function calcR!(R, A, B, Π, param; tail=0.0)
         end
         # factor = 1 / 2 / π / (4 * π^2) * param.kF^2
         integraltail = B[wi, end] * tail * R[end]
-        factor0 = param.kF / (4 * π) * 1.4
+        factor0 = param.kF / (4 * π)
         factor = factor0 / 2 / π
         tailfactor = factor0 / param.β
         result[wi] = A[wi] + CompositeGrids.Interp.integrate1D(integrand, wgrid) * factor + integraltail * tailfactor
@@ -242,7 +242,7 @@ function calcR_brutal!(R, A, B, Π, param; tail=0.0)
         result[wi] += B[wi, end] * tail * R[end]
     end
     # factor = param.kF^2 / (param.β * 4 * π^2)
-    factor = param.kF / (param.β * 2 * π)
+    factor = param.kF / (param.β * 4 * π)
     result .= result .* factor
     R.data .= result .+ A.data
 end
@@ -356,10 +356,11 @@ end
 # param, B0 = f["param"], f["B"]
 # println(param)
 
-βmax = 123456
-rs = 0.5
+βmax = 234567
+rs = 0.25
 # U0 = 0.6770001354095592
 U0 = 0.0
+# U0 = -4.408805514539718 / π
 λratio = 0.1
 ωdratio = 0.005
 
@@ -419,7 +420,7 @@ for i in 1:length(betas)
     println("β=$beta, lamu=$lamu")
     lamus[i] = lamu
 end
-log10tc = -crit_beta(betas, lamus; init=16)
+log10tc = -crit_beta(betas, lamus; init=3)
 # println("$log10tc, Tc=$(10^log10tc)")
 # log10tc = -crit_beta(betas, lamus; init=10, fin=7)
 println("$log10tc, Tc=$(10^log10tc)")

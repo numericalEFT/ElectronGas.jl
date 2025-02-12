@@ -135,11 +135,11 @@ function linearResponse(param, wsph, a2f_iso; Ecut=100000 * param.EF,
     return lamu, R_freq, F_freq
 end
 
-function measure_R(betas, prefix;
+function measure_R(betas, prefix; suffix=nothing,
     dir="./run/epw/", Ecut=160000, rtol=1e10,
     kwargs...)
 
-    wsph, a2f_iso = read_a2f(prefix; dir=dir)
+    wsph, a2f_iso = read_a2f(prefix; suffix=suffix, dir=dir)
     lamus = betas .* 0.0
 
     for i in 1:length(betas)

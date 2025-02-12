@@ -215,13 +215,36 @@ end
 reflectkwargs(; kwargs...) = kwargs
 
 @testset "QE_BRUTAL" begin
-    prefix = "pb"
+    # prefix = "pb"
+    # suffix = nothing
+
+    # prefix = "al_dw0.10_nk50x50x50"
+    # prefix = "al_dw0.25_nk50x50x50"
+    # prefix = "al_a2f/al_dw0.10_nk60x60x60.a2f"
+    # prefix = "cd_a2f/cd.a2f_sigma0.10_60x60x30"
+    prefix = "mg_a2f/mg.a2f_sigma0.1_60x60x30"
+    # suffix = ".a2f"
+    suffix = ""
+
+    # prefix = "li"
+    # suffix = ".a2f_degauss_0.1_kmesh_50x50x50"
+    # suffix = ".a2f_degauss_0.1_kmesh_40x40x40"
+    # suffix = ".a2f_degauss_0.1_kmesh_30x30x30"
+    # suffix = ".a2f_degauss_0.25_kmesh_40x40x40"
+    # suffix = ".a2f_degauss_0.25_kmesh_30x30x30"
+
     # dir = "~/File/Research/Quantum-Espresso/EPW/Thu.6.Margine/exercise1/epw/"
-    dir = "./run/epw/"
+    dir = "./run/epw/al_cd_mg/"
 
-    wsph, a2f_iso = read_a2f(prefix; dir=dir)
+    wsph, a2f_iso = read_a2f(prefix; suffix=suffix, dir=dir)
 
-    Ec = 0.1
+    wsph = wsph
+    a2f_iso = a2f_iso
+
+    Ec = 1.09535 # eV
+    # muc = 0.23 # al
+    # muc = 0.26 # cd
+    muc = 0.28 # mg
     # Ec = 1.0
 
     # compute_invR0(0.00044, Ec, wsph, a2f_iso)
@@ -232,19 +255,19 @@ reflectkwargs(; kwargs...) = kwargs
     # compute_λ(0.00042, Ec, wsph, a2f_iso)
     # compute_λ(0.0004, Ec, wsph, a2f_iso)
 
-    N = 12
+    N = 6
     lnbetas = zeros(Float64, N)
     invR0s = zeros(Float64, N)
     lamus = zeros(Float64, N)
 
     # kwargs = reflectkwargs(muc=0.0, zcorrection=false, lambdar_func=lambdar_iso_fake)
-    kwargs = reflectkwargs(muc=0.0)
+    kwargs = reflectkwargs(muc=muc)
     println(kwargs)
 
-    for i in 1:N
-        TinK = 7.0 + 0.5 * (i - 1)
+    Threads.@threads for i in 1:N
+        # TinK = 7.0 + 0.5 * (i - 1)
         # TinK = 35.0 * 1.1^((i - 1) / N)
-        # TinK = 1.0 * sqrt(2)^(i - 1)
+        TinK = 2.0 * sqrt(2)^(i - 1)
         # TinK = 1.0 * 8^((i - 1) / N)
         T = TinK / ev2Kelvin
         lamus[i] = compute_λ(T, Ec, wsph, a2f_iso; kwargs...)

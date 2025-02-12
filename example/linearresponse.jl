@@ -33,14 +33,18 @@ function measure_chi(dim, θ, rs, channel; kwargs...)
     # lamu, R_freq, F_freq = BSeq_resum.linearResponse(param, channel; kwargs...)
     lamu, R_freq, F_freq, R_ins = BSeq.linearResponse(param, channel; kwargs...)
     result = measure_chi(F_freq)
-    println("1/chi=", 1 / result)
+    # println("1/chi=", 1 / result)
+    Rmax = R_freq[end, 1] + R_ins[1]
+    println("Rmax=", Rmax)
+    println("Rmax/R0=", Rmax * lamu)
 
     data = [1 / θ 1 / result lamu channel rs]
 
     dir = "./run/"
-    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_vlargemu19.txt"
-    # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_vcrit$(uid÷100).txt"
-    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_v0025.txt"
+    # fname = "gap$(dim)D_phchi_rs$(rs)_l$(channel)_v2.txt"
+    # fname = "gap$(dim)D_kochi_rs$(rs)_l$(channel)_v1.txt"
+    fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_v2.txt"
+    # fname = "gap$(dim)D_rpachi_rs$(rs)_l$(channel)_v1.txt"
     # fname = "gap$(dim)D_phrpachi_rs$(rs)_l$(channel)_vlarge1.txt"
     # fname = "gap$(dim)D_ph4kochi_rs$(rs)_l$(channel)_vlarge0.txt"
     # fname = "gap$(dim)D_ph4chi_rs$(rs)_l$(channel)_vlarge0.txt"
@@ -63,19 +67,21 @@ using ElectronGas.Interaction
 @testset "measure chi" begin
     # println(measure_chi(3, 1e-2, 2.0))
     # uid0 = 1230300
-    uid0 = 19191600000
+    uid0 = 91301900
     dim = 3
-    rs = 1.91916
+    rs = 3.0
+    num = 9
     # num = 14
     # num = 25
-    # num = 9
+    # num = 27
     # num = 21
-    num = 23
+    # num = 23
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    # beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [400 * 2^(i - 1) for i in 1:num]
     # beta = [6.25 * sqrt(2)^(i - 1) for i in 1:num]
-    beta = [6.25 * sqrt(2)^(i - 1) for i in num+1:num+4]
+    # beta = [6.25 * 2^(i - 1) for i in 1:num]
+    # beta = [6.25 * sqrt(2)^(i - 1) for i in num+1:num+4]
     # beta = [6400 * sqrt(2) * sqrt(2)^(i - 1) for i in 1:num]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
     # beta = [400 * 20000^(i / num) for i in LinRange(0, num - 1, num)]
@@ -89,16 +95,17 @@ using ElectronGas.Interaction
     # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     chi = [measure_chi(dim, 1 / beta[i], rs, channel;
-        atol=1e-8, rtol=1e-10, Nk=8, order=8, Ntherm=100, α=0.8,
-        sigmatype=:none, int_type=:rpa, Vph=phonon,
-        # sigmatype=:none, int_type=:rpa,
+        # atol=1e-10, rtol=1e-10, Nk=16, order=6, Ntherm=100, α=0.8,
+        atol=1e-10, rtol=1e-10, Nk=12, order=6, Ntherm=100, α=0.8,
+        # sigmatype=:none, int_type=:rpa, Vph=phonon,
+        sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:ko, Vph=phonon,
         # sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
         # resum=true,
-        issave=true, uid=uid0 + i, dir="./run/data/",
+        issave=true, uid=uid0 + i, dir="./run/data/smallrs/",
         verbose=true) for i in 1:length(beta)]
     println(chi)
 end

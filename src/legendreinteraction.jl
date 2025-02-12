@@ -271,7 +271,9 @@ function DCKernel_2d(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel,
             end
         end
     end
-
+    if int_type == :none
+        kernel_bare .= 0.0
+    end
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 
@@ -345,6 +347,9 @@ function DCKernel_old(param, Euv, rtol, Nk, maxK, minK, order, int_type, channel
                 end
             end
         end
+    end
+    if int_type == :none
+        kernel_bare .= 0.0
     end
 
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
@@ -421,7 +426,9 @@ function DCKernel0(param, Euv, rtol, Nk, maxK, minK, order, int_type, spin_state
             kernel_bare[ki, pi] = (Hp - Hm)
         end
     end
-
+    if int_type == :none
+        kernel_bare .= 0.0
+    end
     return DCKernel(int_type, spin_state, channel, param, kgrid, qgrids, bdlr, kernel_bare, kernel)
 end
 

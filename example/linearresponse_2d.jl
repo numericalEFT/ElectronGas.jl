@@ -73,7 +73,8 @@ using ElectronGas.Interaction
     num = 9
     channel = 0
     # beta = [2, 5, 10, 20, 50, 100, 200, 500, 1000]
-    beta = [400 * 2^(i - 1) for i in 1:num]
+    # beta = [400 * 2^(i - 1) for i in 1:num]
+    beta = [12800, 25600, 51200, 102400]
     # beta = [6.25 * sqrt(2)^(i - 1) for i in 1:num]
     # beta = [6.25 * sqrt(2)^(i - 1) for i in num+1:num+4]
     # beta = [6400 * sqrt(2) * sqrt(2)^(i - 1) for i in 1:num]
@@ -89,14 +90,13 @@ using ElectronGas.Interaction
     # beta = [50 * sqrt(2)^i for i in LinRange(0, num - 1, num)]
     # chi = [measure_chi(dim, 1 / b, rs; sigmatype=:g0w0) for b in beta]
     chi = [measure_chi(dim, 1 / beta[i], rs, channel;
-        atol=1e-8, rtol=1e-10, Nk=8, order=4, Ntherm=100, α=0.8,
-        # sigmatype=:none, int_type=:rpa, Vph=phonon,
-        sigmatype=:none, int_type=:none, Vph=phonon,
+        atol=1e-8, rtol=1e-10, Nk=16, order=6, Ntherm=50, α=0.8,
+        minK=1e-8 * 2.828, Euv=8000,
         # sigmatype=:none, int_type=:rpa, Vph=phonon,
         # sigmatype=:none, int_type=:rpa,
         # sigmatype=:none, int_type=:ko,
         # sigmatype=:none, int_type=:ko, Vph=phonon,
-        # sigmatype=:none, int_type=:none, Vph=phonon,
+        sigmatype=:none, int_type=:none, Vph=phonon,
         # plasmon_type=:plasmon,
         # plasmon_type=:plasmon_fs,
         # resum=true,
